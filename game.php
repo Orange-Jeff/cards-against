@@ -366,7 +366,7 @@ if (file_exists($voiceScriptsFile)) {
             <div id="chat-wrapper" class="flex-1 min-w-0 flex justify-end pl-2">
                 <div id="game-chat" class="hidden flex flex-col w-full bg-gray-900/80 rounded-lg border border-gray-700 p-2 shadow-lg fixed-height">
                     <div id="auto-alert" class="hidden bg-blue-600 text-white text-center text-xs font-bold uppercase tracking-wider py-1 z-30 -mx-2 -mt-2 mb-1"></div>
-                    <div class="text-[9px] text-gray-300 font-bold uppercase tracking-wider flex-1 min-h-[12px] mb-1" id="waiting-for"></div>
+                    <div class="text-[9px] text-gray-300 font-bold uppercase tracking-wider min-h-[12px] mb-1" id="waiting-for"></div>
                     <div id="chat-messages" class="flex-1 overflow-y-auto text-xs space-y-1 mb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 text-gray-300 font-mono rounded bg-black/50 p-2">
                         <div class="text-gray-300 italic">Chat enabled...</div>
                     </div>
