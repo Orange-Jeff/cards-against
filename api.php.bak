@@ -1,0 +1,2514 @@
+<?php
+
+/**
+ * Filename: api.php
+ * Date: March 22, 2026
+ * Version: 1.44 - Integrated cache checking into prerecorded lookup flow
+ * Changes:
+ *   - check_prerecorded_audio now verifies TTS cache directory (data/tts_cache/)
+ *   - Cache key includes text + provider + voice_gender for accurate matching
+ *   - Returns both file URLs (host_messages/segments/whites) and base64 audio data (from cache)
+ *   - Ensures cached TTS audio is found on FIRST lookup, preventing unnecessary API calls
+ *   - Dramatically reduces API usage: first game pays cost, subsequent games use cache
+ * Previously (1.43): Replaced haiku fallback cards with meaningful placeholders
+ */
+session_start();
+header('Content-Type: application/json');
+
+// --- CONFIGURATION ---
+$DATA_DIR = __DIR__ . '/data';
+$STARTUP_CLEANUP_FILE = __DIR__ . '/data/.last_startup_cleanup';
+$DECK_FILE = __DIR__ . '/decks.md';
+$THEMES_FILE = __DIR__ . '/data/themes.json';
+$BANNED_FILE = __DIR__ . '/data/banned_cards.json';
+
+if (!is_dir($DATA_DIR)) mkdir($DATA_DIR, 0777, true);
+
+// --- STARTUP CLEANUP (run once per 60 seconds max) ---
+// Delete games that haven't been played for 5 minutes on first load
+$doStartupCleanup = false;
+if (!file_exists($STARTUP_CLEANUP_FILE)) {
+    $doStartupCleanup = true;
+} else {
+    $lastCleanup = @file_get_contents($STARTUP_CLEANUP_FILE);
+    if (time() - intval($lastCleanup) > 60) {
+        $doStartupCleanup = true;
+    }
+}
+
+if ($doStartupCleanup) {
+    @file_put_contents($STARTUP_CLEANUP_FILE, time());
+    $staleMinutes = 5;
+    $staleSeconds = $staleMinutes * 60;
+    $roomFiles = glob($DATA_DIR . '/room_*.json');
+    if ($roomFiles) {
+        foreach ($roomFiles as $roomFile) {
+            $roomData = @json_decode(@file_get_contents($roomFile), true);
+            if (!$roomData) {
+                @unlink($roomFile); // Corrupt file
+                continue;
+            }
+            $lastActive = $roomData['updated_at'] ?? $roomData['created_at'] ?? 0;
+            $age = time() - $lastActive;
+
+            // Check for human players
+            $hasHumans = false;
+            foreach (($roomData['players'] ?? []) as $p) {
+                if (!($p['is_bot'] ?? false)) {
+                    $hasHumans = true;
+                    break;
+                }
+            }
+
+            // Delete rooms inactive for 5+ minutes OR rooms with no humans (after 30s grace period)
+            if ($age > $staleSeconds || ($age > 30 && !$hasHumans)) {
+                @unlink($roomFile);
+                continue;
+            }
+
+            // Also delete rooms where host is not present (host left or disconnected)
+            $hostId = $roomData['host_id'] ?? null;
+            $hostPresent = false;
+            foreach ($roomData['players'] ?? [] as $p) {
+                if (($p['id'] ?? '') === $hostId && !($p['is_bot'] ?? false)) {
+                    $hostPresent = true;
+                    break;
+                }
+            }
+            if ($hostId && !$hostPresent && $roomData['state'] !== 'lobby') {
+                // Host not in game and game has started - delete it
+                @unlink($roomFile);
+            }
+        }
+    }
+}
+
+// --- HELPERS ---
+function getRoomFile($roomId)
+{
+    global $DATA_DIR;
+    $roomId = preg_replace('/[^a-zA-Z0-9_-]/', '', $roomId);
+    return $DATA_DIR . '/room_' . $roomId . '.json';
+}
+
+function loadRoom($roomId)
+{
+    $file = getRoomFile($roomId);
+    if (!file_exists($file)) return null;
+    $tries = 0;
+    $max = 4;
+    $delayUs = 60000; // up to ~180ms total
+    while ($tries < $max) {
+        $raw = @file_get_contents($file);
+        if ($raw === false) {
+            usleep($delayUs);
+            $tries++;
+            continue;
+        }
+        $j = json_decode($raw, true);
+        if (is_array($j)) return $j;
+        // Retry on transient partial writes
+        usleep($delayUs);
+        $tries++;
+    }
+    // Last attempt: return null to let caller handle gracefully
+    return null;
+}
+
+function saveRoom($roomId, $data)
+{
+    $data['updated_at'] = time();
+    $path = getRoomFile($roomId);
+    $dir = dirname($path);
+    if (!is_dir($dir)) mkdir($dir, 0777, true);
+    $tmp = $dir . DIRECTORY_SEPARATOR . ('.tmp_' . $roomId . '_' . uniqid() . '.json');
+    $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    // Write to temp file first
+    $ok = @file_put_contents($tmp, $json, LOCK_EX);
+    if ($ok === false) {
+        // Fallback to direct write
+        @file_put_contents($path, $json, LOCK_EX);
+        return;
+    }
+    // Atomic replace
+    @rename($tmp, $path);
+    // Cleanup temp if rename failed (Windows may leave tmp)
+    if (file_exists($tmp)) {
+        @unlink($tmp);
+    }
+}
+
+function loadThemes()
+{
+    global $THEMES_FILE;
+    if (!file_exists($THEMES_FILE)) return [];
+    return json_decode(file_get_contents($THEMES_FILE), true) ?: [];
+}
+
+function saveThemes($themes)
+{
+    global $THEMES_FILE;
+    if (!is_dir(dirname($THEMES_FILE))) mkdir(dirname($THEMES_FILE), 0777, true);
+    file_put_contents($THEMES_FILE, json_encode($themes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+}
+
+// Determine if a player should count as active (bots always active, humans only if not AFK)
+function isActivePlayer($p)
+{
+    if ($p['is_bot'] ?? false) return true;
+    return !($p['afk'] ?? false);
+}
+
+// Count active players (bots + non-AFK humans)
+function countActivePlayers($room)
+{
+    $cnt = 0;
+    foreach (($room['players'] ?? []) as $p) {
+        if (isActivePlayer($p)) $cnt++;
+    }
+    return $cnt;
+}
+
+// Ensure there is a placeholder bot if active players drop below 3
+function ensurePlaceholderBot(&$room)
+{
+    $active = countActivePlayers($room);
+    $hasPlaceholder = false;
+    $placeholderCount = 0;
+    foreach (($room['players'] ?? []) as $p) {
+        if (!empty($p['is_placeholder'])) {
+            $hasPlaceholder = true;
+            $placeholderCount++;
+        }
+    }
+
+    // Guard: if we already have placeholder(s), don't add more
+    if ($placeholderCount > 0) {
+        // Remove excess placeholders if somehow we have more than 1
+        if ($placeholderCount > 1) {
+            $kept = 0;
+            $room['players'] = array_values(array_filter($room['players'], function ($p) use (&$kept) {
+                if (!empty($p['is_placeholder'])) {
+                    if ($kept === 0) {
+                        $kept++;
+                        return true; // Keep first one
+                    }
+                    return false; // Remove extras
+                }
+                return true;
+            }));
+        }
+        // Already have a placeholder, exit early
+        return false;
+    }
+
+    if ($active < 3 && !$hasPlaceholder) {
+        // Get a random character name from theme (falls back to default if needed)
+        $botName = nextThemeCharacterName($room);
+
+        // Find most recent AFK or missing player to say we're subbing for
+        $subbingFor = 'a missing player';
+        $mostRecentAfk = null;
+        $latestTime = 0;
+        foreach (($room['players'] ?? []) as $p) {
+            if (($p['afk'] ?? false) && !($p['is_bot'] ?? false)) {
+                $checkTime = $p['last_seen'] ?? 0;
+                if ($checkTime > $latestTime) {
+                    $latestTime = $checkTime;
+                    $mostRecentAfk = $p['name'] ?? 'Unknown';
+                }
+            }
+        }
+        if ($mostRecentAfk) {
+            $subbingFor = $mostRecentAfk;
+        }
+
+        $placeholder = [
+            'id' => 'bot_placeholder_' . uniqid(),
+            'name' => $botName,
+            'avatar_type' => 'dicebear',
+            'avatar_val' => 'bottts:' . strtolower($botName),
+            'hand' => [],
+            'score' => 0,
+            'status' => 'thinking',
+            'is_bot' => true,
+            'is_placeholder' => true
+        ];
+        $room['players'][] = $placeholder;
+        if (!isset($room['chat'])) $room['chat'] = [];
+        $room['chat'][] = [
+            'player_id' => 'system',
+            'name' => 'System',
+            'msg' => "{$botName} is now subbing for {$subbingFor} while they are away.",
+            'ts' => time(),
+            'type' => 'join'
+        ];
+        return true;
+    }
+
+    // If we have a placeholder but now have 3+ active players (excluding placeholder), remove the placeholder
+    // Count active players EXCLUDING placeholders to prevent loop
+    $activeExcludingPlaceholder = 0;
+    foreach (($room['players'] ?? []) as $p) {
+        if (isActivePlayer($p) && empty($p['is_placeholder'])) {
+            $activeExcludingPlaceholder++;
+        }
+    }
+
+    if ($activeExcludingPlaceholder >= 3 && $hasPlaceholder) {
+        $room['players'] = array_values(array_filter($room['players'], function ($p) {
+            return empty($p['is_placeholder']);
+        }));
+        return true;
+    }
+    return false;
+}
+
+function getFallbackBotNames() {
+    global $THEMES_FILE;
+    static $cachedNames = null;
+    if ($cachedNames !== null) return $cachedNames;
+
+    if (file_exists($THEMES_FILE)) {
+        $themes = json_decode(file_get_contents($THEMES_FILE), true);
+        if (isset($themes['default']['character_names']) && is_array($themes['default']['character_names'])) {
+            $cachedNames = $themes['default']['character_names'];
+            return $cachedNames;
+        }
+    }
+
+    // Ultimate fallback if file missing
+    return [
+        "Captain Chaos", "Baron Von Snark", "Queen Sarcasm", "Duke Disaster", "Sir Puns-a-Lot",
+        "Lady Mischief", "Count Cringy", "Princess Procrastinate", "Lord Random", "Dame Drama",
+        "The Notorious P.U.N.", "Professor Awkward", "General Mayhem", "Admiral Oops", "Commander Confused",
+        "Sergeant Sassy", "Major Problem", "Private Joke", "Corporal Punishment", "Lieutenant Literal",
+        "Reverend Ridiculous", "Doctor Disaster", "Judge Mental", "Officer Overdrive", "Detective Derp",
+        "Agent Orange", "Inspector Gadget-less", "Sheriff Shady", "Marshal Mellow", "Deputy Doofus",
+        "Wizard Whatnow", "Sorceress Sarcasm", "Warlock Weird", "Mage Mistake", "Druid Doozy",
+        "Rogue Ridiculous", "Ranger Reckless", "Bard Blunder", "Paladin Panic", "Monk Mayhem",
+        "Ninja Nonsense", "Samurai Silly", "Viking Vague", "Pirate Puzzled", "Cowboy Confused",
+        "Astronaut Awkward", "Alien Average", "Robot Rusty", "Cyborg Clumsy", "Android Anxious",
+        "Emperor Extra", "Empress Error", "King Klutz", "Queen Quirky", "Prince Perplexed",
+        "Princess Puzzled", "Knight Knucklehead", "Squire Silly", "Jester Jest", "Fool Foolish",
+        "Sage Sarcastic", "Oracle Obvious", "Prophet Profit", "Mystic Mistaken", "Seer Seeing-Double",
+        "Chef Chaos", "Baker Broken", "Butcher Botched", "Brewer Bewildered", "Farmer Fumble",
+        "Miner Minor-Problem", "Blacksmith Blunder", "Carpenter Crooked", "Mason Messy", "Tailor Torn",
+        "Merchant Mistake", "Trader Trouble", "Banker Broke", "Thief Thick", "Assassin Awkward"
+    ];
+}
+
+function nextThemeCharacterName(&$room)
+{
+    $names = $room['config']['theme']['character_names'] ?? [];
+
+    // If current theme has no names, fallback to default theme names
+    if (!is_array($names) || empty($names)) {
+        $names = getFallbackBotNames();
+    }
+
+    if (!is_array($names) || empty($names)) return null;
+
+    // Shuffle names to ensure random selection
+    $shuffledNames = $names;
+    shuffle($shuffledNames);
+
+    $used = $room['config']['theme_used_names'] ?? [];
+
+    // Pick first unused from shuffled list
+    foreach ($shuffledNames as $n) {
+        if (!in_array($n, $used, true)) {
+            $room['config']['theme_used_names'][] = $n;
+            return $n;
+        }
+    }
+    // All used; pick random
+    $pick = $names[array_rand($names)];
+    $room['config']['theme_used_names'][] = $pick;
+    return $pick;
+}
+
+function replacePlayerWithBot(&$room, $userId)
+{
+    // Remove votes and table entries for this player
+    if (isset($room['votes'][$userId])) unset($room['votes'][$userId]);
+    $room['table_cards'] = array_values(array_filter($room['table_cards'] ?? [], function ($t) use ($userId) {
+        return ($t['player_id'] ?? null) !== $userId;
+    }));
+
+    // Remove player and remember host status
+    $players = $room['players'] ?? [];
+    $handSize = $room['config']['hand_size'] ?? 7;
+    $removedIsHost = false;
+    $playerRemoved = false;
+    foreach ($players as $idx => $p) {
+        if (($p['id'] ?? '') === $userId) {
+            $removedIsHost = !empty($p['is_host']);
+            array_splice($players, $idx, 1);
+            $playerRemoved = true;
+            break;
+        }
+    }
+    if (!$playerRemoved) {
+        $room['players'] = $players;
+        return false;
+    }
+
+    // Add a bot replacement (unless the removed was host; caller decides if kill instead)
+    $hand = [];
+    while (count($hand) < $handSize && !empty($room['white_deck'])) {
+        $hand[] = array_shift($room['white_deck']);
+    }
+    $botId = 'bot_idle_' . uniqid();
+
+    // Generate bot name (falls back to default if needed)
+    $botName = nextThemeCharacterName($room);
+
+    $room['players'] = $players;
+    $room['players'][] = [
+        'id' => $botId,
+        'name' => $botName,
+        'score' => 0,
+        'hand' => $hand,
+        'status' => 'thinking',
+        'is_bot' => true,
+        'idle_misses' => 0
+    ];
+    return $removedIsHost;
+}
+
+function botsOnly($room)
+{
+    foreach ($room['players'] as $p) {
+        if (!($p['is_bot'] ?? false)) return false;
+    }
+    return true;
+}
+
+/**
+ * Interleaves cards from different decks to ensure variety in short games.
+ */
+function distributedShuffle($cards)
+{
+    if (empty($cards)) return [];
+
+    // Group by deck
+    $groups = [];
+    foreach ($cards as $c) {
+        $deck = $c['deck'] ?? 'base';
+        $groups[$deck][] = $c;
+    }
+
+    // Shuffle each group individually
+    foreach ($groups as &$g) {
+        shuffle($g);
+    }
+    unset($g);
+
+    $result = [];
+    $deckNames = array_keys($groups);
+
+    // Randomize the order of decks in the round-robin to avoid predictable patterns
+    shuffle($deckNames);
+
+    // Round-robin selection until all groups are empty
+    while (!empty($groups)) {
+        foreach ($deckNames as $name) {
+            if (isset($groups[$name]) && !empty($groups[$name])) {
+                $result[] = array_shift($groups[$name]);
+                if (empty($groups[$name])) {
+                    unset($groups[$name]);
+                }
+            }
+        }
+    }
+    return $result;
+}
+
+function parseDecks()
+{
+    global $DECK_FILE, $BANNED_FILE;
+    if (!file_exists($DECK_FILE)) return ['black' => [], 'white' => [], 'tags' => ['base']];
+
+    $content = file_get_contents($DECK_FILE);
+    $lines = preg_split('/\R/', $content); // Use \R to split on any newline type (\n, \r\n)
+
+    $black = [];
+    $white = [];
+    $type = null;
+    $tags = ['base'];
+    $currentPack = 'base';
+    $banned = file_exists($BANNED_FILE) ? (json_decode(file_get_contents($BANNED_FILE), true) ?: []) : [];
+    $bannedTexts = array_map(function ($x) { return trim(strtolower($x['text'] ?? '')); }, $banned);
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+        if ($line === '') continue;
+
+        // More flexible header detection
+        if (preg_match('/^(?:The\s+)?(.+?)\s+(Black|White)\s+Cards(?: List)?\s*$/i', $line, $m)) {
+            $packName = strtolower(trim($m[1]));
+            if ($packName !== 'cards against humanity' && $packName !== 'more cards against humanity') {
+                 $currentPack = str_replace(' ', '_', $packName); // Normalize pack name
+            }
+            $type = strtolower(trim($m[2]));
+            if (!in_array($currentPack, $tags, true)) $tags[] = $currentPack;
+            continue;
+        }
+
+        // Handle simple headers for base deck
+        if (preg_match('/^\s*Black Cards\s*$/i', $line)) {
+            $type = 'black';
+            $currentPack = 'base';
+            continue;
+        }
+        if (preg_match('/^\s*White Cards\s*$/i', $line)) {
+            $type = 'white';
+            $currentPack = 'base';
+            continue;
+        }
+
+        // Skip subheaders
+        if (stripos($line, 'Cards List') !== false) continue;
+
+        $deckTag = $currentPack;
+
+        // Check for inline tag like "Card text (Red)"
+        if (preg_match('/\(([^)]+)\)\s*$/', $line, $m)) {
+            $inlineTag = strtolower(trim($m[1]));
+            $deckTag = $inlineTag;
+            $line = trim(preg_replace('/\s*\([^)]+\)\s*$/', '', $line));
+        }
+
+        if (!in_array($deckTag, $tags, true)) $tags[] = $deckTag;
+
+        if ($type === 'black') {
+            $lc = strtolower($line);
+            $hasBlank = (strpos($line, '______') !== false);
+            $isHaiku = (strpos($lc, 'make a haiku') !== false);
+            $isInsteadOf = (strpos($lc, 'instead of') === 0);
+            if ($hasBlank && !$isHaiku && !$isInsteadOf && !in_array(trim($lc), $bannedTexts, true)) {
+                $pick = max(1, substr_count($line, '______'));
+                $black[] = ['text' => $line, 'pick' => $pick, 'id' => uniqid('b_'), 'deck' => $deckTag];
+            }
+        } elseif ($type === 'white') {
+            if (!in_array(trim(strtolower($line)), $bannedTexts, true)) {
+                $cleanLine = rtrim($line, '.'); // More robustly remove trailing period
+                $white[] = ['text' => $cleanLine, 'id' => uniqid('w_'), 'deck' => $deckTag];
+            }
+        }
+    }
+    return ['black' => $black, 'white' => $white, 'tags' => array_values(array_unique($tags))];
+}
+
+// --- ACTIONS ---
+$action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+if ($action === 'create') {
+    $input = json_decode(file_get_contents('php://input'), true);
+
+    // Load Global Config & Theme
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $globalConfig = file_exists($globalConfigFile) ? json_decode(file_get_contents($globalConfigFile), true) : [];
+    $themes = loadThemes();
+    $currentThemeKey = $globalConfig['default_theme'] ?? 'default';
+    $theme = $themes[$currentThemeKey] ?? ($themes['default'] ?? []);
+
+    // UNIQUE NAME CHECK
+    $baseName = trim($input['room_name'] ?? '');
+    if ($baseName === '' || $baseName === ($globalConfig['default_room_name'] ?? 'The Lounge')) {
+        // If no name or default name, pick a random one from theme
+        if (!empty($theme['room_names'])) {
+            $baseName = $theme['room_names'][array_rand($theme['room_names'])];
+        } else {
+            $baseName = 'Game Room';
+        }
+    }
+
+    $finalName = $baseName;
+    $counter = 1;
+
+    // Scan existing rooms
+    $existingNames = [];
+    $files = glob($DATA_DIR . '/room_*.json');
+    if ($files) {
+        foreach ($files as $f) {
+            $json = json_decode(file_get_contents($f), true);
+            if ($json && isset($json['config']['room_name'])) {
+                $existingNames[] = strtolower($json['config']['room_name']);
+            }
+        }
+    }
+
+    while (in_array(strtolower($finalName), $existingNames)) {
+        $finalName = $baseName . " (" . $counter . ")";
+        $counter++;
+    }
+    $input['room_name'] = $finalName;
+
+    $roomId = uniqid();
+
+    // Load decks from decks.md in the same folder
+    $parsed = parseDecks();
+    $availableTags = $parsed['tags'] ?? ['base'];
+    $selectedTags = (!empty($input['decks']) && is_array($input['decks'])) ? array_map('strtolower', $input['decks']) : $availableTags;
+
+    // Handle Orange Deck (User Additions)
+    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+    if (in_array('orange_deck', $selectedTags)) {
+        if (file_exists($USER_ADDITIONS_FILE)) {
+            $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+            foreach ($userAdditions as $card) {
+                if (($card['type'] ?? 'white') === 'black') {
+                    $parsed['black'][] = [
+                        'text' => $card['text'],
+                        'pick' => $card['pick'] ?? 1,
+                        'id' => uniqid('b_usr_'),
+                        'deck' => 'orange_deck'
+                    ];
+                } else {
+                    $parsed['white'][] = [
+                        'text' => $card['text'],
+                        'id' => uniqid('w_usr_'),
+                        'deck' => 'orange_deck'
+                    ];
+                }
+            }
+        }
+    }
+
+    // Filter by selected deck tags
+    $decks = [
+        'black' => array_values(array_filter($parsed['black'], function ($c) use ($selectedTags) {
+            return in_array($c['deck'], $selectedTags, true);
+        })),
+        'white' => array_values(array_filter($parsed['white'], function ($c) use ($selectedTags) {
+            return in_array($c['deck'], $selectedTags, true);
+        }))
+    ];
+
+    if (empty($decks['black']) || empty($decks['white'])) {
+        $decks['black'] = $decks['black'] ?: [['id' => uniqid('b_'), 'text' => '______.', 'pick' => 1, 'deck' => 'base']];
+        $decks['white'] = $decks['white'] ?: [['id' => uniqid('w_'), 'text' => 'A mystery.', 'deck' => 'base']];
+    }
+
+    // Use distributed shuffle to ensure variety across different decks
+    $decks['black'] = distributedShuffle($decks['black']);
+    $decks['white'] = distributedShuffle($decks['white']);
+
+    // Attach theme
+    $input['theme'] = $theme;
+    if (!empty($input['theme']) && is_array($input['theme'])) {
+        // Normalize arrays
+        $input['theme']['room_names'] = array_values(array_filter($input['theme']['room_names'] ?? [], fn($v) => is_string($v) && trim($v) !== ''));
+        $input['theme']['character_names'] = array_values(array_filter($input['theme']['character_names'] ?? [], fn($v) => is_string($v) && trim($v) !== ''));
+    }
+
+    // Check for bots requested in setup
+    $bots = [];
+    // NOTE: Bots are NO LONGER added at creation time.
+    // They will be added dynamically when game starts if player count < 3 and fill_bots is enabled.
+
+    $input['min_players'] = $input['min_players'] ?? 3;
+    $input['max_players'] = $input['max_players'] ?? 8;
+    $input['fill_bots'] = $input['fill_bots'] ?? false;
+
+    $nowTs = time();
+    $roomData = [
+        'id' => $roomId,
+        'config' => $input,
+        'state' => 'lobby',
+        'is_tie_breaker' => false,
+        'players' => $bots,
+        'chat' => [],
+        'votes' => [],
+        'black_deck' => $decks['black'],
+        'white_deck' => $decks['white'],
+        'current_black_card' => null,
+        'table_cards' => [],
+        'round' => 1,
+        'host_id' => $_SESSION['user_id'] ?? 'unknown',
+        'created_at' => $nowTs,
+        'updated_at' => $nowTs
+    ];
+    saveRoom($roomId, $roomData);
+    echo json_encode(['success' => true, 'room_id' => $roomId]);
+    exit;
+}
+
+if ($action === 'poll') {
+    $roomId = $_GET['room_id'] ?? '';
+    $userId = $_SESSION['user_id'] ?? '';
+    $userName = $_SESSION['user_name'] ?? 'Unknown';
+    $isSpectator = isset($_GET['spectate']);
+
+    // Reject empty user IDs to prevent ghost players being created
+    if (empty($userId) && !$isSpectator) {
+        echo json_encode(['error' => 'Session expired. Please refresh and set up your profile.', 'redirect' => 'index.php']);
+        exit;
+    }
+
+    $room = loadRoom($roomId);
+    if (!$room) {
+        // Room doesn't exist - clear session reference if it matches
+        if (($_SESSION['current_room_id'] ?? '') === $roomId) {
+            unset($_SESSION['current_room_id']);
+        }
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+
+    // SINGLE ACTIVE GAME CHECK: send current room back so client can ask to switch
+    // But first verify the referenced room still exists
+    if (!$isSpectator) {
+        $currentRoom = $_SESSION['current_room_id'] ?? null;
+        if ($currentRoom && $currentRoom !== $roomId) {
+            // Check if the referenced room still exists
+            $currentRoomData = loadRoom($currentRoom);
+            if (!$currentRoomData) {
+                // Old room doesn't exist anymore - clear it
+                unset($_SESSION['current_room_id']);
+                $currentRoom = null;
+            } else {
+                // Check if user is actually still in that room
+                $stillInRoom = false;
+                foreach ($currentRoomData['players'] ?? [] as $p) {
+                    if (($p['id'] ?? '') === $userId && !($p['is_bot'] ?? false)) {
+                        $stillInRoom = true;
+                        break;
+                    }
+                }
+                if (!$stillInRoom) {
+                    // User not actually in that room - clear session
+                    unset($_SESSION['current_room_id']);
+                    $currentRoom = null;
+                }
+            }
+        }
+
+        // Re-check after cleanup
+        if ($currentRoom && $currentRoom !== $roomId) {
+            echo json_encode(['error' => 'Already in a game. Exit that game first.', 'current_room_id' => $currentRoom]);
+            exit;
+        }
+        $_SESSION['current_room_id'] = $roomId;
+    }
+
+    // Join Logic (Skip if spectator)
+    $playerExists = false;
+    foreach ($room['players'] as $p) {
+        if ($p['id'] === $userId) $playerExists = true;
+    }
+
+    if (!$playerExists && !$isSpectator) {
+        // Determine if they should be "on hold" (waiting for next round)
+        $onHold = ($room['state'] !== 'lobby');
+
+        // Look for a bot to replace with the human player
+        $botReplaced = false;
+        foreach ($room['players'] as $idx => $p) {
+            if ($p['is_bot'] ?? false) {
+                // Replace bot with human
+                $room['players'][$idx] = [
+                    'id' => $userId,
+                    'name' => $userName,
+                    'name_source' => $_SESSION['name_source'] ?? 'hand_entered',
+                    'avatar_type' => $_SESSION['user_avatar_type'] ?? 'dicebear',
+                    'avatar_val' => $_SESSION['user_avatar_val'] ?? 'seed',
+                    'voice_opt_in' => $_SESSION['voice_opt_in'] ?? false,
+                    'score' => $p['score'], // Keep bot's score
+                    'hand' => $onHold ? [] : $p['hand'], // Don't give cards if on hold
+                    'status' => $onHold ? 'waiting' : ($p['status'] ?? 'ready'),
+                    'is_host' => $p['is_host'] ?? false,
+                    'is_bot' => false,
+                    'is_waiting' => $onHold, // Mark as waiting for next round
+                    'muted_players' => [],
+                    'idle_misses' => 0,
+                    'muted_mic' => true // New players start muted
+                ];
+                $botReplaced = true;
+
+                // Add join announcement to chat
+                if (!isset($room['chat'])) $room['chat'] = [];
+                $room['chat'][] = [
+                    'player_id' => 'system',
+                    'name' => 'System',
+                    'msg' => "$userName has joined (replaced {$p['name']})" . ($onHold ? " and is waiting for the next round." : ""),
+                    'ts' => time(),
+                    'type' => 'join'
+                ];
+                break;
+            }
+        }
+
+        // If no bot to replace, add as new player
+        if (!$botReplaced) {
+            $room['players'][] = [
+                'id' => $userId,
+                'name' => $userName,
+                'name_source' => $_SESSION['name_source'] ?? 'hand_entered',
+                'avatar_type' => $_SESSION['user_avatar_type'] ?? 'dicebear',
+                'avatar_val' => $_SESSION['user_avatar_val'] ?? 'seed',
+                'voice_opt_in' => $_SESSION['voice_opt_in'] ?? false,
+                'score' => 0,
+                'hand' => [],
+                'status' => $onHold ? 'waiting' : 'ready',
+                'is_host' => ($room['host_id'] === $userId || count($room['players']) === 0),
+                'is_bot' => false,
+                'is_waiting' => $onHold,
+                'muted_players' => [],
+                'idle_misses' => 0,
+                'muted_mic' => true // New players start muted
+            ];
+
+            // Add join announcement to chat
+            if (!isset($room['chat'])) $room['chat'] = [];
+            $room['chat'][] = [
+                'player_id' => 'system',
+                'name' => 'System',
+                'msg' => "$userName has joined the game" . ($onHold ? " and is waiting for the next round." : ""),
+                'ts' => time(),
+                'type' => 'join'
+            ];
+        }
+        saveRoom($roomId, $room);
+    }
+
+    $autoAlert = null;
+    $paused = $room['paused'] ?? false;
+
+    // Auto-unpause if paused for more than 3 days
+    if ($paused && !empty($room['paused_at'])) {
+        $pausedAge = time() - intval($room['paused_at']);
+        if ($pausedAge > 60 * 60 * 24 * 3) { // 3 days
+            $pauseDuration = $pausedAge;
+            if (isset($room['round_start_time'])) {
+                $room['round_start_time'] += $pauseDuration;
+            }
+            if (isset($room['created_at'])) {
+                $room['created_at'] += $pauseDuration;
+            }
+            $room['paused'] = false;
+            $room['paused_at'] = null;
+            unset($room['paused_by']);
+            if (!isset($room['chat'])) $room['chat'] = [];
+            $room['chat'][] = [
+                'player_id' => 'system',
+                'name' => 'System',
+                'msg' => 'Game auto-resumed after 3 days paused. Placeholder Bot may join if needed.',
+                'ts' => time(),
+                'type' => 'join'
+            ];
+            $autoAlert = 'Game resumed after pause timeout';
+            $paused = false;
+            $changed = ensurePlaceholderBot($room);
+            saveRoom($roomId, $room);
+        }
+    }
+
+    // Safeguard: ensure black card exists and hands are refilled during play
+    $stateChanged = false;
+    if (!$paused && $room['state'] === 'playing') {
+        if (empty($room['current_black_card']) && !empty($room['black_deck'])) {
+            $room['current_black_card'] = array_shift($room['black_deck']);
+            $room['round_start_time'] = time();
+            $stateChanged = true;
+        }
+
+        $limit = $room['config']['hand_size'] ?? 7;
+        foreach ($room['players'] as &$p) {
+            $filled = false;
+            while (count($p['hand']) < $limit && !empty($room['white_deck'])) {
+                $p['hand'][] = array_shift($room['white_deck']);
+                $filled = true;
+            }
+            if ($filled) $stateChanged = true;
+        }
+        unset($p);
+        if ($stateChanged) saveRoom($roomId, $room);
+    }
+
+    // BOT LOGIC: If playing, ensure bots have played
+    if (!$paused && $room['state'] === 'playing' && !empty($room['current_black_card'])) { // Ensure black card exists
+        $botsPlayed = false;
+        foreach ($room['players'] as &$p) {
+            if (($p['is_bot'] ?? false) && $p['status'] !== 'played') {
+                // Bot plays random card
+                if (!empty($p['hand'])) {
+                    $pick = $room['current_black_card']['pick'] ?? 1;
+                    $played = array_splice($p['hand'], 0, $pick);
+                    $room['table_cards'][] = ['player_id' => $p['id'], 'cards' => $played];
+                    $p['status'] = 'played';
+                    $botsPlayed = true;
+                }
+            }
+        }
+        if ($botsPlayed) saveRoom($roomId, $room);
+    }
+
+    // TIMER-BASED AUTO-ADVANCE: When timer expires, skip idle players and move to voting
+    $now = time();
+    $roundStarted = $room['round_start_time'] ?? $room['updated_at'] ?? $now;
+    $configuredTimer = intval($room['config']['timer'] ?? 60);
+    $idleLimit = $configuredTimer > 0 ? $configuredTimer : 120; // Use configured timer, fallback to 120s if no timer set
+
+    if (!$paused && $room['state'] === 'playing') {
+        $elapsed = $now - $roundStarted;
+        if ($elapsed >= $idleLimit && !empty($room['current_black_card'])) { // Timer expired
+            $changed = false;
+
+            // Mark idle players as 'skipped' and track their idle miss
+            foreach ($room['players'] as &$p) {
+                if (($p['is_bot'] ?? false) || $p['status'] === 'played') continue;
+                // Don't auto-play for them, just mark as skipped
+                $p['status'] = 'skipped';
+                if (!($p['is_bot'] ?? false)) {
+                    $p['idle_misses'] = ($p['idle_misses'] ?? 0) + 1;
+                }
+                $changed = true;
+            }
+            unset($p);
+
+            // Move to voting if at least one player has played (skip idle players)
+            if (!empty($room['table_cards'])) {
+                $room['state'] = 'voting';
+                $room['is_tie_breaker'] = false;
+                $room['round_start_time'] = $now;
+                shuffle($room['table_cards']);
+                $room['votes'] = [];
+                $autoAlert = 'Timer expired. Moving to voting with submitted cards.';
+                $changed = true;
+            } elseif ($changed) {
+                // No one played anything - auto-draw a round (skip this black card)
+                $room['current_black_card'] = !empty($room['black_deck']) ? array_shift($room['black_deck']) : null;
+                $room['round_start_time'] = $now;
+                foreach ($room['players'] as &$p) {
+                    $p['status'] = 'thinking';
+                }
+                unset($p);
+                $autoAlert = 'No cards played. Skipping to next round.';
+            }
+
+            // Evict idle players (2 misses); if host reaches 2, kill game
+            $evicted = false;
+            foreach ($room['players'] as $p) {
+                if (($p['is_bot'] ?? false)) continue;
+                if (($p['idle_misses'] ?? 0) >= 2) {
+                    if (!empty($p['is_host'])) {
+                        @unlink(getRoomFile($roomId));
+                        echo json_encode(['error' => 'Host inactive twice. Game closed.']);
+                        exit;
+                    }
+                    replacePlayerWithBot($room, $p['id']);
+                    $evicted = true;
+                }
+            }
+            if ($evicted || $changed) saveRoom($roomId, $room);
+        }
+    } elseif (!$paused && $room['state'] === 'voting') {
+        // ... existing voting logic ...
+        $elapsed = $now - $roundStarted;
+
+        // Determine voting timeout: if any player was 'skipped' during the play phase, shorten wait to 45s
+        $votingTimeout = $idleLimit;
+        $hadSkipped = false;
+        foreach ($room['players'] as $p) {
+            if (($p['status'] ?? '') === 'skipped') { $hadSkipped = true; break; }
+        }
+        if ($hadSkipped) $votingTimeout = 45;
+
+        if ($elapsed >= $votingTimeout && !empty($room['table_cards'])) {
+            $humanCount = 0;
+            foreach ($room['players'] as $p) {
+                if (!($p['is_bot'] ?? false) && !($p['afk'] ?? false) && empty($p['is_waiting'])) $humanCount++;
+            }
+            $changed = false;
+            $autoVoted = [];
+            foreach ($room['players'] as &$p) {
+                if ($p['is_bot'] ?? false || !empty($p['is_waiting'])) continue;
+                if (isset($room['votes'][$p['id']])) continue;
+                $room['votes'][$p['id']] = rand(0, count($room['table_cards']) - 1);
+                $p['idle_misses'] = ($p['idle_misses'] ?? 0) + 1; // count idle miss on auto-vote
+                $autoVoted[] = $p['name'] ?? 'Unknown';
+                $changed = true;
+            }
+            unset($p);
+
+            if (!empty($autoVoted)) {
+                $autoAlert = 'Auto-vote: ' . (count($autoVoted) === 1 ? $autoVoted[0] . ' missed voting and was auto-voted.' : implode(', ', $autoVoted) . ' missed voting and were auto-voted.');
+            }
+            // ... (rest of voting logic remains the same, assuming it was safe)
+            if ($changed && count($room['votes']) >= $humanCount) {
+                // Run same resolution as vote action
+                $counts = array_count_values($room['votes']);
+                $max = -1;
+                $winners = [];
+                foreach ($counts as $i => $c) {
+                    if ($c > $max) {
+                        $max = $c;
+                        $winners = [$i];
+                    } elseif ($c === $max) $winners[] = $i;
+                }
+
+                if (count($winners) === 1) {
+                    $wIdx = $winners[0];
+                    $wId = $room['table_cards'][$wIdx]['player_id'];
+
+                    // Store Last Round Info
+                    $wName = 'Unknown';
+                    foreach ($room['players'] as $p) {
+                        if ($p['id'] === $wId) $wName = $p['name'];
+                    }
+
+                    $room['last_round_info'] = [
+                        'winner' => $wName,
+                        'winner_id' => $wId,
+                        'black' => $room['current_black_card']['text'],
+                        'white' => array_map(function ($c) {
+                            return $c['text'];
+                        }, $room['table_cards'][$wIdx]['cards'])
+                    ];
+                    // Append to server-side history
+                    if (!isset($room['history']) || !is_array($room['history'])) $room['history'] = [];
+                    $winnerScoreAfter = null;
+                    foreach ($room['players'] as $pp) {
+                        if ($pp['id'] === $wId) {
+                            $winnerScoreAfter = ($pp['score'] ?? 0) + 1;
+                            break;
+                        }
+                    }
+
+                    // Check if all votes were for the same card (unanimous)
+                    $isUnanimous = (count(array_unique($room['votes'])) === 1);
+
+                    $room['history'][] = [
+                        'ts' => time(),
+                        'round' => ($room['round'] ?? 1),
+                        'winner' => $wName,
+                        'winner_id' => $wId,
+                        'black' => $room['current_black_card']['text'],
+                        'white' => array_map(function ($c) {
+                            return $c['text'];
+                        }, $room['table_cards'][$wIdx]['cards']),
+                        'score' => $winnerScoreAfter,
+                        'unanimous' => $isUnanimous
+                    ];
+                    $room['round'] = ($room['round'] ?? 1) + 1;
+
+                    foreach ($room['players'] as &$p) {
+                        if ($p['id'] === $wId) $p['score']++;
+                        $p['status'] = 'thinking';
+                    }
+                    unset($p);
+
+                    // Check for game end (win limit)
+                    $winLimit = intval($room['config']['win_limit'] ?? 0);
+                    $winnerPlayer = null;
+                    foreach ($room['players'] as $pp) {
+                        if ($pp['id'] === $wId) {
+                            $winnerPlayer = $pp;
+                            break;
+                        }
+                    }
+                    if ($winLimit > 0 && $winnerPlayer && intval($winnerPlayer['score']) >= $winLimit) {
+                        $room['state'] = 'finished';
+                        $room['winner_id'] = $winnerPlayer['id'];
+                        $room['winner_name'] = $winnerPlayer['name'];
+                        $room['final_round_info'] = $room['last_round_info'] ?? null;
+
+                        // Collect all unanimous vote rounds for display
+                        if (!isset($room['unanimous_rounds'])) {
+                            $room['unanimous_rounds'] = [];
+                        }
+                        foreach ($room['history'] as $h) {
+                            if (isset($h['unanimous']) && $h['unanimous']) {
+                                $room['unanimous_rounds'][] = [
+                                    'round' => $h['round'],
+                                    'black' => $h['black'],
+                                    'white' => $h['white']
+                                ];
+                            }
+                        }
+
+                        $room['votes'] = [];
+                        $room['table_cards'] = [];
+                    } else {
+                        // Continue to next round
+                        $room['table_cards'] = [];
+                        $room['votes'] = [];
+                        $room['state'] = 'playing';
+                        $room['round_start_time'] = time();
+                        $room['is_tie_breaker'] = false;
+                        if (!empty($room['black_deck'])) $room['current_black_card'] = array_shift($room['black_deck']);
+
+                        $limit = $room['config']['hand_size'] ?? 7;
+                        foreach ($room['players'] as &$p) {
+                            // Clear waiting status for mid-game joiners
+                            if (!empty($p['is_waiting'])) {
+                                $p['is_waiting'] = false;
+                                $p['status'] = 'thinking';
+                            }
+                            while (count($p['hand']) < $limit && !empty($room['white_deck'])) {
+                                $p['hand'][] = array_shift($room['white_deck']);
+                            }
+                        }
+                        unset($p);
+                    }
+                } else {
+                    // Tie Breaker
+                    $newTable = [];
+                    foreach ($winners as $i) $newTable[] = $room['table_cards'][$i];
+                    $room['table_cards'] = $newTable;
+                    $room['votes'] = [];
+                    $room['is_tie_breaker'] = true;
+                }
+                $autoAlert = 'Auto-vote triggered after inactivity.';
+            }
+
+            // Evict idle players (2 misses); if host reaches 2, kill game
+            $evicted = false;
+            foreach ($room['players'] as $p) {
+                if (($p['is_bot'] ?? false)) continue;
+                if (($p['idle_misses'] ?? 0) >= 2) {
+                    if (!empty($p['is_host'])) {
+                        @unlink(getRoomFile($roomId));
+                        echo json_encode(['error' => 'Host inactive twice. Game closed.']);
+                        exit;
+                    }
+                    replacePlayerWithBot($room, $p['id']);
+                    $evicted = true;
+                }
+            }
+            if ($evicted) saveRoom($roomId, $room);
+        }
+    }
+
+    if ($autoAlert) {
+        $room['auto_alert'] = ['msg' => $autoAlert, 'ts' => $now];
+        saveRoom($roomId, $room);
+    }
+
+    // ROUND END AUTO-ADVANCE (45 second timeout or all players clicked Continue)
+    if (!$paused && $room['state'] === 'round_end') {
+        $roundEndTime = $room['round_end_time'] ?? $now;
+        $elapsed = $now - $roundEndTime;
+        $roundEndTimeout = 15; // Short timeout so round-end popup disappears quickly
+
+        // Count human players (non-AFK)
+        $humanCount = 0;
+        foreach ($room['players'] as $p) {
+            if (!($p['is_bot'] ?? false) && !($p['afk'] ?? false) && empty($p['is_waiting'])) $humanCount++;
+        }
+
+        // Check if all humans clicked Continue OR timeout reached
+        $continueClicks = $room['continue_clicks'] ?? [];
+        $humanClicks = 0;
+        foreach ($room['players'] as $p) {
+            if (!($p['is_bot'] ?? false) && !($p['afk'] ?? false) && empty($p['is_waiting']) && isset($continueClicks[$p['id']])) $humanClicks++;
+        }
+
+        if ($humanClicks >= $humanCount || $elapsed >= $roundEndTimeout) {
+            // Advance to next round
+            $room['table_cards'] = [];
+            $room['votes'] = [];
+            $room['continue_clicks'] = [];
+            $room['state'] = 'playing';
+            $room['round_start_time'] = time();
+            $room['is_tie_breaker'] = false;
+
+            if (!empty($room['black_deck'])) $room['current_black_card'] = array_shift($room['black_deck']);
+
+            // Refill hands
+            $limit = $room['config']['hand_size'] ?? 7;
+            foreach ($room['players'] as &$p) {
+                // Clear waiting status for mid-game joiners
+                if (!empty($p['is_waiting'])) {
+                    $p['is_waiting'] = false;
+                }
+                while (count($p['hand']) < $limit && !empty($room['white_deck'])) {
+                    $p['hand'][] = array_shift($room['white_deck']);
+                }
+                $p['status'] = 'thinking';
+            }
+
+            // Add auto-alert directly into the room so clients get a spoken/visual notice
+            $room['auto_alert'] = ['msg' => 'Continuing to next round.', 'ts' => $now];
+
+            saveRoom($roomId, $room);
+        }
+    }
+
+    // If only bots remain, shut down the room
+    if (botsOnly($room)) {
+        @unlink(getRoomFile($roomId));
+        echo json_encode(['error' => 'Room closed (bots only).']);
+        exit;
+    }
+
+    // Placeholder bot support when active players drop below 3 (skip in lobby/waiting room)
+    if (!$paused && $room['state'] !== 'lobby') {
+        $placeholderChanged = ensurePlaceholderBot($room);
+        if ($placeholderChanged) saveRoom($roomId, $room);
+    }
+
+    // Output Filter
+    $client = $room;
+    $client['my_hand'] = [];
+    $client['is_spectator'] = $isSpectator;
+
+    foreach ($client['players'] as &$p) {
+        if ($p['id'] === $userId) $client['my_hand'] = $p['hand'];
+        if ($p['id'] !== $userId) $p['hand'] = array_fill(0, count($p['hand']), ['text' => '?']);
+    }
+
+    echo json_encode($client);
+    exit;
+}
+
+if ($action === 'start_game') {
+    $roomId = $_POST['room_id'];
+    $room = loadRoom($roomId);
+    if (!$room) exit;
+
+    // Check for fill_bots logic (from config or request)
+    $shouldFill = !empty($room['config']['fill_bots']) || !empty($_POST['fill_bots']);
+    if ($shouldFill) {
+        $min = $room['config']['min_players'] ?? 3;
+        $currentCount = count($room['players']);
+        if ($currentCount < $min) {
+            $needed = $min - $currentCount;
+            for ($i = 1; $i <= $needed; $i++) {
+                $botName = nextThemeCharacterName($room);
+                $room['players'][] = [
+                    'id' => 'bot_fill_' . uniqid(),
+                    'name' => $botName,
+                    'score' => 0,
+                    'hand' => [],
+                    'status' => 'ready',
+                    'is_bot' => true
+                ];
+            }
+        }
+    }
+
+    $room['state'] = 'playing';
+    $room['is_tie_breaker'] = false;
+    $room['round_start_time'] = time();
+    $limit = $room['config']['hand_size'] ?? 7;
+
+    // Deal to everyone (including bots)
+    foreach ($room['players'] as &$p) {
+        while (count($p['hand']) < $limit && !empty($room['white_deck'])) {
+            $p['hand'][] = array_shift($room['white_deck']);
+        }
+        $p['status'] = ($p['is_bot'] ?? false) ? 'thinking' : 'thinking'; // Bots will play on next poll
+    }
+    $room['current_black_card'] = array_shift($room['black_deck']);
+    $room['votes'] = [];
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'chat') {
+    $roomId = $_POST['room_id'] ?? '';
+    $msg = trim($_POST['message'] ?? '');
+    $room = loadRoom($roomId);
+    if ($room && $msg) {
+        $userName = $_SESSION['user_name'] ?? 'Spectator';
+        $userId = $_SESSION['user_id'] ?? '';
+
+        if (!isset($room['chat'])) $room['chat'] = [];
+        $room['chat'][] = [
+            'player_id' => $userId,
+            'name' => $userName,
+            'msg' => htmlspecialchars($msg),
+            'ts' => time()
+        ];
+
+        saveRoom($roomId, $room);
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['error' => 'Invalid room or message']);
+    }
+    exit;
+}
+
+// Toggle AFK status for current player
+if ($action === 'toggle_afk') {
+    $roomId = $_POST['room_id'] ?? '';
+    $afk = $_POST['afk'] === '1';
+    $uid = $_SESSION['user_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+
+    foreach ($room['players'] as &$p) {
+        if (($p['id'] ?? '') === $uid) {
+            $p['afk'] = $afk;
+            // Keep their status but mark visually
+            if ($afk) {
+                $p['status'] = 'afk';
+            } else {
+                if ($room['state'] === 'playing') $p['status'] = 'thinking';
+            }
+            break;
+        }
+    }
+    unset($p);
+
+    if (!isset($room['chat'])) $room['chat'] = [];
+    $room['chat'][] = [
+        'player_id' => 'system',
+        'name' => 'System',
+        'msg' => ($_SESSION['user_name'] ?? 'Player') . ($afk ? ' is now AFK' : ' is back'),
+        'ts' => time(),
+        'type' => $afk ? 'leave' : 'join'
+    ];
+
+    // Ensure placeholder bot if needed when someone goes AFK
+    $changed = ensurePlaceholderBot($room);
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'play_cards') {
+    $roomId = $_POST['room_id'];
+    $ids = $_POST['card_ids'];
+    $uid = $_SESSION['user_id'];
+    $room = loadRoom($roomId);
+
+    $pIdx = -1;
+    foreach ($room['players'] as $k => $p) {
+        if ($p['id'] === $uid) $pIdx = $k;
+    }
+    if ($pIdx === -1 || !empty($room['players'][$pIdx]['is_waiting'])) exit;
+
+    $hand = $room['players'][$pIdx]['hand'];
+    $played = [];
+    $newHand = [];
+    foreach ($hand as $c) {
+        if (in_array($c['id'], $ids)) $played[] = $c;
+        else $newHand[] = $c;
+    }
+
+    // Maintain selection order
+    $ordered = [];
+    foreach ($ids as $id) {
+        foreach ($played as $c) {
+            if ($c['id'] == $id) $ordered[] = $c;
+        }
+    }
+
+    $room['players'][$pIdx]['hand'] = $newHand;
+    $room['players'][$pIdx]['status'] = 'played';
+    $room['table_cards'][] = ['player_id' => $uid, 'cards' => $ordered];
+
+    // Check all active players played (ignore AFK humans)
+    $all = true;
+    foreach ($room['players'] as $p) {
+        if (isActivePlayer($p) && ($p['status'] ?? '') !== 'played') {
+            $all = false;
+            break;
+        }
+    }
+
+    if ($all) {
+        $room['state'] = 'voting';
+        $room['is_tie_breaker'] = false;
+        $room['round_start_time'] = time();
+        shuffle($room['table_cards']);
+        $room['votes'] = [];
+    }
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'vote') {
+    $roomId = $_POST['room_id'];
+    $idx = $_POST['winner_index'];
+    $uid = $_SESSION['user_id'];
+    $room = loadRoom($roomId);
+
+    if (isset($room['votes'][$uid])) exit; // Already voted
+
+    // Check if player is waiting for next round
+    foreach ($room['players'] as $p) {
+        if ($p['id'] === $uid && !empty($p['is_waiting'])) exit;
+    }
+    $targetOwner = $room['table_cards'][$idx]['player_id'];
+    $isTie = $room['is_tie_breaker'];
+    $allowSelf = $room['config']['self_vote'] ?? false;
+
+    if (!$allowSelf && $targetOwner === $uid && !$isTie) {
+        echo json_encode(['error' => 'No self-voting']);
+        exit;
+    }
+
+    $room['votes'][$uid] = $idx;
+
+    // Count active human players (non-AFK) for vote threshold
+    $humanCount = 0;
+    foreach ($room['players'] as $p) {
+        if (!($p['is_bot'] ?? false) && !($p['afk'] ?? false) && empty($p['is_waiting'])) $humanCount++;
+    }
+
+    if (count($room['votes']) >= $humanCount) {
+        $counts = array_count_values($room['votes']);
+        $max = -1;
+        $winners = [];
+        foreach ($counts as $i => $c) {
+            if ($c > $max) {
+                $max = $c;
+                $winners = [$i];
+            } elseif ($c === $max) $winners[] = $i;
+        }
+
+        if (count($winners) === 1) {
+            $wIdx = $winners[0];
+            $wId = $room['table_cards'][$wIdx]['player_id'];
+
+            // Store Last Round Info
+            $wName = 'Unknown';
+            foreach ($room['players'] as $p) {
+                if ($p['id'] === $wId) $wName = $p['name'];
+            }
+
+            $room['last_round_info'] = [
+                'winner' => $wName,
+                'winner_id' => $wId,
+                'black' => $room['current_black_card']['text'],
+                'white' => array_map(function ($c) {
+                    return $c['text'];
+                }, $room['table_cards'][$wIdx]['cards'])
+            ];
+            // Append to server-side history
+            if (!isset($room['history']) || !is_array($room['history'])) $room['history'] = [];
+            $winnerScoreAfter = null;
+            foreach ($room['players'] as $pp) {
+                if ($pp['id'] === $wId) {
+                    $winnerScoreAfter = ($pp['score'] ?? 0) + 1;
+                    break;
+                }
+            }
+            $room['history'][] = [
+                'ts' => time(),
+                'round' => ($room['round'] ?? 1),
+                'winner' => $wName,
+                'winner_id' => $wId,
+                'black' => $room['current_black_card']['text'],
+                'white' => array_map(function ($c) {
+                    return $c['text'];
+                }, $room['table_cards'][$wIdx]['cards']),
+                'score' => $winnerScoreAfter
+            ];
+            $room['round'] = ($room['round'] ?? 1) + 1;
+
+            foreach ($room['players'] as &$p) {
+                // DO NOT SAVE SCORES FOR BOTS (Visual score in game is fine, but persisted stats logic would check is_bot)
+                if ($p['id'] === $wId) $p['score']++;
+                $p['status'] = 'thinking';
+            }
+
+            // Clear tie-breaker flag since we have a winner
+            $room['is_tie_breaker'] = false;
+
+            // Check for game end (win limit)
+            $winLimit = intval($room['config']['win_limit'] ?? 0);
+            $winnerPlayer = null;
+            foreach ($room['players'] as $pp) {
+                if ($pp['id'] === $wId) {
+                    $winnerPlayer = $pp;
+                    break;
+                }
+            }
+            if ($winLimit > 0 && $winnerPlayer && intval($winnerPlayer['score']) >= $winLimit) {
+                $room['state'] = 'finished';
+                $room['winner_id'] = $winnerPlayer['id'];
+                $room['winner_name'] = $winnerPlayer['name'];
+                $room['final_round_info'] = $room['last_round_info'] ?? null;
+                $room['votes'] = [];
+                $room['table_cards'] = [];
+            } else {
+                // Show round end screen - players must click Continue or auto-advance after 45s
+                $room['state'] = 'round_end';
+                $room['round_end_time'] = time();
+                $room['continue_clicks'] = []; // Track who clicked Continue
+            }
+        } else {
+            // Tie Breaker
+            $newTable = [];
+            foreach ($winners as $i) $newTable[] = $room['table_cards'][$i];
+            $room['table_cards'] = $newTable;
+            $room['votes'] = [];
+            $room['is_tie_breaker'] = true;
+        }
+    }
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Flag/Delete a card by text (admin or host)
+if ($action === 'flag_card') {
+    $roomId = $_POST['room_id'] ?? '';
+    $text = trim($_POST['text'] ?? '');
+    $type = $_POST['type'] ?? 'white'; // 'white' or 'black'
+    if ($text === '') {
+        echo json_encode(['error' => 'Missing text']);
+        exit;
+    }
+    $list = file_exists($BANNED_FILE) ? (json_decode(file_get_contents($BANNED_FILE), true) ?: []) : [];
+    $list[] = ['text' => $text, 'type' => $type, 'ts' => time()];
+    if (!is_dir(dirname($BANNED_FILE))) mkdir(dirname($BANNED_FILE), 0777, true);
+    file_put_contents($BANNED_FILE, json_encode($list, JSON_PRETTY_PRINT));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Player clicks Continue after round ends
+if ($action === 'continue_round') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room || $room['state'] !== 'round_end') {
+        echo json_encode(['error' => 'Not in round_end state']);
+        exit;
+    }
+
+    $uid = $_SESSION['user_id'] ?? '';
+    if (!isset($room['continue_clicks'])) $room['continue_clicks'] = [];
+    $room['continue_clicks'][$uid] = true;
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Toggle pause (host only)
+if ($action === 'toggle_pause') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+    $uid = $_SESSION['user_id'] ?? '';
+    if ($uid !== ($room['host_id'] ?? '')) {
+        echo json_encode(['error' => 'Only host can pause']);
+        exit;
+    }
+    $val = isset($_POST['paused']) ? (($_POST['paused'] === '1') ? true : false) : !($room['paused'] ?? false);
+
+    if ($val && !($room['paused'] ?? false)) {
+        // Pausing now
+        $room['paused'] = true;
+        $room['paused_at'] = time();
+
+        // Store who paused it
+        $pauser = 'Someone';
+        foreach ($room['players'] as $p) {
+            if ($p['id'] === $uid) {
+                $pauser = $p['name'];
+                break;
+            }
+        }
+        $room['paused_by'] = $pauser;
+    } elseif (!$val && ($room['paused'] ?? false)) {
+        // Unpausing now
+        $pauseDuration = time() - intval($room['paused_at'] ?? time());
+        if (isset($room['round_start_time'])) {
+            $room['round_start_time'] += $pauseDuration;
+        }
+        if (isset($room['created_at'])) {
+            $room['created_at'] += $pauseDuration; // For lobby timer
+        }
+        $room['paused'] = false;
+        $room['paused_at'] = null;
+        unset($room['paused_by']);
+    }
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true, 'paused' => $val]);
+    exit;
+}
+
+function cleanCardTextPHP($text, $isBlack) {
+    $cleaned = trim($text);
+    if ($cleaned === '') return '';
+
+    if ($isBlack) {
+        $cleaned = preg_replace('/_{3,}/', '______', $cleaned);
+        $cleaned = preg_replace('/(\w)\s*______/', '$1 ______', $cleaned);
+        $cleaned = preg_replace('/______\s*(\w)/', '______ $1', $cleaned);
+        $cleaned = preg_replace('/______\s+([.,;:?!])/', '______$1', $cleaned);
+        $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
+    } else {
+        $cleaned = preg_replace('/_+/', '', $cleaned);
+        $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
+    }
+    return $cleaned;
+}
+
+function generateCardAudio($text, $type) {
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $globalConfig = file_exists($globalConfigFile) ? json_decode(file_get_contents($globalConfigFile), true) : [];
+    
+    if (empty($globalConfig['tts_enabled']) || empty($globalConfig['google_tts_api_key'])) {
+        return;
+    }
+
+    $apiKey = $globalConfig['google_tts_api_key'];
+    require_once __DIR__ . '/generate_audio.php';
+
+    $generator = new AudioGenerator(
+        $apiKey,
+        __DIR__ . '/audio',
+        [
+            'male' => 'Fenrir',
+            'female' => 'Aoede',
+            'british' => 'Puck'
+        ],
+        50, // batchSize
+        0,  // startIndex
+        0,  // stopIndex
+        'gemini', // provider
+        '', // ElevenLabs voice ID
+        1000 // dailyLimit
+    );
+
+    if ($type === 'black') {
+        $generator->generateSegmentsForBlackCard($text);
+    } else {
+        $generator->generateAudioForWhiteCard($text);
+    }
+    
+    $generator->close();
+}
+
+// Add user cards to the Orange Deck (Bulk)
+if ($action === 'add_user_cards') {
+    $cards = [];
+
+    // Check for JSON input (legacy or API usage)
+    $input = json_decode(file_get_contents('php://input'), true);
+    if (!empty($input['cards'])) {
+        $cards = $input['cards'];
+    }
+
+    // Check for Form Data (Admin Panel)
+    if (isset($_POST['black_cards'])) {
+        $lines = explode("\n", $_POST['black_cards']);
+        foreach ($lines as $line) {
+            $line = cleanCardTextPHP($line, true);
+            if ($line !== '') {
+                $pick = substr_count($line, '______');
+                if ($pick === 0) $pick = 1;
+                $cards[] = ['text' => $line, 'type' => 'black', 'pick' => $pick];
+            }
+        }
+    }
+    if (isset($_POST['white_cards'])) {
+        $lines = explode("\n", $_POST['white_cards']);
+        foreach ($lines as $line) {
+            $line = cleanCardTextPHP($line, false);
+            if ($line !== '') {
+                $cards[] = ['text' => $line, 'type' => 'white'];
+            }
+        }
+    }
+
+    if (empty($cards)) {
+        echo json_encode(['error' => 'No cards provided']);
+        exit;
+    }
+
+    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+    $additions = file_exists($USER_ADDITIONS_FILE) ? (json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: []) : [];
+
+    foreach ($cards as $c) {
+        $type = $c['type'] ?? 'white';
+        $pick = intval($c['pick'] ?? 0);
+
+        // Auto-detect type if not specified (legacy logic)
+        if (!isset($c['type'])) {
+             $pick = intval($c['pick'] ?? 1);
+             if ($pick > 0) $type = 'black';
+        }
+
+        $isBlack = ($type === 'black');
+        $text = cleanCardTextPHP($c['text'] ?? '', $isBlack);
+        if ($text === '') continue;
+
+        if ($isBlack && $pick === 0) {
+            $pick = substr_count($text, '______');
+            if ($pick === 0) $pick = 1;
+        }
+
+        // Check duplicates
+        $exists = false;
+        foreach ($additions as $existing) {
+            if (strcasecmp($existing['text'], $text) === 0) {
+                $exists = true;
+                break;
+            }
+        }
+
+        if (!$exists) {
+            $additions[] = [
+                'text' => $text,
+                'type' => $type,
+                'pick' => $pick,
+                'ts' => time()
+            ];
+            // Trigger TTS audio generation
+            generateCardAudio($text, $type);
+        }
+    }
+
+    if (!is_dir(dirname($USER_ADDITIONS_FILE))) mkdir(dirname($USER_ADDITIONS_FILE), 0777, true);
+    file_put_contents($USER_ADDITIONS_FILE, json_encode($additions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+    echo json_encode(['success' => true, 'count' => count($additions)]);
+    exit;
+}
+
+// Get cards for a specific deck (Admin Inspector)
+if ($action === 'get_deck_cards') {
+    $deck = $_GET['deck'] ?? '';
+    $parsed = parseDecks();
+
+    // Also load user additions
+    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+    if (file_exists($USER_ADDITIONS_FILE)) {
+        $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+        foreach ($userAdditions as $card) {
+            if (($card['type'] ?? 'white') === 'black') {
+                $parsed['black'][] = [
+                    'text' => $card['text'],
+                    'pick' => $card['pick'] ?? 1,
+                    'id' => uniqid('b_usr_'),
+                    'deck' => 'orange_deck',
+                    'is_user' => true,
+                    'original_text' => $card['text'] // For deletion matching
+                ];
+            } else {
+                $parsed['white'][] = [
+                    'text' => $card['text'],
+                    'id' => uniqid('w_usr_'),
+                    'deck' => 'orange_deck',
+                    'is_user' => true,
+                    'original_text' => $card['text']
+                ];
+            }
+        }
+    }
+
+    $cards = [];
+    if ($deck) {
+        $deck = strtolower($deck);
+        foreach ($parsed['black'] as $c) {
+            if ($c['deck'] === $deck) {
+                $c['type'] = 'black';
+                $cards[] = $c;
+            }
+        }
+        foreach ($parsed['white'] as $c) {
+            if ($c['deck'] === $deck) {
+                $c['type'] = 'white';
+                $cards[] = $c;
+            }
+        }
+    } else {
+        // Return all tags
+        $tags = $parsed['tags'] ?? ['base'];
+        if (!in_array('orange_deck', $tags)) $tags[] = 'orange_deck';
+        echo json_encode(['tags' => $tags]);
+        exit;
+    }
+
+    echo json_encode(['cards' => $cards]);
+    exit;
+}
+
+// Delete a card (Admin Inspector)
+if ($action === 'delete_card') {
+    $text = trim($_POST['text'] ?? '');
+    $deck = $_POST['deck'] ?? '';
+
+    if (!$text) {
+        echo json_encode(['error' => 'Missing text']);
+        exit;
+    }
+
+    if ($deck === 'orange_deck') {
+        // Delete from user_additions.json
+        $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+        if (file_exists($USER_ADDITIONS_FILE)) {
+            $additions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+            $before = count($additions);
+            $additions = array_values(array_filter($additions, function($c) use ($text) {
+                return strcasecmp($c['text'], $text) !== 0;
+            }));
+
+            if (count($additions) < $before) {
+                file_put_contents($USER_ADDITIONS_FILE, json_encode($additions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                echo json_encode(['success' => true]);
+                exit;
+            }
+        }
+    } else {
+        // For standard decks, we add to banned_cards.json (flag_card logic)
+        // But user asked to "delete" them.
+        // Since decks.md is a single file, editing it is risky but possible.
+        // However, `flag_card` is safer and effectively removes it from the game.
+        // I'll use the banned list approach but call it "deleted".
+
+        $BANNED_FILE = __DIR__ . '/data/banned_cards.json';
+        $list = file_exists($BANNED_FILE) ? (json_decode(file_get_contents($BANNED_FILE), true) ?: []) : [];
+
+        // Check if already banned
+        $found = false;
+        foreach ($list as $b) {
+            if (strcasecmp($b['text'], $text) === 0) {
+                $found = true;
+                break;
+            }
+        }
+
+        if (!$found) {
+            $list[] = ['text' => $text, 'type' => 'unknown', 'ts' => time(), 'deck' => $deck];
+            if (!is_dir(dirname($BANNED_FILE))) mkdir(dirname($BANNED_FILE), 0777, true);
+            file_put_contents($BANNED_FILE, json_encode($list, JSON_PRETTY_PRINT));
+        }
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    echo json_encode(['error' => 'Card not found']);
+    exit;
+}
+
+// Add bot player to room
+if ($action === 'add_bot') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+    if ($room['state'] !== 'lobby') {
+        echo json_encode(['error' => 'Can only add bots in lobby']);
+        exit;
+    }
+
+    // Count existing bots to generate name
+    $botCount = 0;
+    foreach ($room['players'] as $p) {
+        if ($p['is_bot'] ?? false) $botCount++;
+    }
+
+    // Use theme character name if available, otherwise fallback to preset list
+    $botName = nextThemeCharacterName($room);
+    if (!$botName) {
+        // Fallback list of 80 fake names (same as client-side presetNames)
+        $fallbackNames = getFallbackBotNames();
+        // Pick random name not currently in use
+        $usedNames = array_map(function($p) { return $p['name']; }, $room['players']);
+        $avail = array_diff($fallbackNames, $usedNames);
+        if (empty($avail)) $avail = $fallbackNames; // Recycle if full
+        $botName = $avail[array_rand($avail)];
+    }
+
+    // Generate unique bot ID
+    $botId = 'bot_' . uniqid();
+
+    // Create bot player
+    $botPlayer = [
+        'id' => $botId,
+        'name' => $botName,
+        'avatar_type' => 'dicebear',
+        'avatar_val' => 'bottts:seed' . $botCount,
+        'hand' => [],
+        'score' => 0,
+        'status' => 'ready',
+        'is_bot' => true
+    ];
+
+    $room['players'][] = $botPlayer;
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Player leaves room; optional bot replacement OR room deletion if host leaves
+if ($action === 'leave_room') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+    $uid = $_SESSION['user_id'] ?? '';
+
+    // Clear current_room_id from session
+    unset($_SESSION['current_room_id']);
+
+    // Check if leaving player is the host
+    $isHost = ($room['host_id'] ?? '') === $uid;
+
+    // Also check if player has is_host flag
+    foreach ($room['players'] as $p) {
+        if (($p['id'] ?? '') === $uid && !empty($p['is_host'])) {
+            $isHost = true;
+            break;
+        }
+    }
+
+    // If host leaves, delete the entire room
+    if ($isHost) {
+        @unlink(getRoomFile($roomId));
+        echo json_encode(['success' => true, 'room_deleted' => true]);
+        exit;
+    }
+
+    // Get player name before removing
+    $leavingPlayerName = 'Player';
+    foreach ($room['players'] as $p) {
+        if ($p['id'] === $uid) {
+            $leavingPlayerName = $p['name'] ?? 'Player';
+            break;
+        }
+    }
+
+    // Remove player
+    $room['players'] = array_values(array_filter($room['players'], function ($p) use ($uid) {
+        return $p['id'] !== $uid;
+    }));
+
+    // Add leave announcement to chat
+    if (!isset($room['chat'])) $room['chat'] = [];
+    $room['chat'][] = [
+        'player_id' => 'system',
+        'name' => 'System',
+        'msg' => "$leavingPlayerName has left the game",
+        'ts' => time(),
+        'type' => 'leave'
+    ];
+
+    // Clean votes and table entries
+    if (isset($room['votes'][$uid])) unset($room['votes'][$uid]);
+    $room['table_cards'] = array_values(array_filter($room['table_cards'], function ($t) use ($uid) {
+        return ($t['player_id'] ?? null) !== $uid;
+    }));
+
+    // If no human players left, delete the room
+    $hasHumans = false;
+    foreach ($room['players'] as $p) {
+        if (!($p['is_bot'] ?? false)) {
+            $hasHumans = true;
+            break;
+        }
+    }
+
+    if (!$hasHumans || count($room['players']) === 0) {
+        @unlink(getRoomFile($roomId));
+        echo json_encode(['success' => true, 'room_deleted' => true]);
+        exit;
+    }
+
+    // Replace with bot (slightly dumber 😉)
+    $botId = 'bot_leave_' . uniqid();
+    $hand = [];
+    $limit = $room['config']['hand_size'] ?? 7;
+    while (count($hand) < $limit && !empty($room['white_deck'])) {
+        $hand[] = array_shift($room['white_deck']);
+    }
+    $room['players'][] = [
+        'id' => $botId,
+        'name' => nextThemeCharacterName($room) ?: 'AutoBot',
+        'score' => 0,
+        'hand' => $hand,
+        'status' => 'thinking',
+        'is_bot' => true
+    ];
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Leave all rooms for current user (no bot replacement to reduce load)
+if ($action === 'leave_all_rooms') {
+    $uid = $_SESSION['user_id'] ?? '';
+    unset($_SESSION['current_room_id']);
+    $files = glob($DATA_DIR . '/room_*.json');
+    if ($files) {
+        foreach ($files as $f) {
+            $room = json_decode(file_get_contents($f), true);
+            if (!$room) {
+                @unlink($f);
+                continue;
+            }
+            $before = count($room['players'] ?? []);
+            $room['players'] = array_values(array_filter($room['players'] ?? [], function ($p) use ($uid) {
+                return ($p['id'] ?? null) !== $uid;
+            }));
+            if ($before === count($room['players'])) continue; // user not here
+
+            // Clean votes/table entries
+            if (isset($room['votes'][$uid])) unset($room['votes'][$uid]);
+            $room['table_cards'] = array_values(array_filter($room['table_cards'] ?? [], function ($t) use ($uid) {
+                return ($t['player_id'] ?? null) !== $uid;
+            }));
+
+            if (count($room['players']) === 0 || botsOnly($room)) {
+                @unlink($f);
+            } else {
+                saveRoom($room['id'], $room);
+            }
+        }
+    }
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Host can kill a game (delete room file)
+if ($action === 'kill_game') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+    $uid = $_SESSION['user_id'] ?? '';
+    if ($room['host_id'] !== $uid) {
+        echo json_encode(['error' => 'Only host can kill game']);
+        exit;
+    }
+    @unlink(getRoomFile($roomId));
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Update room/game settings (host only)
+if ($action === 'update_settings') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+    $uid = $_SESSION['user_id'] ?? '';
+    if ($room['host_id'] !== $uid) {
+        echo json_encode(['error' => 'Only host can update settings']);
+        exit;
+    }
+
+    $allowed = ['win_limit', 'timer', 'hand_size', 'self_vote', 'min_players', 'max_players', 'fill_bots', 'enable_tts', 'enable_chat', 'voice_gender'];
+    foreach ($allowed as $k) {
+        if (isset($_POST[$k])) {
+            // Cast booleans and ints
+            if (in_array($k, ['self_vote', 'fill_bots', 'enable_tts', 'enable_chat'])) $room['config'][$k] = $_POST[$k] === 'true' || $_POST[$k] === '1' || $_POST[$k] === 'on';
+            else $room['config'][$k] = is_numeric($_POST[$k]) ? intval($_POST[$k]) : $_POST[$k];
+        }
+    }
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true, 'config' => $room['config']]);
+    exit;
+}
+
+// Save a theme to themes.json
+if ($action === 'save_theme') {
+    $key = trim($_POST['key'] ?? '');
+    $label = trim($_POST['label'] ?? '');
+    $gameTitle = trim($_POST['game_title'] ?? 'Cards Against Everyone');
+    $roomNames = json_decode($_POST['room_names'] ?? '[]', true) ?: [];
+    $characterNames = json_decode($_POST['character_names'] ?? '[]', true) ?: [];
+    $banner = trim($_POST['banner_media'] ?? '');
+    $audio = trim($_POST['audio_url'] ?? '');
+
+    if ($key === '' || $label === '') {
+        echo json_encode(['error' => 'Missing key/label']);
+        exit;
+    }
+    $themes = loadThemes();
+    $themes[$key] = [
+        'label' => $label,
+        'game_title' => $gameTitle,
+        'room_names' => array_values(array_filter($roomNames, fn($v) => is_string($v) && trim($v) !== '')),
+        'character_names' => array_values(array_filter($characterNames, fn($v) => is_string($v) && trim($v) !== '')),
+        'banner_media' => $banner,
+        'audio_url' => $audio
+    ];
+    saveThemes($themes);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Set lobby message (for redirects with reasons)
+if ($action === 'set_lobby_message') {
+    $message = $_POST['message'] ?? $_GET['message'] ?? '';
+    if ($message) {
+        $_SESSION['lobby_message'] = $message;
+    }
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+function addWavHeader($pcmData, $sampleRate = 24000, $channels = 1, $bitsPerSample = 16) {
+    $byteRate = $sampleRate * $channels * ($bitsPerSample / 8);
+    $blockAlign = $channels * ($bitsPerSample / 8);
+    $dataSize = strlen($pcmData);
+    $chunkSize = 36 + $dataSize;
+
+    $header = '';
+    $header .= 'RIFF';
+    $header .= pack('V', $chunkSize);
+    $header .= 'WAVE';
+    $header .= 'fmt ';
+    $header .= pack('V', 16);
+    $header .= pack('v', 1);
+    $header .= pack('v', $channels);
+    $header .= pack('V', $sampleRate);
+    $header .= pack('V', $byteRate);
+    $header .= pack('v', $blockAlign);
+    $header .= pack('v', $bitsPerSample);
+    $header .= 'data';
+    $header .= pack('V', $dataSize);
+
+    return $header . $pcmData;
+}
+
+function synthGeminiTTS($text, $apiKey, $voiceName = 'Aoede') {
+    // Use known-good key if none provided (matches HomeBound setup)
+    if (empty($apiKey)) {
+        $apiKey = 'AIzaSyC9c59Zb9yBSUcxjMdy8GcgvmpyjzUuwhw';
+    }
+
+    $models = [
+        ['name' => 'gemini-2.0-flash-exp', 'api' => 'v1alpha'],
+        ['name' => 'gemini-2.5-flash-preview-tts', 'api' => 'v1beta']
+    ];
+
+    $lastError = 'Gemini TTS unavailable';
+
+    foreach ($models as $modelInfo) {
+        $model = $modelInfo['name'];
+        $api = $modelInfo['api'];
+        $url = "https://generativelanguage.googleapis.com/{$api}/models/{$model}:generateContent?key={$apiKey}";
+
+        $promptText = $text;
+        if ($model === 'gemini-2.5-flash-preview-tts') {
+            $promptText = "Please read the following text transcript out loud:\n" . $text;
+        }
+
+        $payload = [
+            'contents' => [['parts' => [['text' => $promptText]]]],
+            'generationConfig' => [
+                'responseModalities' => ['AUDIO'],
+                'speechConfig' => [
+                    'voiceConfig' => [
+                        // Allow specifying a voice name/code if provided (per-game or test input)
+                        'prebuiltVoiceConfig' => ['voiceName' => $voiceName ?: 'Aoede']
+                    ]
+                ]
+            ]
+        ];
+
+        // Use PHP stream (file_get_contents) instead of cURL to avoid curl_close deprecation warnings
+        $opts = [
+            'http' => [
+                'header'  => "Content-Type: application/json\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($payload),
+                'timeout' => 90,
+            ]
+        ];
+        $context = stream_context_create($opts);
+        $response = @file_get_contents($url, false, $context);
+        $httpCode = 0;
+        if (!empty($http_response_header) && is_array($http_response_header)) {
+            // Parse HTTP status code from response headers
+            foreach ($http_response_header as $hdr) {
+                if (preg_match('#HTTP/\d+\.\d+\s+(\d+)#', $hdr, $m)) {
+                    $httpCode = intval($m[1]);
+                    break;
+                }
+            }
+        }
+
+        if ($httpCode === 200 && $response !== false) {
+            $result = json_decode($response, true);
+            $inline = $result['candidates'][0]['content']['parts'][0]['inlineData']['data'] ?? null;
+            if ($inline) {
+                $pcm = base64_decode($inline, true);
+                if ($pcm !== false) {
+                    $wav = addWavHeader($pcm, 24000, 1, 16);
+                    return ['ok' => true, 'audio' => base64_encode($wav), 'mime' => 'audio/wav', 'model' => $model];
+                }
+            }
+            $lastError = "$model response missing audio data";
+        } else {
+            $errMsg = '';
+            if ($response) {
+                $decoded = json_decode($response, true);
+                $errMsg = $decoded['error']['message'] ?? '';
+            }
+            $errSuffix = '';
+            $errSuffix .= $errMsg ? " $errMsg" : '';
+            $lastError = "$model failed (HTTP $httpCode)$errSuffix";
+        }
+    }
+
+    return ['ok' => false, 'error' => $lastError];
+}
+
+// Check for Pre-Recorded Audio (Version 1.0 - Try loading pre-generated audio files before API calls)
+if ($action === 'check_prerecorded_audio') {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+
+    $text = $_POST['text'] ?? '';
+    if (!$text) {
+        echo json_encode(['found' => false, 'error' => 'No text provided']);
+        exit;
+    }
+
+    // Get voice preference or default to 'female'
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $config = [];
+    if (file_exists($globalConfigFile)) {
+        $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
+    }
+    $voiceGender = $_POST['voice'] ?? $config['tts_voice'] ?? 'female';
+
+    // Generate MD5 hash of text for filename lookup
+    $hash = md5($text);
+
+    // Normalize underscores to check both formats
+    $textForWhite = trim($text);
+    $textForWhite = preg_replace('/_{3,}/', '', $textForWhite);  // Remove blank markers for white card check
+    $hashForWhite = md5($textForWhite);
+
+    // PRIORITY 1: Check host_messages directory FIRST (these are critical announcements)
+    // Dynamically scan all subdirectories instead of hardcoding categories
+    $hostBaseDir = __DIR__ . "/audio/host_messages/{$voiceGender}";
+    if (is_dir($hostBaseDir)) {
+        foreach (scandir($hostBaseDir) as $category) {
+            if ($category === '.' || $category === '..' || !is_dir("$hostBaseDir/$category")) continue;
+            $hostPath = "$hostBaseDir/$category/{$hash}.mp3";
+            if (file_exists($hostPath)) {
+                echo json_encode([
+                    'found' => true,
+                    'type' => 'host_message',
+                    'url' => "audio/host_messages/{$voiceGender}/{$category}/{$hash}.mp3"
+                ]);
+                exit;
+            }
+        }
+    }
+
+    // PRIORITY 2: Check segments directory (split by blanks in black cards)
+    $segmentPath = __DIR__ . "/audio/segments/{$voiceGender}/{$hash}.mp3";
+    if (file_exists($segmentPath)) {
+        echo json_encode([
+            'found' => true,
+            'type' => 'segment',
+            'url' => "audio/segments/{$voiceGender}/{$hash}.mp3"
+        ]);
+        exit;
+    }
+
+    // PRIORITY 3: Check whites directory (whole white cards)
+    $whitePath = __DIR__ . "/audio/whites/{$voiceGender}/{$hashForWhite}.mp3";
+    if (file_exists($whitePath)) {
+        echo json_encode([
+            'found' => true,
+            'type' => 'white',
+            'url' => "audio/whites/{$voiceGender}/{$hashForWhite}.mp3"
+        ]);
+        exit;
+    }
+
+    // PRIORITY 4: Check TTS cache BEFORE making API calls (Version 1.43)
+    // Cache is created by get_tts action and stored as base64 + metadata
+    $cacheDir = __DIR__ . '/data/tts_cache';
+    $cacheKey = md5($text . '::' . (($_POST['provider'] ?? 'elevenlabs')) . '::' . $voiceGender);
+    $cacheFile = $cacheDir . '/' . $cacheKey . '.cache';
+
+    if (file_exists($cacheFile)) {
+        $cached = json_decode(file_get_contents($cacheFile), true);
+        if ($cached && isset($cached['audio'])) {
+            echo json_encode([
+                'found' => true,
+                'type' => 'tts_cache',
+                'audio' => $cached['audio'],  // Base64 encoded
+                'mime' => $cached['mime'] ?? 'audio/mp3',
+                'cached' => true
+            ]);
+            exit;
+        }
+    }
+
+    // No pre-recorded file found
+    echo json_encode(['found' => false, 'error' => 'No pre-recorded audio available']);
+    exit;
+}
+
+// Get TTS Audio (using server-stored keys with caching)
+if ($action === 'get_tts') {
+    // Suppress warnings
+    error_reporting(0);
+    ini_set('display_errors', 0);
+
+    $text = $_POST['text'] ?? '';
+    if (!$text) {
+        echo json_encode(['error' => 'No text provided']);
+        exit;
+    }
+
+    // Load room for per-game voice settings
+    $roomId = $_POST['room_id'] ?? '';
+    $room = $roomId ? loadRoom($roomId) : null;
+    $roomConfig = $room['config'] ?? [];
+
+    // Load global config for fallback keys
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $config = [];
+    if (file_exists($globalConfigFile)) {
+        $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
+    }
+
+    // Determine provider and credentials (per-game takes priority)
+    $provider = $roomConfig['game_tts_provider'] ?? $config['tts_provider'] ?? 'browser';
+    $voiceType = $config['tts_voice'] ?? 'female';
+
+    // Version 2.0 - Add TTS caching: check local cache before API calls
+    $cacheDir = __DIR__ . '/data/tts_cache';
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0777, true);
+
+    // Create cache key from text + voice
+    $cacheKey = md5($text . '::' . $provider . '::' . $voiceType);
+    $cacheFile = $cacheDir . '/' . $cacheKey . '.cache';
+
+    // Return cached audio if available
+    if (file_exists($cacheFile)) {
+        $cached = json_decode(file_get_contents($cacheFile), true);
+        if ($cached && isset($cached['audio'])) {
+            echo json_encode(['success' => true, 'audio' => $cached['audio'], 'mime' => $cached['mime'] ?? 'audio/mp3', 'cached' => true]);
+            exit;
+        }
+    }
+
+    if ($provider === 'google') {
+        // Use per-game API key if available, otherwise global (Gemini Aoede)
+        $apiKey = $roomConfig['game_google_api_key'] ?? $config['google_tts_api_key'] ?? '';
+        if (!$apiKey) {
+            echo json_encode(['error' => 'Missing Google API Key in settings']);
+            exit;
+        }
+
+        // Pass optional per-game voice name if configured (falls back to global)
+        $voiceName = $roomConfig['game_google_voice'] ?? ($config['google_tts_voice_name'] ?? 'Aoede');
+        $ttsResult = synthGeminiTTS($text, $apiKey, $voiceName);
+        if (!empty($ttsResult['ok'])) {
+            echo json_encode([
+                'success' => true,
+                'audio' => $ttsResult['audio'] ?? '',
+                'mime' => $ttsResult['mime'] ?? 'audio/wav',
+                'model' => $ttsResult['model'] ?? 'gemini',
+                'voice' => $voiceName
+            ]);
+        } else {
+            echo json_encode(['error' => $ttsResult['error'] ?? 'Google (Gemini) TTS failed']);
+        }
+        exit;
+    }
+
+    if ($provider === 'elevenlabs') {
+        // Use per-game credentials if available, otherwise global
+        $apiKey = $roomConfig['game_elevenlabs_api_key'] ?? $config['elevenlabs_api_key'] ?? '';
+        $voiceId = $roomConfig['game_elevenlabs_voice_id'] ?? $config['elevenlabs_voice_id'] ?? '';
+
+        if (!$apiKey || !$voiceId) {
+            echo json_encode(['error' => 'Missing Eleven Labs credentials in settings']);
+            exit;
+        }
+
+        // NOTE: ElevenLabs API provides subscription info and character usage
+        // Users can check credit levels at https://elevenlabs.io/app/usage
+        // API endpoint for quota: GET https://api.elevenlabs.io/v1/user/subscription (requires xi-api-key)
+
+        $url = "https://api.elevenlabs.io/v1/text-to-speech/$voiceId";
+        $data = [
+            'text' => $text,
+            'model_id' => 'eleven_monolingual_v1',
+            'voice_settings' => [
+                'stability' => 0.5,
+                'similarity_boost' => 0.5
+            ]
+        ];
+
+        $options = [
+            'http' => [
+                'header'  => "Content-type: application/json\r\n" .
+                             "xi-api-key: $apiKey\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($data),
+                'ignore_errors' => true
+            ]
+        ];
+
+        $context  = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+
+        if ($result) {
+            $encoded = base64_encode($result);
+            // Save to cache for future use
+            @file_put_contents($cacheFile, json_encode(['audio' => $encoded, 'mime' => 'audio/mp3', 'timestamp' => time()]));
+            echo json_encode(['success' => true, 'audio' => $encoded]);
+        } else {
+            echo json_encode(['error' => 'Eleven Labs Request Failed']);
+        }
+        exit;
+    }
+
+    echo json_encode(['error' => 'Provider not supported or configured']);
+    exit;
+}
+
+// Test TTS (Google/ElevenLabs)
+if ($action === 'test_tts') {
+    // Suppress warnings to prevent JSON corruption
+    error_reporting(0);
+    ini_set('display_errors', 0);
+
+    if (!extension_loaded('openssl')) {
+        echo json_encode(['error' => 'OpenSSL extension not loaded. HTTPS requests will fail.']);
+        exit;
+    }
+
+    $provider = $_POST['provider'] ?? '';
+    $text = $_POST['text'] ?? 'Test message';
+    $voiceName = $_POST['voice_name'] ?? '';
+    $apiKey = $_POST['api_key'] ?? '';
+
+    if ($provider === 'google') {
+        if (!$apiKey) {
+            echo json_encode(['error' => 'Missing Google API Key']);
+            exit;
+        }
+
+        // Use requested test voice name if provided (or default Aoede)
+        $ttsResult = synthGeminiTTS($text, $apiKey, $voiceName ?: 'Aoede');
+        if (!empty($ttsResult['ok'])) {
+            echo json_encode([
+                'success' => true,
+                'audio' => $ttsResult['audio'] ?? '',
+                'mime' => $ttsResult['mime'] ?? 'audio/wav',
+                'model' => $ttsResult['model'] ?? 'gemini',
+                'voice' => $voiceName ?: 'Aoede'
+            ]);
+        } else {
+            echo json_encode(['error' => $ttsResult['error'] ?? 'Google (Gemini) TTS failed']);
+        }
+        exit;
+    }
+
+    if ($provider === 'elevenlabs') {
+        $voiceId = $_POST['voice_id'] ?? '';
+        if (!$apiKey) {
+            echo json_encode(['error' => 'Missing Eleven Labs API Key']);
+            exit;
+        }
+        if (!$voiceId) {
+            echo json_encode(['error' => 'Missing Eleven Labs Voice ID']);
+            exit;
+        }
+
+        $url = "https://api.elevenlabs.io/v1/text-to-speech/$voiceId";
+        $data = [
+            'text' => $text,
+            'model_id' => 'eleven_monolingual_v1',
+            'voice_settings' => [
+                'stability' => 0.5,
+                'similarity_boost' => 0.5
+            ]
+        ];
+
+        $options = [
+            'http' => [
+                'header'  => "Content-type: application/json\r\n" .
+                             "xi-api-key: $apiKey\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($data),
+                'ignore_errors' => true
+            ]
+        ];
+
+        $context  = stream_context_create($options);
+        $result = @file_get_contents($url, false, $context);
+
+        if ($result === false) {
+            $error = error_get_last();
+            echo json_encode(['error' => 'Eleven Labs Request Failed: ' . ($error['message'] ?? 'Unknown error')]);
+            exit;
+        }
+
+        // Check for HTTP errors
+        if (isset($http_response_header) && strpos($http_response_header[0], '200') === false) {
+            $err = json_decode($result, true);
+            $msg = $err['detail']['message'] ?? $err['detail'] ?? 'Unknown Eleven Labs error';
+            echo json_encode(['error' => "Eleven Labs API Error: $msg"]);
+            exit;
+        }
+
+        if ($result) {
+            echo json_encode(['success' => true, 'audio' => base64_encode($result)]);
+        } else {
+            echo json_encode(['error' => 'No audio content received from Eleven Labs']);
+        }
+        exit;
+    }
+
+    echo json_encode(['error' => 'Provider not supported for testing']);
+    exit;
+}
+
+// Update profile for the current user (name/avatar, and optional mic preference)
+if ($action === 'update_profile') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = $roomId ? loadRoom($roomId) : null;
+    $uid = $_SESSION['user_id'] ?? '';
+
+    $name = trim($_POST['name'] ?? '');
+    $avatarType = $_POST['avatar_type'] ?? null;
+    $avatarVal = $_POST['avatar_val'] ?? null;
+    $micId = $_POST['mic_device_id'] ?? null;
+
+    if ($name !== '') $_SESSION['user_name'] = htmlspecialchars($name);
+    if ($avatarType) $_SESSION['user_avatar_type'] = $avatarType;
+    if ($avatarVal) $_SESSION['user_avatar_val'] = $avatarVal;
+    if ($micId !== null) $_SESSION['preferred_mic'] = $micId;
+
+    if ($room) {
+        foreach ($room['players'] as &$p) {
+            if ($p['id'] === $uid) {
+                if ($name !== '') $p['name'] = $_SESSION['user_name'];
+                if ($avatarType) $p['avatar_type'] = $avatarType;
+                if ($avatarVal) $p['avatar_val'] = $avatarVal;
+                break;
+            }
+        }
+        saveRoom($roomId, $room);
+    }
+
+    echo json_encode(['success' => true]);
+    exit;
+}

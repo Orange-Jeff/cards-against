@@ -1,0 +1,38 @@
+Decks & Cards: How to Add or Edit
+
+Location
+- The file "decks.md" must be in the same folder as these PHP files (no hard-coded paths; it works wherever this folder is uploaded on your web server).
+
+Format
+- Two sections in plain text:
+
+Black Cards
+Each black card on its own line.
+Use six underscores (______) to mark a blank.
+The number of blanks determines PICK count (e.g., two blanks = PICK 2).
+
+White Cards
+Each white card on its own line.
+
+Examples
+Black Cards
+And the Academy Award for ______ goes to ______.
+What’s that smell?
+
+White Cards
+A robust mongoloid.
+A really cool hat.
+
+Tips
+- Edit "decks.md" directly to add/remove cards.
+- After saving changes, create a new game to reload cards.
+- Large lists are fine; the game shuffles decks each time.
+- If you want multiple themed decks in one file, 
+keep it simple for now (this version loads all cards). 
+You can comment sections with lines starting with # for your own notes.
+
+Troubleshooting
+- If no cards load, ensure the headers "Black Cards" and "White Cards" are present and spelled exactly.
+- Avoid extra blank lines at the very top of the file.
+- If you see parsing issues, copy a few example lines from 
+above to reset the format.
