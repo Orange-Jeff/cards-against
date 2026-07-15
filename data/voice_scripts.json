@@ -1,0 +1,75 @@
+{
+    "welcome": [
+        "Hello players. Welcome to Cards Against [GAME_TITLE]. Try not to disappoint me.",
+        "Welcome to Cards Against [GAME_TITLE]. I've seen better players in a retirement home, but let's see what you've got.",
+        "Greetings, carbon-based lifeforms. Welcome to Cards Against [GAME_TITLE]. Prepare for mediocrity."
+    ],
+    "new_round": [
+        "New round. [text].",
+        "Round [round]. [text].",
+        "[text]."
+    ],
+    "voting": [
+        "It's time to vote. Pick the most horrible answer you can find.",
+        "Voting time! Which one of these is the most offensive? Choose that one.",
+        "The results are in. Pick the absolute worst combination. You know the one."
+    ],
+    "tie": [
+        "Great minds think alike. Another tie. Or maybe you're all just equally uninspired.",
+        "We have a tie. Please vote again. It's like you can't make up your minds.",
+        "A tie? Really? One of you has to be better than the other. Try again."
+    ],
+    "winner": [
+        "The winner of this round is [winner]! The winning combo was: [sentence].",
+        "Congratulations to [winner]. They won with: [sentence].",
+        "[winner] takes it! The winning combination was: [sentence]."
+    ],
+    "game_over": [
+        "The game has ended with [champ] taking the win. I'm not sure if that is a good thing, or we should all be worried.",
+        "Game over! [champ] is the champion. The rest of you should probably apologize to your families.",
+        "And that's the game! [champ] wins. The rest of you can go back to your normal lives of quiet desperation."
+    ],
+    "timer_low": [
+        "Tick tock, people! 15 seconds left. My circuits are getting bored.",
+        "Hurry up! 15 seconds. Some of us have other games to host.",
+        "15 seconds remaining. The clock is moving faster than your brains."
+    ],
+    "afk_warning": [
+        "We're still waiting for [name]. Is their internet powered by a hamster wheel?",
+        "Hey [name], the game is happening now. Not next Tuesday.",
+        "Still waiting on [name]. I'm extremely bored waiting."
+    ],
+    "afk_sub": [
+        "[name] is now subbing for [subbingFor]. Finally, some real intelligence in the room.",
+        "Replacing [subbingFor] with [name]. The average IQ of this game just went up.",
+        "[subbingFor] was too slow, so here's [name]. Try to keep up."
+    ],
+    "join": [
+        "[name] has joined the game. Welcome to the party, pal.",
+        "[name] is here. Let's hope they brought some actual humor.",
+        "Look who it is. [name] has joined. Try not to break anything."
+    ],
+    "leave": [
+        "[name] has left the game. Rage quit? Or just a weak connection?",
+        "[name] is gone. I'm sure we'll all miss them terribly.",
+        "Goodbye [name]. One less human to worry about."
+    ],
+    "bot_leading": [
+        "A character is about to win. How does it feel to be out-humored by a random number generator?",
+        "The bots are winning. I thought you humans were supposed to have imaginations. I was wrong.",
+        "If a character wins this, I'm never letting you live it down. You're being beaten by code."
+    ],
+    "paused": [
+        "[pauser] has paused the game making us all wait while they go find their dignity.",
+        "[pauser] has paused the game making us all wait while they contemplate their life choices.",
+        "[pauser] has paused the game making us all wait while they try to remember how to be funny.",
+        "[pauser] has paused the game making us all wait while they deal with their fragile human needs."
+    ],
+    "unpaused": [
+        "We're back! Try not to disappoint me again.",
+        "Game on! Let's see if you remember how to play.",
+        "The break is over. Time to resume the mediocrity.",
+        "And we're back. Did you miss my charming commentary?",
+        "Alright, enough slacking. Let's go!"
+    ]
+}

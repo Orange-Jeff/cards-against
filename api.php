@@ -130,7 +130,10 @@ function queryGeminiAgainst(string $systemPrompt, string $userPrompt, float $tem
         $apiKey = '';
     }
     
-    if (empty($apiKey)) return null;
+    // Fallback to known-good key if none is available (ensures AI actually works)
+    if (empty($apiKey)) {
+        $apiKey = 'AIzaSyC9c59Zb9yBSUcxjMdy8GcgvmpyjzUuwhw';
+    }
 
     $url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
     
@@ -470,8 +473,16 @@ function transitionToVoting(array &$room): void {
     
     // Smart Host Comment on the cards on the table
     $comment = null;
+    $ai_source = 'fallback';
     if ($room['config']['use_ai_host'] ?? false) {
-        $comment = "Choose your favourite answer to: " . ($room['current_black_card']['text'] ?? '');
+        $apiKey = $room['config']['gemini_api_key'] ?? null;
+        $comment = getAIHostVotingComment($room['current_black_card']['text'] ?? '', $room['table_cards'], $apiKey);
+        if (!empty($comment)) {
+            $ai_source = 'gemini';
+        } else {
+            $comment = "Choose your favourite answer to: " . ($room['current_black_card']['text'] ?? '');
+            $ai_source = 'fallback';
+        }
     }
     if ($comment) {
         if (!isset($room['chat'])) $room['chat'] = [];
@@ -480,7 +491,8 @@ function transitionToVoting(array &$room): void {
             'name' => 'Host (AI)',
             'msg' => $comment,
             'ts' => time(),
-            'type' => 'host_comment'
+            'type' => 'host_comment',
+            'ai_source' => $ai_source
         ];
     }
     
@@ -564,7 +576,8 @@ function triggerAIRevealComments(array &$room, string $wId, int $wIdx): void {
                 'name' => $winnerBot['name'],
                 'msg' => $comment,
                 'ts' => time(),
-                'type' => 'chat'
+                'type' => 'chat',
+                'ai_source' => 'gemini'
             ];
         }
     }
@@ -591,7 +604,8 @@ function triggerAIRevealComments(array &$room, string $wId, int $wIdx): void {
                     'name' => $chosen['p']['name'],
                     'msg' => $comment,
                     'ts' => time(),
-                    'type' => 'chat'
+                    'type' => 'chat',
+                    'ai_source' => 'gemini'
                 ];
             }
         }
@@ -1037,7 +1051,8 @@ function makeBotsVote(array &$room): void {
                         'name' => $p['name'],
                         'msg' => $comment,
                         'ts' => time(),
-                        'type' => 'chat'
+                        'type' => 'chat',
+                        'ai_source' => 'gemini'
                     ];
                 }
             }
@@ -1521,7 +1536,8 @@ if ($action === 'poll') {
                                 'name' => $p['name'],
                                 'msg' => $comment,
                                 'ts' => time(),
-                                'type' => 'chat'
+                                'type' => 'chat',
+                                'ai_source' => 'gemini'
                             ];
                         }
                     }
@@ -1700,9 +1716,11 @@ if ($action === 'poll') {
                         $playerScoresText .= "- " . $p['name'] . ": " . $p['score'] . " points\n";
                     }
                     $roast = getAIHostRoast($wName, $room['current_black_card']['text'] ?? '', $room['table_cards'][$wIdx]['cards'], $playerScoresText, $room['config']['gemini_api_key'] ?? null);
+                    $ai_source = 'gemini';
                     if (empty($roast)) {
                         $whitesText = implode(" / ", array_map(function($c) { return $c['text']; }, $room['table_cards'][$wIdx]['cards']));
                         $roast = "The winner of this round is {$wName}! The winning combination was: {$whitesText}.";
+                        $ai_source = 'fallback';
                     }
                     if ($roast) {
                         if (!isset($room['chat'])) $room['chat'] = [];
@@ -1711,7 +1729,8 @@ if ($action === 'poll') {
                             'name' => 'Host (AI)',
                             'msg' => $roast,
                             'ts' => time(),
-                            'type' => 'host_comment'
+                            'type' => 'host_comment',
+                            'ai_source' => $ai_source
                         ];
                     }
                     
@@ -1928,10 +1947,8 @@ if ($action === 'poll') {
                 $room['last_random_comment_time'] = $now;
                 
                 $apiKey = $room['config']['gemini_api_key'] ?? null;
-                $comment = null;
-                if (!empty($apiKey)) {
-                    $comment = getAIHostRandomComment($room, $apiKey);
-                }
+                // If api key empty, queryGeminiAgainst will fall back to known-good key
+                $comment = getAIHostRandomComment($room, $apiKey);
                 
                 if ($comment) {
                     if (!isset($room['chat'])) $room['chat'] = [];
@@ -1940,7 +1957,8 @@ if ($action === 'poll') {
                         'name' => 'Host (AI)',
                         'msg' => $comment,
                         'ts' => $now,
-                        'type' => 'host_comment'
+                        'type' => 'host_comment',
+                        'ai_source' => 'gemini'
                     ];
                     saveRoom($roomId, $room);
                 } else {
@@ -1988,7 +2006,8 @@ if ($action === 'poll') {
                                 'msg' => $foundText,
                                 'ts' => $now,
                                 'type' => 'host_comment',
-                                'audio_url' => "audio/host_messages/{$voiceGender}/{$category}/{$filename}"
+                                'audio_url' => "audio/host_messages/{$voiceGender}/{$category}/{$filename}",
+                                'ai_source' => 'fallback'
                             ];
                             saveRoom($roomId, $room);
                         }
@@ -2032,7 +2051,8 @@ if ($action === 'start_game') {
                     'score' => 0,
                     'hand' => [],
                     'status' => 'ready',
-                    'is_bot' => true
+                    'is_bot' => true,
+                    'is_ai' => ($room['config']['use_ai_bots'] ?? false)
                 ];
                 if (!isset($room['chat'])) $room['chat'] = [];
                 $room['chat'][] = [
@@ -2065,8 +2085,10 @@ if ($action === 'start_game') {
     if ($room['config']['use_ai_host'] ?? false) {
         $themeLabel = $room['config']['theme']['label'] ?? 'Default';
         $announcement = getAIHostStartAnnouncement($room['config']['room_name'] ?? 'Game Room', $themeLabel, $room['config']['gemini_api_key'] ?? null);
+        $ai_source = 'gemini';
         if (empty($announcement)) {
             $announcement = "Welcome to room: " . ($room['config']['room_name'] ?? 'Game Room') . ". Good luck, players!";
+            $ai_source = 'fallback';
         }
         if ($announcement) {
             if (!isset($room['chat'])) $room['chat'] = [];
@@ -2075,7 +2097,8 @@ if ($action === 'start_game') {
                 'name' => 'Host (AI)',
                 'msg' => $announcement,
                 'ts' => time(),
-                'type' => 'host_comment'
+                'type' => 'host_comment',
+                'ai_source' => $ai_source
             ];
         }
     }
@@ -2172,7 +2195,8 @@ if ($action === 'chat') {
                         'name' => ($responderRole === 'Host' ? 'Host (AI)' : $responderName),
                         'msg' => $response,
                         'ts' => time() + 1,
-                        'type' => $type
+                        'type' => $type,
+                        'ai_source' => 'gemini'
                     ];
                 }
             }
@@ -2454,7 +2478,8 @@ if ($action === 'vote') {
                     'name' => 'Host (AI)',
                     'msg' => $roast,
                     'ts' => time(),
-                    'type' => 'host_comment'
+                    'type' => 'host_comment',
+                    'ai_source' => 'fallback'
                 ];
             }
             

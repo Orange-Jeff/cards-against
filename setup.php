@@ -220,8 +220,19 @@ if ($availableDecks !== null) {
                         <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">Digital Voice (TTS Host)</span>
                         <span class="block text-[10px] text-gray-300 font-normal">Enable host audio announcements</span>
                     </div>
-                    <input type="checkbox" name="enable_tts" id="enable_tts_toggle" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
+                    <input type="checkbox" name="enable_tts" id="enable_tts_toggle" onchange="toggleVoiceSettings()" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
                 </label>
+
+                <!-- Voice Settings Sub-Panel -->
+                <div id="voice_settings_sub" class="pl-4 border-l-2 border-gray-700 space-y-3 mt-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-200 uppercase mb-1">Digital Voice Selection</label>
+                        <select name="voice_gender" id="voice_gender_select" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm text-white">
+                            <option value="male" <?php echo ($globalConfig['voice_gender'] ?? 'male') === 'male' ? 'selected' : ''; ?>>Male (High Quality Fenrir)</option>
+                            <option value="female" <?php echo ($globalConfig['voice_gender'] ?? 'male') === 'female' ? 'selected' : ''; ?>>Female (High Quality Aoede)</option>
+                        </select>
+                    </div>
+                </div>
 
                 <!-- Force offline and browser TTS for gameplay -->
                 <input type="hidden" name="game_tts_provider" value="browser">
@@ -433,6 +444,7 @@ if ($availableDecks !== null) {
             // Per-game voice settings
             data.game_tts_provider = formData.get('game_tts_provider') || 'browser';
             data.offline_tts = formData.get('offline_tts') === 'on';
+            data.voice_gender = document.getElementById('voice_gender_select')?.value || 'male';
 
             try {
                 const controller = new AbortController();
@@ -508,6 +520,7 @@ if ($availableDecks !== null) {
                     const ttsToggle = document.getElementById('enable_tts_toggle');
                     if (ttsToggle) {
                         ttsToggle.checked = !!t.enable_tts;
+                        if (typeof toggleVoiceSettings === 'function') toggleVoiceSettings();
                     }
                 }
                 
@@ -572,6 +585,15 @@ if ($availableDecks !== null) {
                 } else {
                     warningBadge.classList.add('hidden');
                 }
+            }
+        }
+
+        // Toggle voice settings visibility
+        function toggleVoiceSettings() {
+            const enabled = document.getElementById('enable_tts_toggle')?.checked;
+            const settings = document.getElementById('voice_settings_sub');
+            if (settings) {
+                settings.classList.toggle('hidden', !enabled);
             }
         }
 

@@ -1,0 +1,23 @@
+# Composer dependencies
+vendor/
+
+# TTS Cache and Audio State
+data/tts_cache/
+data/audio_generation_state.json
+
+# Local Configuration (contains sensitive API keys)
+data/global_config.json
+
+# User additions (local custom cards)
+data/user_additions.json
+
+# Backups and temporary scratchpads
+*.bak
+scratch/
+
+# VS Code and editor files
+.vscode/
+.history/
+.idea/
+.DS_Store
+Thumbs.db

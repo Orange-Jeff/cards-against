@@ -1,0 +1,1356 @@
+{
+    "priority": "Generate these first - they happen in every game, multiple times",
+    "tier_1_critical": {
+        "description": "Happens every round - generate FIRST",
+        "messages": [
+            {
+                "id": "round_start_1",
+                "text": "New round. [BLACK_CARD].",
+                "category": "round_start",
+                "frequency": "every_round",
+                "notes": "Replace [BLACK_CARD] with actual black card text during generation"
+            },
+            {
+                "id": "round_start_2",
+                "text": "Round [NUMBER]. [BLACK_CARD].",
+                "category": "round_start",
+                "frequency": "every_round",
+                "notes": "NUMBER and BLACK_CARD are dynamic"
+            },
+            {
+                "id": "voting_intro_1",
+                "text": "It's time to vote. Pick the most horrible answer you can find.",
+                "category": "voting_start",
+                "frequency": "every_round"
+            },
+            {
+                "id": "voting_intro_2",
+                "text": "Voting time! Which one of these is the most offensive? Choose that one.",
+                "category": "voting_start",
+                "frequency": "every_round"
+            },
+            {
+                "id": "voting_intro_3",
+                "text": "Let's see which of these abominations wins the round.",
+                "category": "voting_start",
+                "frequency": "every_round"
+            },
+            {
+                "id": "voting_intro_4",
+                "text": "Now it's time to judge these disasters. Pick your favorite nightmare.",
+                "category": "voting_start",
+                "frequency": "every_round"
+            },
+            {
+                "id": "voting_intro_5",
+                "text": "Here comes the hard part. Vote for whichever one makes you the most uncomfortable.",
+                "category": "voting_start",
+                "frequency": "every_round"
+            },
+            {
+                "id": "voting_intro_6",
+                "text": "Time to decide which of these trainwrecks was the worst.",
+                "category": "voting_start",
+                "frequency": "every_round"
+            },
+            {
+                "id": "winner_1",
+                "text": "The winner of this round is [WINNER]! The winning combo was: [WINNING_SENTENCE].",
+                "category": "winner_announcement",
+                "frequency": "every_round",
+                "notes": "Dynamic player name and sentence"
+            }
+        ]
+    },
+    "tier_2_common": {
+        "description": "Common during gameplay - generate SECOND",
+        "messages": [
+            {
+                "id": "welcome_1",
+                "text": "Hello players. Welcome to Cards Against [GAME_TITLE]. Try not to disappoint me.",
+                "category": "welcome",
+                "frequency": "game_start"
+            },
+            {
+                "id": "welcome_2",
+                "text": "Welcome to Cards Against [GAME_TITLE]. Let's see if you can be more creative than a potato.",
+                "category": "welcome",
+                "frequency": "game_start"
+            },
+            {
+                "id": "welcome_3",
+                "text": "Greetings, degenerates. Welcome to Cards Against [GAME_TITLE]. May the most offensive win.",
+                "category": "welcome",
+                "frequency": "game_start"
+            },
+            {
+                "id": "tie_1",
+                "text": "Great minds think alike. Another tie. Or maybe you're all just equally uninspired.",
+                "category": "tie",
+                "frequency": "occasional"
+            },
+            {
+                "id": "tie_2",
+                "text": "It's a tie! Either you all have the same terrible taste, or you're conspiring against me.",
+                "category": "tie",
+                "frequency": "occasional"
+            },
+            {
+                "id": "tie_3",
+                "text": "Deadlock! Maybe try being more creative next time? Or less creative. I can't tell the difference.",
+                "category": "tie",
+                "frequency": "occasional"
+            },
+            {
+                "id": "game_over_1",
+                "text": "The game has ended with [CHAMPION] taking the win. I'm not sure if that is a good thing, or we should all be worried.",
+                "category": "game_over",
+                "frequency": "game_end"
+            },
+            {
+                "id": "game_over_2",
+                "text": "Game over! [CHAMPION] is the champion. The rest of you should probably apologize to your families.",
+                "category": "game_over",
+                "frequency": "game_end"
+            },
+            {
+                "id": "game_over_3",
+                "text": "And that's the game! [CHAMPION] wins. The rest of you can go back to your normal lives of quiet desperation.",
+                "category": "game_over",
+                "frequency": "game_end"
+            },
+            {
+                "id": "reshuffle_1",
+                "text": "We're running low. Reshuffling the decks.",
+                "category": "reshuffle",
+                "frequency": "occasional"
+            },
+            {
+                "id": "reshuffle_2",
+                "text": "Out of cards. Time to bring them back from the dead.",
+                "category": "reshuffle",
+                "frequency": "occasional"
+            }
+        ]
+    },
+    "tier_3_conditional": {
+        "description": "Conditional gameplay events - player joins/leaves, delays",
+        "messages": [
+            {
+                "id": "player_join_1",
+                "text": "Player [PLAYER] has joined. Welcome!",
+                "category": "player_join",
+                "frequency": "mid_game"
+            },
+            {
+                "id": "delay_vote_1",
+                "text": "Our timer is having a moment. Take your time.",
+                "category": "timeout",
+                "frequency": "rare"
+            },
+            {
+                "id": "delay_vote_2",
+                "text": "Still processing. Patience, players. We'll get there.",
+                "category": "timeout",
+                "frequency": "rare"
+            },
+            {
+                "id": "close_to_win_1",
+                "text": "[LEADER] is close to winning with [POINTS]. Pressure is on!",
+                "category": "game_state",
+                "frequency": "round"
+            },
+            {
+                "id": "close_to_win_2",
+                "text": "[LEADER] needs just [NEEDED] more to win. Everyone play harder!",
+                "category": "game_state",
+                "frequency": "round"
+            },
+            {
+                "id": "tie_announce_1",
+                "text": "It's a tie! Two players, one victory. Let's try again.",
+                "category": "tie",
+                "frequency": "occasional"
+            },
+            {
+                "id": "tie_announce_2",
+                "text": "Another tie! The cards have spoken. We need a tiebreaker.",
+                "category": "tie",
+                "frequency": "occasional"
+            }
+        ]
+    },
+    "tier_4_dynamic": {
+        "description": "Dynamic game state announcements - new players, close games, final rounds",
+        "messages": [
+            {
+                "id": "new_player_1",
+                "text": "[PLAYER] has joined the game mid-play. Everyone say hello.",
+                "category": "player_join",
+                "frequency": "rare"
+            },
+            {
+                "id": "swap_player_1",
+                "text": "[PLAYER] has left. [NEWPLAYER] is taking their spot.",
+                "category": "player_swap",
+                "frequency": "rare"
+            },
+            {
+                "id": "game_start_1",
+                "text": "Alright, let's start this. Play Cards Against [GAME_TITLE]!",
+                "category": "game_start",
+                "frequency": "game_start"
+            },
+            {
+                "id": "game_start_2",
+                "text": "Here we go. [PLAYER_COUNT] players ready. Shuffle the cards and let's begin.",
+                "category": "game_start",
+                "frequency": "game_start"
+            },
+            {
+                "id": "final_round_1",
+                "text": "This is it. The final round. [LEADER] versus everyone else.",
+                "category": "endgame",
+                "frequency": "endgame"
+            },
+            {
+                "id": "neck_and_neck_1",
+                "text": "[LEADER] and [RUNNER_UP] are nearly tied. Next card could change everything.",
+                "category": "game_state",
+                "frequency": "round"
+            }
+        ]
+    },
+    "tier_5_rare": {
+        "description": "Rare and special announcements - edge cases, commentary",
+        "messages": [
+            {
+                "id": "late_night_1",
+                "text": "It's getting late. Are we having fun yet?",
+                "category": "special",
+                "frequency": "rare"
+            },
+            {
+                "id": "blank_1",
+                "text": "blank",
+                "category": "special",
+                "frequency": "always"
+            },
+            {
+                "id": "new_round_static",
+                "text": "New round.",
+                "category": "special",
+                "frequency": "always"
+            },
+            {
+                "id": "play_again_1",
+                "text": "Another round? Why not. You're having too much fun to stop.",
+                "category": "game_end",
+                "frequency": "rare"
+            },
+            {
+                "id": "play_again_2",
+                "text": "Play again? I thought you'd never ask. Let's shuffle and go again.",
+                "category": "game_end",
+                "frequency": "rare"
+            },
+            {
+                "id": "dominant_player_1",
+                "text": "[PLAYER] is absolutely crushing everyone. Should we give them a handicap?",
+                "category": "special",
+                "frequency": "rare"
+            },
+            {
+                "id": "unanimous_vote_1",
+                "text": "Unanimous vote! Everyone agrees on a winner. That never happens.",
+                "category": "special",
+                "frequency": "rare"
+            }
+        ]
+    },
+    "tier_6_vocal_library": {
+        "description": "Vocal nicknames and names for hybrid host speech",
+        "messages": [
+            {
+                "id": "vocal_orange_jeff",
+                "text": "Orange Jeff",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "nick_star_trek_1",
+                "text": "Ugly bag of mostly water",
+                "category": "nicknames_trek",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_star_trek_2",
+                "text": "Expendable Redshirt",
+                "category": "nicknames_trek",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_star_trek_3",
+                "text": "Cadet",
+                "category": "nicknames_trek",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_star_trek_4",
+                "text": "Tribble",
+                "category": "nicknames_trek",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_star_trek_5",
+                "text": "Borg drone",
+                "category": "nicknames_trek",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_star_trek_6",
+                "text": "Ferengi",
+                "category": "nicknames_trek",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_1",
+                "text": "Dingdong",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_2",
+                "text": "Doofus",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_3",
+                "text": "Meat-sack",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_4",
+                "text": "Total Noob",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_5",
+                "text": "Degenerate",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_6",
+                "text": "Muppet",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_7",
+                "text": "Potato",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_8",
+                "text": "Peasant",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_9",
+                "text": "Chief",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "nick_slang_10",
+                "text": "Bubba",
+                "category": "nicknames_slang",
+                "frequency": "always"
+            },
+            {
+                "id": "vocal_player_1",
+                "text": "Player One",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_2",
+                "text": "Player Two",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_3",
+                "text": "Player Three",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_4",
+                "text": "Player Four",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_5",
+                "text": "Player Five",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_6",
+                "text": "Player Six",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_7",
+                "text": "Player Seven",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_player_8",
+                "text": "Player Eight",
+                "category": "vocal_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_1",
+                "text": "1",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_2",
+                "text": "2",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_3",
+                "text": "3",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_4",
+                "text": "4",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_5",
+                "text": "5",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_6",
+                "text": "6",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_7",
+                "text": "7",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_8",
+                "text": "8",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_9",
+                "text": "9",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_10",
+                "text": "10",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_11",
+                "text": "11",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_12",
+                "text": "12",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_13",
+                "text": "13",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_14",
+                "text": "14",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_15",
+                "text": "15",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_16",
+                "text": "16",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_17",
+                "text": "17",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_18",
+                "text": "18",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_19",
+                "text": "19",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_20",
+                "text": "20",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_21",
+                "text": "21",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_22",
+                "text": "22",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_23",
+                "text": "23",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_24",
+                "text": "24",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_25",
+                "text": "25",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_26",
+                "text": "26",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_27",
+                "text": "27",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_28",
+                "text": "28",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_29",
+                "text": "29",
+                "category": "numbers",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_number_30",
+                "text": "30",
+                "category": "numbers",
+                "frequency": "special"
+            }
+        ]
+    },
+    "generation_notes": {
+        "version": "3.0 - Added dynamic player announcements, delays, close-game tension, game-start callouts",
+        "total_messages": "~80+ messages per voice across 5 tiers",
+        "method": "ElevenLabs TTS API with intelligent caching - first use generates, subsequent games reuse",
+        "last_updated": "2025-03-21",
+        "caching": "Implemented on api.php - TTS results cached in data/tts_cache/ by text hash",
+        "performance": "Dramatic speedup after first card play - no more API delays"
+    },
+    "tier_7_static_pieces": {
+        "description": "Static fragments of dynamic messages for offline playback",
+        "messages": [
+            {
+                "id": "static_piece_1",
+                "text": "The winner of this round is",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_2",
+                "text": "! The winning combo was:",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_3",
+                "text": "Congratulations to",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_4",
+                "text": ". They won with:",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_5",
+                "text": "takes it! The winning combination was:",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_6",
+                "text": "The game has ended with",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_7",
+                "text": "taking the win. I'm not sure if that is a good thing, or we should all be worried.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_8",
+                "text": "Game over!",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_9",
+                "text": "is the champion. The rest of you should probably apologize to your families.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_10",
+                "text": "And that's the game!",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_11",
+                "text": "wins. The rest of you can go back to your normal lives of quiet desperation.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_12",
+                "text": "We're still waiting for",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_13",
+                "text": ". Is their internet powered by a hamster wheel?",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_14",
+                "text": "Hey",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_15",
+                "text": ", the game is happening now. Not next Tuesday.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_16",
+                "text": "Still waiting on",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_17",
+                "text": ". I've processed three billion calculations while you've been sitting there.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_18",
+                "text": "is now subbing for",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_19",
+                "text": ". Finally, some real intelligence in the room.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_20",
+                "text": "Replacing",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_21",
+                "text": "with",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_22",
+                "text": ". The average IQ of this game just went up.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_23",
+                "text": ". Try to keep up.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_24",
+                "text": "was too slow, so here's",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_25",
+                "text": "has joined the game. Welcome to the party, pal.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_26",
+                "text": "is here. Let's hope they brought some actual humor.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_27",
+                "text": "Look who it is.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_28",
+                "text": "has joined. Try not to break anything.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_29",
+                "text": "has left the game. Rage quit? Or just a weak connection?",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_30",
+                "text": "is gone. I'm sure we'll all miss them terribly.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_31",
+                "text": "Goodbye",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_32",
+                "text": ". One less human to worry about.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_33",
+                "text": "has paused the game making us all wait while they go find their dignity.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_34",
+                "text": "has paused the game making us all wait while they contemplate their life choices.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_35",
+                "text": "has paused the game making us all wait while they try to remember how to be funny.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_36",
+                "text": "has paused the game making us all wait while they deal with their fragile human needs.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_37",
+                "text": "There are no humans in this game so instead of continuing we will just pause the game while waiting for somebody to return.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_38",
+                "text": "The bots all agree. We have reached the limit of our patience and closed the game.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_39",
+                "text": "missed their turn to play a card; they can still vote this round.",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_43",
+                "text": "Your hand:",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_44",
+                "text": "and",
+                "category": "static_pieces",
+                "frequency": "always"
+            },
+            {
+                "id": "static_piece_45",
+                "text": "Ready.",
+                "category": "static_pieces",
+                "frequency": "always"
+            }
+        ]
+    },
+    "tier_8_bot_names": {
+        "description": "Fallback bot names for offline announcement compatibility",
+        "messages": [
+            {
+                "id": "vocal_bot_1",
+                "text": "Captain Chaos",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_2",
+                "text": "Baron Von Snark",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_3",
+                "text": "Queen Sarcasm",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_4",
+                "text": "Duke Disaster",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_5",
+                "text": "Sir Puns-a-Lot",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_6",
+                "text": "Lady Mischief",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_7",
+                "text": "Count Cringy",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_8",
+                "text": "Princess Procrastinate",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_9",
+                "text": "Lord Random",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_10",
+                "text": "Dame Drama",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_11",
+                "text": "The Notorious P.U.N.",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_12",
+                "text": "Professor Awkward",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_13",
+                "text": "General Mayhem",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_14",
+                "text": "Admiral Oops",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_15",
+                "text": "Commander Confused",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_16",
+                "text": "Sergeant Sassy",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_17",
+                "text": "Major Problem",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_18",
+                "text": "Private Joke",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_19",
+                "text": "Corporal Punishment",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_20",
+                "text": "Lieutenant Literal",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_21",
+                "text": "Reverend Ridiculous",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_22",
+                "text": "Doctor Disaster",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_23",
+                "text": "Judge Mental",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_24",
+                "text": "Officer Overdrive",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_25",
+                "text": "Detective Derp",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_26",
+                "text": "Agent Orange",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_27",
+                "text": "Inspector Gadget-less",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_28",
+                "text": "Sheriff Shady",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_29",
+                "text": "Marshal Mellow",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_30",
+                "text": "Deputy Doofus",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_31",
+                "text": "Wizard Whatnow",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_32",
+                "text": "Sorceress Sarcasm",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_33",
+                "text": "Warlock Weird",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_34",
+                "text": "Mage Mistake",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_35",
+                "text": "Druid Doozy",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_36",
+                "text": "Rogue Ridiculous",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_37",
+                "text": "Ranger Reckless",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_38",
+                "text": "Bard Blunder",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_39",
+                "text": "Paladin Panic",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_40",
+                "text": "Monk Mayhem",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_41",
+                "text": "Ninja Nonsense",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_42",
+                "text": "Samurai Silly",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_43",
+                "text": "Viking Vague",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_44",
+                "text": "Pirate Puzzled",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_45",
+                "text": "Cowboy Confused",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_46",
+                "text": "Astronaut Awkward",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_47",
+                "text": "Alien Average",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_48",
+                "text": "Robot Rusty",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_49",
+                "text": "Cyborg Clumsy",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_50",
+                "text": "Android Anxious",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_51",
+                "text": "Emperor Extra",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_52",
+                "text": "Empress Error",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_53",
+                "text": "King Klutz",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_54",
+                "text": "Queen Quirky",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_55",
+                "text": "Prince Perplexed",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_56",
+                "text": "Princess Puzzled",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_57",
+                "text": "Knight Knucklehead",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_58",
+                "text": "Squire Silly",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_59",
+                "text": "Jester Jest",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_60",
+                "text": "Fool Foolish",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_61",
+                "text": "Sage Sarcastic",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_62",
+                "text": "Oracle Obvious",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_63",
+                "text": "Prophet Profit",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_64",
+                "text": "Mystic Mistaken",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_65",
+                "text": "Seer Seeing-Double",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_66",
+                "text": "Chef Chaos",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_67",
+                "text": "Baker Broken",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_68",
+                "text": "Butcher Botched",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_69",
+                "text": "Brewer Bewildered",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_70",
+                "text": "Farmer Fumble",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_71",
+                "text": "Miner Minor-Problem",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_72",
+                "text": "Blacksmith Blunder",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_73",
+                "text": "Carpenter Crooked",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_74",
+                "text": "Mason Messy",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_75",
+                "text": "Tailor Torn",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_76",
+                "text": "Merchant Mistake",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_77",
+                "text": "Trader Trouble",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_78",
+                "text": "Banker Broke",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_79",
+                "text": "Thief Thick",
+                "category": "bot_names",
+                "frequency": "special"
+            },
+            {
+                "id": "vocal_bot_80",
+                "text": "Assassin Awkward",
+                "category": "bot_names",
+                "frequency": "special"
+            }
+        ]
+    }
+}

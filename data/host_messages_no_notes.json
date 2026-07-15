@@ -1,0 +1,697 @@
+{
+  "priority": "Generate these first - they happen in every game, multiple times",
+  "tier_1_critical": {
+    "description": "Happens every round - generate FIRST",
+    "messages": [
+      {
+        "id": "round_start_1",
+        "text": "New round. [BLACK_CARD].",
+        "category": "round_start",
+        "frequency": "every_round",
+        "notes": "Replace [BLACK_CARD] with actual black card text during generation"
+      },
+      {
+        "id": "round_start_2",
+        "text": "Round [NUMBER]. [BLACK_CARD].",
+        "category": "round_start",
+        "frequency": "every_round",
+        "notes": "NUMBER and BLACK_CARD are dynamic"
+      },
+      {
+        "id": "voting_intro_1",
+        "text": "It's time to vote. Pick the most horrible answer you can find.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_2",
+        "text": "Voting time! Which one of these is the most offensive? Choose that one.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_4",
+        "text": "Alright folks, time to vote! Which of these trainwrecks do you like best?",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_5",
+        "text": "Vote now! Pick the one that makes you laugh, cry, or question your life choices.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_6",
+        "text": "Let's see what you've got. Vote for the most hilariously awful combination!",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_7",
+        "text": "Time to vote, people! Which one of these is pure comedy gold?",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_8",
+        "text": "Vote time! Choose the winner of this round of terrible ideas.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_9",
+        "text": "Alright, let's vote! Which combination makes you want to hide under your desk?",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_10",
+        "text": "Vote now! Pick the one that would make your grandmother blush.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_1",
+        "text": "The winner of this round is [WINNER]! The winning combo was: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round",
+        "notes": "Dynamic player name and sentence"
+      },
+      {
+        "id": "winner_2",
+        "text": "Congratulations to [WINNER]. They won with: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_3",
+        "text": "[WINNER] takes it! The winning combination was: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_4",
+        "text": "And the winner is... [WINNER]! With: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_5",
+        "text": "[WINNER] wins this round! Their combo: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_6",
+        "text": "Congratulations [WINNER]! You won with: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_7",
+        "text": "[WINNER] takes the point! The winning card was: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_8",
+        "text": "Round goes to [WINNER]! Their winning entry: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_9",
+        "text": "[WINNER] is the champion of this round! With: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_10",
+        "text": "Points to [WINNER]! The winning combination: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round"
+      },
+    ]
+  },
+  "tier_2_common": {
+    "description": "Common during gameplay - generate SECOND",
+    "messages": [
+      {
+        "id": "welcome_1",
+        "text": "Hello players. Welcome to Cards Against [GAME_TITLE]. Try not to disappoint me.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_2",
+        "text": "Welcome to Cards Against [GAME_TITLE]. I've seen better players in a retirement home, but let's see what you've got.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_3",
+        "text": "Greetings, carbon-based lifeforms. Welcome to Cards Against [GAME_TITLE]. Prepare for mediocrity.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_4",
+        "text": "Welcome to Cards Against [GAME_TITLE]! Let's see if you can handle the truth... or at least some dark humor.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_5",
+        "text": "Hello and welcome to Cards Against [GAME_TITLE]. Remember, it's all in good fun... mostly.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_6",
+        "text": "Welcome, players! To Cards Against [GAME_TITLE]. May the most twisted mind win.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_7",
+        "text": "Greetings and welcome to Cards Against [GAME_TITLE]! Let's keep it civil... or not.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_8",
+        "text": "Welcome to the madness that is Cards Against [GAME_TITLE]! Good luck, you'll need it.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_9",
+        "text": "Hello everyone! Welcome to Cards Against [GAME_TITLE]. Let's see what kind of trouble we can get into.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "welcome_10",
+        "text": "Welcome to Cards Against [GAME_TITLE]! I'm your host, and I'm already judging you all.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "tie_1",
+        "text": "Great minds think alike. Another tie. Or maybe you're all just equally uninspired.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_2",
+        "text": "We have a tie. Please vote again. It's like you can't make up your minds.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_3",
+        "text": "A tie? Really? One of you has to be better than the other. Try again.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_4",
+        "text": "We have ourselves a tie! Break it with another vote, folks.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_5",
+        "text": "Tie game! Vote again and settle this once and for all.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_6",
+        "text": "It's a tie! One more vote should sort out the winners from the... other winners.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_7",
+        "text": "Deadlock! Vote again and let's get this round moving.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "tie_8",
+        "text": "We have a tie situation here. Vote again, people!",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "game_over_1",
+        "text": "The game has ended with [CHAMPION] taking the win. I'm not sure if that is a good thing, or we should all be worried.",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_2",
+        "text": "It's over. [CHAMPION] won. Now go outside and do something productive. Or don't.",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_3",
+        "text": "Game over. [CHAMPION] is the champion of... whatever this was. Goodbye.",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_4",
+        "text": "That's all folks! [CHAMPION] won the game. Well played... or not.",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_5",
+        "text": "Game complete! [CHAMPION] takes the victory. Until next time!",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_6",
+        "text": "And that's the game! [CHAMPION] is our champion. Good night!",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_7",
+        "text": "Game over, man! [CHAMPION] won. What a wild ride.",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+      {
+        "id": "game_over_8",
+        "text": "The game has concluded with [CHAMPION] as the winner. Thanks for playing!",
+        "category": "game_over",
+        "frequency": "game_end"
+      },
+    ]
+  },
+  "tier_3_conditional": {
+    "description": "Happens during active play - generate THIRD",
+    "messages": [
+      {
+        "id": "pause_1",
+        "text": "[PAUSER] has paused the game making us all wait while they go find their dignity.",
+        "category": "pause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "pause_2",
+        "text": "[PAUSER] has paused the game making us all wait while they contemplate their life choices.",
+        "category": "pause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "pause_3",
+        "text": "[PAUSER] has paused the game making us all wait while they try to remember how to be funny.",
+        "category": "pause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "pause_4",
+        "text": "[PAUSER] has paused the game making us all wait while they deal with their fragile human needs.",
+        "category": "pause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_1",
+        "text": "We're back! Try not to disappoint me again.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_2",
+        "text": "Game on! Let's see if you remember how to play.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_3",
+        "text": "The break is over. Time to resume the mediocrity.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_4",
+        "text": "And we're back. Did you miss my charming commentary?",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_5",
+        "text": "Alright, enough slacking. Let's go!",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_6",
+        "text": "Back to the action! Try to keep up this time.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_7",
+        "text": "Game's back on! Let's see if you remember the rules.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_8",
+        "text": "And we're live again! Don't make me regret this.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_9",
+        "text": "Alright, break time's over. Game on!",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "unpause_10",
+        "text": "Welcome back! Let's continue this comedy show.",
+        "category": "unpause",
+        "frequency": "occasional"
+      },
+      {
+        "id": "timer_low_1",
+        "text": "Tick tock, people! 15 seconds left. My circuits are getting bored.",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_2",
+        "text": "Hurry up! 15 seconds. Some of us have other games to host.",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_3",
+        "text": "15 seconds remaining. The clock is moving faster than your brains.",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_4",
+        "text": "Fifteen seconds! Move it or lose it, people!",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_5",
+        "text": "15 seconds left! Don't make me come over there!",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_6",
+        "text": "Tick tock! 15 seconds remaining. Make a decision!",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_7",
+        "text": "15 seconds! The clock is ticking... literally!",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "timer_low_8",
+        "text": "Fifteen seconds to go! What's taking so long?",
+        "category": "timer_warning",
+        "frequency": "multiple_per_game"
+      },
+      {
+        "id": "afk_warning_1",
+        "text": "We're still waiting for [NAME]. Is their internet powered by a hamster wheel?",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_2",
+        "text": "Hey [NAME], the game is happening now. Not next Tuesday.",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_3",
+        "text": "Still waiting on [NAME]. I've processed three billion calculations while you've been sitting there.",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_4",
+        "text": "[NAME] is taking forever. Did they fall asleep at their keyboard?",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_5",
+        "text": "Come on [NAME], the rest of us are waiting! What's the holdup?",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_6",
+        "text": "[NAME] seems to be AFK. Hello? Earth to [NAME]!",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_7",
+        "text": "Still waiting for [NAME]. Maybe they're building a time machine?",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "afk_warning_8",
+        "text": "[NAME], you still with us? The game's not going to play itself!",
+        "category": "afk_warning",
+        "frequency": "occasional"
+      },
+      {
+        "id": "bot_winning_1",
+        "text": "A character is about to win. How does it feel to be out-humored by a random number generator?",
+        "category": "bot_status",
+        "frequency": "rare"
+      },
+      {
+        "id": "bot_winning_2",
+        "text": "The bots are winning. I thought you humans were supposed to have imaginations. I was wrong.",
+        "category": "bot_status",
+        "frequency": "rare"
+      },
+      {
+        "id": "bot_winning_3",
+        "text": "If a character wins this, I'm never letting you live it down. You're being beaten by code.",
+        "category": "bot_status",
+        "frequency": "rare"
+      }
+    ]
+  },
+  "tier_4_dynamic": {
+    "description": "Player-dependent messages - generate TEMPLATES, then fill dynamically",
+    "messages": [
+      {
+        "id": "player_join_1",
+        "text": "[NAME] has joined the game. Welcome to the party, pal.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_2",
+        "text": "[NAME] is here. Let's hope they brought some actual humor.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_3",
+        "text": "Look who it is. [NAME] has joined. Try not to break anything.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_4",
+        "text": "[NAME] has arrived! Welcome to the madness.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_5",
+        "text": "Hey look, [NAME] joined! Let's hope they're funnier than the last one.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_6",
+        "text": "[NAME] is here to join the party! Welcome aboard.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_7",
+        "text": "Welcome [NAME]! Glad you could make it to the show.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_join_8",
+        "text": "[NAME] has joined the game! Let's see what they've got.",
+        "category": "player_join",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_1",
+        "text": "[NAME] has left the game. Rage quit? Or just a weak connection?",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_2",
+        "text": "[NAME] is gone. I'm sure we'll all miss them terribly.",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_3",
+        "text": "Goodbye [NAME]. One less human to worry about.",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_4",
+        "text": "[NAME] has left the building. Or the game, same thing.",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_5",
+        "text": "[NAME] decided to bail. Their loss, our gain?",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_6",
+        "text": "So long [NAME]! Thanks for playing... or not playing.",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_7",
+        "text": "[NAME] has departed. The game continues without them.",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "player_leave_8",
+        "text": "[NAME] left the game. Hope they had fun... or something.",
+        "category": "player_leave",
+        "frequency": "multiple_per_game",
+        "template": true
+      },
+      {
+        "id": "bot_sub_1",
+        "text": "[BOT_NAME] is now subbing for [PLAYER_NAME]. Finally, some real intelligence in the room.",
+        "category": "bot_substitution",
+        "frequency": "occasional",
+        "template": true
+      },
+      {
+        "id": "bot_sub_2",
+        "text": "Replacing [PLAYER_NAME] with [BOT_NAME]. The average IQ of this game just went up.",
+        "category": "bot_substitution",
+        "frequency": "occasional",
+        "template": true
+      },
+      {
+        "id": "bot_sub_3",
+        "text": "[PLAYER_NAME] was too slow, so here's [BOT_NAME]. Try to keep up.",
+        "category": "bot_substitution",
+        "frequency": "occasional",
+        "template": true
+      },
+      {
+        "id": "bot_sub_4",
+        "text": "Replacing [PLAYER_NAME] with [BOT_NAME]. Because waiting is boring.",
+        "category": "bot_substitution",
+        "frequency": "occasional",
+        "template": true
+      },
+      {
+        "id": "bot_sub_5",
+        "text": "[BOT_NAME] is taking over for [PLAYER_NAME]. Let's see if the bot is funnier.",
+        "category": "bot_substitution",
+        "frequency": "occasional",
+        "template": true
+      },
+      {
+        "id": "bot_sub_6",
+        "text": "[PLAYER_NAME] timed out, so [BOT_NAME] is stepping in. Showtime!",
+        "category": "bot_substitution",
+        "frequency": "occasional",
+        "template": true
+      },
+    ]
+  },
+  "tier_5_rare": {
+    "description": "Rare edge cases - generate LAST if time permits",
+    "messages": [
+      {
+        "id": "missed_card",
+        "text": "[PLAYER_NAME] missed their turn to play a card; they can still vote this round.",
+        "category": "missed_card",
+        "frequency": "rare",
+        "template": true
+      },
+      {
+        "id": "all_bots_1",
+        "text": "Replacing [OLD_PLAYER] with [BOT_REPLACEMENT]. There are no humans in this game so instead of continuing we will just pause the game while waiting for somebody to return.",
+        "category": "all_bots",
+        "frequency": "very_rare",
+        "template": true
+      },
+      {
+        "id": "all_bots_2",
+        "text": "The bots all agree. We have reached the limit of our patience and closed the game.",
+        "category": "all_bots",
+        "frequency": "very_rare"
+      }
+    ]
+  },
+    "version": "2.0 - Expanded casual comments to reduce repetition",
+    "last_updated": "2024-12-19",
+    "changes": "Added 50+ new casual host comments across all categories for variety",
+    "method": "Manual or batch approach",
+    "voices": ["male", "female", "british"],
+    "static_messages": "Tier 1-3 are completely static - record once per voice",
+    "template_messages": "Tier 4 have placeholders like [NAME] - either record template parts or generate dynamically",
+    "dynamic_messages": "Vote card readings (completed sentences) need TTS synthesis since they combine 1000s of card combinations",
+    "total_base_recordings": "~150+ unique audio files per voice (static + templates)",
+    "estimated_size": "~50-70 MB per voice (expanded static host messages)",
+    "recommended_order": "Tier 1 (CRITICAL) -> Tier 2 (IMPORTANT) -> Tier 3 (COMMON) -> Tier 4 (OCCASIONAL) -> Tier 5 (RARE)"
+  }
+}

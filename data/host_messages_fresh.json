@@ -1,0 +1,69 @@
+{
+  "priority": "Generate these first - they happen in every game, multiple times",
+  "tier_1_critical": {
+    "description": "Happens every round - generate FIRST",
+    "messages": [
+      {
+        "id": "round_start_1",
+        "text": "New round. [BLACK_CARD].",
+        "category": "round_start",
+        "frequency": "every_round",
+        "notes": "Replace [BLACK_CARD] with actual black card text during generation"
+      },
+      {
+        "id": "round_start_2",
+        "text": "Round [NUMBER]. [BLACK_CARD].",
+        "category": "round_start",
+        "frequency": "every_round",
+        "notes": "NUMBER and BLACK_CARD are dynamic"
+      },
+      {
+        "id": "voting_intro_1",
+        "text": "It's time to vote. Pick the most horrible answer you can find.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "voting_intro_2",
+        "text": "Voting time! Which one of these is the most offensive? Choose that one.",
+        "category": "voting_start",
+        "frequency": "every_round"
+      },
+      {
+        "id": "winner_1",
+        "text": "The winner of this round is [WINNER]! The winning combo was: [WINNING_SENTENCE].",
+        "category": "winner_announcement",
+        "frequency": "every_round",
+        "notes": "Dynamic player name and sentence"
+      }
+    ]
+  },
+  "tier_2_common": {
+    "description": "Common during gameplay - generate SECOND",
+    "messages": [
+      {
+        "id": "welcome_1",
+        "text": "Hello players. Welcome to Cards Against [GAME_TITLE]. Try not to disappoint me.",
+        "category": "welcome",
+        "frequency": "game_start"
+      },
+      {
+        "id": "tie_1",
+        "text": "Great minds think alike. Another tie. Or maybe you're all just equally uninspired.",
+        "category": "tie",
+        "frequency": "occasional"
+      },
+      {
+        "id": "game_over_1",
+        "text": "The game has ended with [CHAMPION] taking the win. I'm not sure if that is a good thing, or we should all be worried.",
+        "category": "game_over",
+        "frequency": "game_end"
+      }
+    ]
+  },
+  "generation_notes": {
+    "version": "1.0 - Basic working version",
+    "total_messages": "~20 messages per voice",
+    "method": "Use Google Cloud TTS API key"
+  }
+}
