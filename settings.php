@@ -3117,13 +3117,13 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         
                         if (bDups.length > 0) {
                             html += `<div class="font-bold text-white mb-1">Black Cards (${bDups.length}):</div><div class="space-y-1 mb-2">`;
-                            bDups.forEach(dup => {
+                            bDups.forEach((dup, dupIdx) => {
                                 const text = dup.text.replace(/"/g, '&quot;');
                                 html += `<div class="p-2 bg-gray-800 rounded border border-gray-700">
                                     <div class="text-gray-300 mb-1">"${text}"</div>
                                     <div class="flex gap-4 text-xs">`;
                                 dup.locations.forEach((loc, i) => {
-                                    const id = `dup-black-${i}-${btoa(text)}`;
+                                    const id = `dup-black-${dupIdx}-${i}`;
                                     html += `<label for="${id}" class="flex items-center cursor-pointer">
                                         <input type="checkbox" id="${id}" name="delete_cards[]" value="${loc.deck}::${text}" class="accent-orange-500 mr-1.5">
                                         <span class="text-purple-400">from ${loc.deck}</span>
@@ -3136,13 +3136,13 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         
                         if (wDups.length > 0) {
                             html += `<div class="font-bold text-white mb-1">White Cards (${wDups.length}):</div><div class="space-y-1">`;
-                            wDups.forEach(dup => {
+                            wDups.forEach((dup, dupIdx) => {
                                 const text = dup.text.replace(/"/g, '&quot;');
                                 html += `<div class="p-2 bg-gray-800 rounded border border-gray-700">
                                     <div class="text-gray-300 mb-1">"${text}"</div>
                                     <div class="flex gap-4 text-xs">`;
                                 dup.locations.forEach((loc, i) => {
-                                    const id = `dup-white-${i}-${btoa(text)}`;
+                                    const id = `dup-white-${dupIdx}-${i}`;
                                     html += `<label for="${id}" class="flex items-center cursor-pointer">
                                         <input type="checkbox" id="${id}" name="delete_cards[]" value="${loc.deck}::${text}" class="accent-orange-500 mr-1.5">
                                         <span class="text-purple-400">from ${loc.deck}</span>
