@@ -1,6 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/netbound/public_html/against
+    - export DEPLOYPATH=/home/netbound/against
     - /bin/mkdir -p $DEPLOYPATH
-    - /bin/rsync -av --exclude='.git*' --exclude='vendor/' --exclude='data/global_config.json' ./ $DEPLOYPATH
+    - /bin/rsync -av --exclude='.git*' --exclude='vendor/' --exclude='data/global_config.json' --exclude='data/user_additions.json' --exclude='data/*.json' --exclude='data/tts_cache/' ./ $DEPLOYPATH
+
