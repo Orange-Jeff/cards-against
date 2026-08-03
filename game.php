@@ -93,6 +93,10 @@ if (($roomConfig['ai_provider'] ?? ($globalConfig['ai_provider'] ?? '')) === 'op
 $voiceGender = $globalConfig['tts_voice'] ?? ($globalConfig['voice_gender'] ?? 'female');
 $enableChat = $globalConfig['enable_chat'] ?? true;
 $gameTitle = $globalConfig['game_title'] ?? 'Cards Against Everyone';
+$themeKeyword = trim(preg_replace('/^cards against\s+/i', '', $gameTitle));
+if ($themeKeyword === '') {
+    $themeKeyword = 'Everyone';
+}
 $activeTheme = $roomData['theme'] ?? $globalConfig['active_theme'] ?? 'default';
 
 // Load customizable voice scripts from JSON
@@ -290,10 +294,11 @@ if (file_exists($voiceScriptsFile)) {
 
     <!-- BRANDING BANNER (Line 1) -->
     <div class="bg-[#141517] border-b border-gray-800 py-2 flex-none">
-        <div class="max-w-4xl mx-auto px-4 flex items-center justify-center gap-2">
-            <i class="fas fa-tshirt text-orange-500 text-xl sm:text-2xl"></i>
-            <h1 class="text-lg sm:text-xl font-black uppercase tracking-[0.15em] text-gray-200">
-                <?php echo htmlspecialchars($gameTitle); ?> <span class="text-[10px] lowercase text-gray-300 font-normal tracking-wide">v.3.11</span>
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h1 class="text-sm sm:text-base font-black uppercase tracking-[0.18em]">
+                <span class="text-orange-500">CARDS AGAINST</span>
+                <span class="text-gray-200">(<?php echo htmlspecialchars($themeKeyword); ?>)</span>
+                <span class="text-[10px] lowercase text-gray-300 font-normal tracking-wide ml-2">v4.9.1</span>
             </h1>
         </div>
     </div>
@@ -734,12 +739,20 @@ if (file_exists($voiceScriptsFile)) {
 
         let ALL_DECKS = [];
         async function loadDecksForLobby() {
+            const container = document.getElementById('lobby-decks-checklist');
             try {
                 const res = await fetch('api.php?action=get_decks');
+                if (!res.ok) {
+                    throw new Error('Network response was not OK (' + res.status + ')');
+                }
                 ALL_DECKS = await res.json();
                 renderLobbyDecks();
             } catch(e) {
                 console.error("Failed to load decks", e);
+                if (container) {
+                    container.innerHTML = '<span class="text-xs text-red-400">Network error loading decks. Open menu again or refresh.</span>';
+                }
+                showAutoAlert('Network issue while opening menu data. Please retry.');
             }
         }
 
@@ -1873,6 +1886,7 @@ if (file_exists($voiceScriptsFile)) {
                 const status = document.getElementById('status-text');
                 if (status) status.innerText = 'Connecting...';
                 console.error('Poll failed', e);
+                showAutoAlert('Network connection issue. Retrying...');
             }
         }
 
@@ -3301,6 +3315,10 @@ if (file_exists($voiceScriptsFile)) {
             })
             .catch(err => {
                 console.error(err);
+                alert('Network error trying to restart game.');
+            });
+        }
+
         function returnToWaitingRoom() {
             const audio = document.getElementById('win-audio');
             if (audio) {
@@ -3682,3 +3700,4 @@ if (file_exists($voiceScriptsFile)) {
 </body>
 
 </html>
+

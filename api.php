@@ -1155,77 +1155,145 @@ function parseDecks()
 {
     return parseDecksShared();
 }
-                if ($comment) {
-                    if (!isset($room['chat'])) $room['chat'] = [];
-                    $room['chat'][] = [
-                        'player_id' => $p['id'],
-                        'name' => $p['name'],
-                        'msg' => $comment,
-                        'ts' => time(),
-                        'type' => 'chat'
-                    ];
-                }
-            }
+
+function streamZipDownloadAgainst(string $filePath, string $downloadName): void
+{
+    if (!is_file($filePath)) {
+        echo json_encode(['error' => 'ZIP file not found.']);
+        exit;
+    }
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . basename($downloadName) . '"');
+    header('Content-Length: ' . filesize($filePath));
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: public');
+    readfile($filePath);
+    exit;
+}
+
+function addPathToZipAgainst(ZipArchive $zip, string $sourcePath, string $zipPrefix = ''): void
+{
+    if (!file_exists($sourcePath)) return;
+
+    if (is_file($sourcePath)) {
+        $entryName = $zipPrefix !== '' ? $zipPrefix : basename($sourcePath);
+        $zip->addFile($sourcePath, str_replace('\\', '/', $entryName));
+        return;
+    }
+
+    $sourcePath = rtrim($sourcePath, DIRECTORY_SEPARATOR);
+    $rootLen = strlen($sourcePath) + 1;
+
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($sourcePath, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    );
+
+    foreach ($iterator as $item) {
+        /** @var SplFileInfo $item */
+        $absPath = $item->getPathname();
+        $relativePath = substr($absPath, $rootLen);
+        if ($relativePath === false || $relativePath === '') continue;
+
+        $relativePath = str_replace('\\', '/', $relativePath);
+        $entryName = $zipPrefix !== '' ? rtrim($zipPrefix, '/') . '/' . $relativePath : $relativePath;
+
+        if ($item->isDir()) {
+            $zip->addEmptyDir(rtrim($entryName, '/'));
+        } else {
+            $zip->addFile($absPath, $entryName);
         }
     }
-    
-    if ($roomChanged) {
-        $room['players'] = array_values($room['players']);
-    }
 }
-
-/**
- * Interleaves cards from different decks to ensure variety in short games.
- */
-/**
- * @param array<int, array<string, mixed>> $cards
- * @return array<int, array<string, mixed>>
- */
-function distributedShuffle(array $cards): array
-{
-    if (empty($cards)) return [];
-
-    // Group by deck
-    $groups = [];
-    foreach ($cards as $c) {
-        $deck = $c['deck'] ?? 'base_deck';
-        $groups[$deck][] = $c;
-    }
-
-    // Shuffle each group individually
-    foreach ($groups as &$g) {
-        shuffle($g);
-    }
-    unset($g);
-
-    $result = [];
-    $deckNames = array_keys($groups);
-
-    // Randomize the order of decks in the round-robin to avoid predictable patterns
-    shuffle($deckNames);
-
-    // Round-robin selection until all groups are empty
-    while (!empty($groups)) {
-        foreach ($deckNames as $name) {
-            if (isset($groups[$name]) && !empty($groups[$name])) {
-                $result[] = array_shift($groups[$name]);
-                if (empty($groups[$name])) {
-                    unset($groups[$name]);
-                }
-            }
-        }
-    }
-    return $result;
-}
-
-/** @return array<string, mixed> */
-function parseDecks()
-{
-    return parseDecksShared();
-}
-
 // --- ACTIONS ---
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+if ($action === 'download_zip' || $action === 'download_voice_cache_zip') {
+    if (empty($_SESSION['is_admin'])) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Admin access required.']);
+        exit;
+    }
+
+    if (!class_exists('ZipArchive')) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'ZipArchive extension is not available on this server.']);
+        exit;
+    }
+
+    if ($action === 'download_zip') {
+        $existingArchive = __DIR__ . '/Archive.zip';
+        if (is_file($existingArchive)) {
+            streamZipDownloadAgainst($existingArchive, 'cards-against-release.zip');
+        }
+
+        $tmpZip = tempnam(sys_get_temp_dir(), 'cards_release_');
+        if ($tmpZip === false) {
+            echo json_encode(['success' => false, 'error' => 'Unable to create temporary ZIP file.']);
+            exit;
+        }
+
+        $zipPath = $tmpZip . '.zip';
+        @rename($tmpZip, $zipPath);
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            @unlink($zipPath);
+            echo json_encode(['success' => false, 'error' => 'Unable to build release ZIP.']);
+            exit;
+        }
+
+        foreach (glob(__DIR__ . '/*.php') ?: [] as $phpFile) {
+            addPathToZipAgainst($zip, $phpFile, basename($phpFile));
+        }
+        foreach (glob(__DIR__ . '/*.md') ?: [] as $mdFile) {
+            addPathToZipAgainst($zip, $mdFile, basename($mdFile));
+        }
+        foreach (glob(__DIR__ . '/*.txt') ?: [] as $txtFile) {
+            addPathToZipAgainst($zip, $txtFile, basename($txtFile));
+        }
+        if (is_file(__DIR__ . '/composer.json')) {
+            addPathToZipAgainst($zip, __DIR__ . '/composer.json', 'composer.json');
+        }
+
+        addPathToZipAgainst($zip, __DIR__ . '/assets', 'assets');
+        addPathToZipAgainst($zip, __DIR__ . '/vendor', 'vendor');
+        addPathToZipAgainst($zip, __DIR__ . '/data/themes.json', 'data/themes.json');
+        addPathToZipAgainst($zip, __DIR__ . '/data/decks_available.json', 'data/decks_available.json');
+        addPathToZipAgainst($zip, __DIR__ . '/data/voice_scripts.json', 'data/voice_scripts.json');
+
+        $zip->close();
+        streamZipDownloadAgainst($zipPath, 'cards-against-release.zip');
+    }
+
+    if ($action === 'download_voice_cache_zip') {
+        $tmpZip = tempnam(sys_get_temp_dir(), 'cards_voice_cache_');
+        if ($tmpZip === false) {
+            echo json_encode(['success' => false, 'error' => 'Unable to create temporary ZIP file.']);
+            exit;
+        }
+
+        $zipPath = $tmpZip . '.zip';
+        @rename($tmpZip, $zipPath);
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            @unlink($zipPath);
+            echo json_encode(['success' => false, 'error' => 'Unable to build voice cache ZIP.']);
+            exit;
+        }
+
+        addPathToZipAgainst($zip, __DIR__ . '/audio/host_messages', 'audio/host_messages');
+        addPathToZipAgainst($zip, __DIR__ . '/audio/segments', 'audio/segments');
+        addPathToZipAgainst($zip, __DIR__ . '/audio/whites', 'audio/whites');
+
+        $zip->close();
+        streamZipDownloadAgainst($zipPath, 'cards-against-voice-cache.zip');
+    }
+}
 
 if ($action === 'test_ai') {
     $customKey = $_GET['api_key'] ?? $_POST['api_key'] ?? null;
@@ -2604,101 +2672,6 @@ if ($action === 'chat') {
                     $responderName = $targetBot['name'];
                     $responderRole = 'Player';
                     $responderId = $targetBot['id'];
-        if (empty($announcement)) {
-            $announcement = "Welcome to room: " . ($room['config']['room_name'] ?? 'Game Room') . ". Good luck, players!";
-        }
-        if ($announcement) {
-            if (!isset($room['chat'])) $room['chat'] = [];
-            $room['chat'][] = [
-                'player_id' => 'host',
-                'name' => 'Host (AI)',
-                'msg' => $announcement,
-                'ts' => time(),
-                'type' => 'host_comment'
-            ];
-        }
-    }
-
-    saveRoom($roomId, $room);
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-if ($action === 'chat') {
-    $roomId = $_POST['room_id'] ?? '';
-    $msg = trim($_POST['message'] ?? '');
-    $room = loadRoom($roomId);
-    if ($room && $msg) {
-        $userName = $_SESSION['user_name'] ?? 'Spectator';
-        $userId = $_SESSION['user_id'] ?? '';
-
-        if (!isset($room['chat'])) $room['chat'] = [];
-        $room['chat'][] = [
-            'player_id' => $userId,
-            'name' => $userName,
-            'msg' => htmlspecialchars($msg),
-            'ts' => time()
-        ];
-
-        // Conversational AI Responders
-        $hasAiHost = $room['config']['use_ai_host'] ?? false;
-        $hasAiBots = $room['config']['use_ai_bots'] ?? false;
-
-        if ($hasAiHost || $hasAiBots) {
-            $msgLower = strtolower($msg);
-            $aiBots = [];
-            if ($hasAiBots) {
-                foreach ($room['players'] as $p) {
-                    if (($p['is_bot'] ?? false) && ($p['is_ai'] ?? false)) {
-                        $aiBots[] = $p;
-                    }
-                }
-            }
-
-            $mentionsHost = (strpos($msgLower, 'host') !== false) && $hasAiHost;
-            $mentionsBot = ((strpos($msgLower, 'bot') !== false) || (strpos($msgLower, 'ai') !== false)) && $hasAiBots;
-            $mentionsSpecificBot = false;
-            $targetBot = null;
-            if ($hasAiBots) {
-                foreach ($aiBots as $ab) {
-                    if (strpos($msgLower, strtolower($ab['name'])) !== false) {
-                        $mentionsSpecificBot = true;
-                        $targetBot = $ab;
-                        break;
-                    }
-                }
-            }
-
-            $shouldRespond = false;
-            $responderName = 'Host';
-            $responderRole = 'Host';
-            $responderId = 'host';
-            $type = 'host_comment';
-
-            if ($mentionsHost) {
-                $shouldRespond = true;
-            } elseif ($mentionsSpecificBot && $targetBot) {
-                $shouldRespond = true;
-                $responderName = $targetBot['name'];
-                $responderRole = 'Player';
-                $responderId = $targetBot['id'];
-                $type = 'chat';
-            } elseif ($mentionsBot && !empty($aiBots)) {
-                $shouldRespond = true;
-                $targetBot = $aiBots[array_rand($aiBots)];
-                $responderName = $targetBot['name'];
-                $responderRole = 'Player';
-                $responderId = $targetBot['id'];
-                $type = 'chat';
-            } elseif (rand(1, 100) <= 25) { // 25% chance of random response to general chat
-                if ($hasAiHost && (!$hasAiBots || rand(1, 2) === 1)) {
-                    $shouldRespond = true;
-                } elseif ($hasAiBots && !empty($aiBots)) {
-                    $shouldRespond = true;
-                    $targetBot = $aiBots[array_rand($aiBots)];
-                    $responderName = $targetBot['name'];
-                    $responderRole = 'Player';
-                    $responderId = $targetBot['id'];
                     $type = 'chat';
                 }
             }
@@ -3541,177 +3514,6 @@ if ($action === 'leave_room') {
     exit;
 }
 
-// Add bot player to room
-if ($action === 'add_bot') {
-    $roomId = $_POST['room_id'] ?? '';
-    $room = loadRoom($roomId);
-    if (!$room) {
-        echo json_encode(['error' => 'Room not found']);
-        exit;
-    }
-    if ($room['state'] !== 'lobby') {
-        echo json_encode(['error' => 'Can only add bots in lobby']);
-        exit;
-    }
-
-    $isAi = ($_POST['is_ai'] ?? 'false') === 'true' || ($_POST['is_ai'] ?? '') === '1';
-
-    // Count existing bots to generate name
-    $botCount = 0;
-    foreach ($room['players'] as $p) {
-        if ($p['is_bot'] ?? false) $botCount++;
-    }
-
-    // Use theme character name if available, otherwise fallback to preset list
-    $botName = nextThemeCharacterName($room);
-    if (!$botName) {
-        // Fallback list of 80 fake names (same as client-side presetNames)
-        $fallbackNames = getFallbackBotNames();
-        // Pick random name not currently in use
-        $usedNames = array_map(function($p) { return $p['name']; }, $room['players']);
-        $avail = array_diff($fallbackNames, $usedNames);
-        if (empty($avail)) $avail = $fallbackNames; // Recycle if full
-        $botName = $avail[array_rand($avail)];
-    }
-
-    // Generate unique bot ID
-    $botId = 'bot_' . uniqid();
-
-    // Create bot player
-    $botPlayer = [
-        'id' => $botId,
-        'name' => $botName,
-        'avatar_type' => 'dicebear',
-        'avatar_val' => 'bottts:seed' . $botCount,
-        'hand' => [],
-        'score' => 0,
-        'status' => 'ready',
-        'is_bot' => true,
-        'is_ai' => $isAi
-    ];
-
-    $room['players'][] = $botPlayer;
-
-    if (!isset($room['chat'])) $room['chat'] = [];
-    $room['chat'][] = [
-        'player_id' => 'system',
-        'name' => 'System',
-        'msg' => "$botName " . ($isAi ? "(AI Bot)" : "(Bot)") . " has joined the lobby.",
-        'ts' => time(),
-        'type' => 'join'
-    ];
-
-    if ($isAi) {
-        $room['chat'][] = [
-            'player_id' => 'host',
-            'name' => 'Host (AI)',
-            'msg' => "The challenge level has increased because I'll be playing the game instead of just being a mindless host.",
-            'ts' => time() + 1,
-            'type' => 'host_comment'
-        ];
-    }
-
-    saveRoom($roomId, $room);
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-// Player leaves room; optional bot replacement OR room deletion if host leaves
-if ($action === 'leave_room') {
-    $roomId = $_POST['room_id'] ?? '';
-    $room = loadRoom($roomId);
-    if (!$room) {
-        echo json_encode(['error' => 'Room not found']);
-        exit;
-    }
-    $uid = $_SESSION['user_id'] ?? '';
-
-    // Clear current_room_id from session
-    unset($_SESSION['current_room_id']);
-
-    // Check if leaving player is the host
-    $isHost = ($room['host_id'] ?? '') === $uid;
-
-    // Also check if player has is_host flag
-    foreach ($room['players'] as $p) {
-        if (($p['id'] ?? '') === $uid && !empty($p['is_host'])) {
-            $isHost = true;
-            break;
-        }
-    }
-
-    // If host leaves, delete the entire room
-    if ($isHost) {
-        @unlink(getRoomFile($roomId));
-        echo json_encode(['success' => true, 'room_deleted' => true]);
-        exit;
-    }
-
-    // Get player name before removing
-    $leavingPlayerName = 'Player';
-    foreach ($room['players'] as $p) {
-        if ($p['id'] === $uid) {
-            $leavingPlayerName = $p['name'] ?? 'Player';
-            break;
-        }
-    }
-
-    // Remove player
-    $room['players'] = array_values(array_filter($room['players'], function ($p) use ($uid) {
-        return $p['id'] !== $uid;
-    }));
-
-    // Add leave announcement to chat
-    if (!isset($room['chat'])) $room['chat'] = [];
-    $room['chat'][] = [
-        'player_id' => 'system',
-        'name' => 'System',
-        'msg' => "$leavingPlayerName has left the game",
-        'ts' => time(),
-        'type' => 'leave'
-    ];
-
-    // Clean votes and table entries
-    if (isset($room['votes'][$uid])) unset($room['votes'][$uid]);
-    $room['table_cards'] = array_values(array_filter($room['table_cards'], function ($t) use ($uid) {
-        return ($t['player_id'] ?? null) !== $uid;
-    }));
-
-    // If no human players left, delete the room
-    $hasHumans = false;
-    foreach ($room['players'] as $p) {
-        if (!($p['is_bot'] ?? false)) {
-            $hasHumans = true;
-            break;
-        }
-    }
-
-    if (!$hasHumans || count($room['players']) === 0) {
-        @unlink(getRoomFile($roomId));
-        echo json_encode(['success' => true, 'room_deleted' => true]);
-        exit;
-    }
-
-    // Replace with bot (slightly dumber 😉)
-    $botId = 'bot_leave_' . uniqid();
-    $hand = [];
-    $limit = $room['config']['hand_size'] ?? 7;
-    while (count($hand) < $limit && !empty($room['white_deck'])) {
-        $hand[] = array_shift($room['white_deck']);
-    }
-    $room['players'][] = [
-        'id' => $botId,
-        'name' => nextThemeCharacterName($room) ?: 'AutoBot',
-        'score' => 0,
-        'hand' => $hand,
-        'status' => 'thinking',
-        'is_bot' => true
-    ];
-
-    saveRoom($roomId, $room);
-    echo json_encode(['success' => true]);
-    exit;
-}
 
 // Host can kill a game (delete room file)
 if ($action === 'kill_game') {
@@ -3766,12 +3568,12 @@ if ($action === 'update_settings') {
         }
         if (is_array($decksInput)) {
             $room['config']['decks'] = array_map('strtolower', array_map('trim', $decksInput));
-            
+
             // Rebuild active game deck lists if currently in lobby
             if ($room['state'] === 'lobby') {
                 $parsed = parseDecksShared();
                 $selectedTags = $room['config']['decks'];
-                
+
                 // Handle Orange Deck (User Additions)
                 $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
                 if (in_array('orange_deck', $selectedTags)) {
@@ -3795,7 +3597,7 @@ if ($action === 'update_settings') {
                         }
                     }
                 }
-                
+
                 // Filter by selected deck tags
                 $newDecks = [
                     'black' => array_values(array_filter($parsed['black'], function ($c) use ($selectedTags) {
@@ -3805,258 +3607,22 @@ if ($action === 'update_settings') {
                         return in_array($c['deck'], $selectedTags, true);
                     }))
                 ];
-                
+
+                if (empty($newDecks['black']) || empty($newDecks['white'])) {
+                    $newDecks['black'] = $newDecks['black'] ?: [['id' => uniqid('b_'), 'text' => '______.', 'pick' => 1, 'deck' => 'base_deck']];
+                    $newDecks['white'] = $newDecks['white'] ?: [['id' => uniqid('w_'), 'text' => 'A mystery.', 'deck' => 'base_deck']];
+                }
+
+                $room['black_deck'] = distributedShuffle($newDecks['black']);
+                $room['white_deck'] = distributedShuffle($newDecks['white']);
+            }
+        }
+    }
+
+    saveRoom($roomId, $room);
     $publicConfig = $room['config'];
     unset($publicConfig['ai_api_key'], $publicConfig['gemini_api_key'], $publicConfig['openai_api_key']);
     echo json_encode(['success' => true, 'config' => $publicConfig]);
-    exit;
-    $themes[$key] = [
-        'label' => $label,
-        'game_title' => $gameTitle,
-        'room_names' => array_values(array_filter($roomNames, fn($v) => is_string($v) && trim($v) !== '')),
-        'character_names' => array_values(array_filter($characterNames, fn($v) => is_string($v) && trim($v) !== '')),
-        'banner_media' => $banner,
-        'audio_url' => $audio
-    ];
-    saveThemes($themes);
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-
-    $text = $_POST['text'] ?? '';
-    if (!$text) {
-        echo json_encode(['found' => false, 'error' => 'No text provided']);
-        exit;
-    }
-
-    // Get voice preference or default to 'female'
-    $globalConfigFile = __DIR__ . '/data/global_config.json';
-    $config = [];
-    if (file_exists($globalConfigFile)) {
-        $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
-    }
-    $voiceGender = $_POST['voice'] ?? $config['tts_voice'] ?? 'female';
-
-    // Generate MD5 hash of text for filename lookup
-    $hash = md5($text);
-
-    // Normalize underscores to check both formats
-    $textForWhite = trim($text);
-    $textForWhite = preg_replace('/_{3,}/', '', $textForWhite);  // Remove blank markers for white card check
-    $hashForWhite = md5($textForWhite);
-
-    // PRIORITY 1: Check host_messages directory FIRST (these are critical announcements)
-    // Dynamically scan all subdirectories instead of hardcoding categories
-    $hostBaseDir = __DIR__ . "/audio/host_messages/{$voiceGender}";
-    if (is_dir($hostBaseDir)) {
-        foreach (scandir($hostBaseDir) as $category) {
-            if ($category === '.' || $category === '..' || !is_dir("$hostBaseDir/$category")) continue;
-            foreach (['mp3'] as $ext) {
-                $hostPath = "$hostBaseDir/$category/{$hash}.{$ext}";
-                if (file_exists($hostPath)) {
-                    echo json_encode([
-                        'found' => true,
-                        'type' => 'host_message',
-                        'url' => "audio/host_messages/{$voiceGender}/{$category}/{$hash}.{$ext}"
-                    ]);
-                    exit;
-                }
-            }
-        }
-    }
-
-    // PRIORITY 2: Check segments directory (split by blanks in black cards)
-    foreach (['mp3'] as $ext) {
-        $segmentPath = __DIR__ . "/audio/segments/{$voiceGender}/{$hash}.{$ext}";
-        if (file_exists($segmentPath)) {
-            echo json_encode([
-                'found' => true,
-                'type' => 'segment',
-                'url' => "audio/segments/{$voiceGender}/{$hash}.{$ext}"
-            ]);
-            exit;
-        }
-    }
-
-    // PRIORITY 3: Check whites directory (whole white cards)
-    foreach (['mp3'] as $ext) {
-        $whitePath = __DIR__ . "/audio/whites/{$voiceGender}/{$hashForWhite}.{$ext}";
-        if (file_exists($whitePath)) {
-            echo json_encode([
-                'found' => true,
-                'type' => 'white',
-                'url' => "audio/whites/{$voiceGender}/{$hashForWhite}.{$ext}"
-            ]);
-            exit;
-        }
-    }
-
-    // PRIORITY 4: Check TTS cache BEFORE making API calls (Version 1.43)
-    // Cache is created by get_tts action and stored as base64 + metadata
-    $cacheDir = __DIR__ . '/data/tts_cache';
-    $cacheKey = md5($text . '::' . (($_POST['provider'] ?? 'elevenlabs')) . '::' . $voiceGender);
-    $cacheFile = $cacheDir . '/' . $cacheKey . '.cache';
-
-    if (file_exists($cacheFile)) {
-        $cached = json_decode(file_get_contents($cacheFile), true);
-        if ($cached && isset($cached['audio'])) {
-            echo json_encode([
-                'found' => true,
-                'type' => 'tts_cache',
-                'audio' => $cached['audio'],  // Base64 encoded
-                'mime' => $cached['mime'] ?? 'audio/mp3',
-                'cached' => true
-            ]);
-            exit;
-        }
-    }
-
-    // No pre-recorded file found
-    echo json_encode(['found' => false, 'error' => 'No pre-recorded audio available']);
-    exit;
-}
-
-// Update profile for the current user (name/avatar, and optional mic preference)
-if ($action === 'update_profile') {
-    $roomId = $_POST['room_id'] ?? '';
-    $room = $roomId ? loadRoom($roomId) : null;
-    $uid = $_SESSION['user_id'] ?? '';
-
-    // Accept explicit player_id as fallback when session user_id doesn't match room
-    $explicitId = $_POST['player_id'] ?? '';
-    if ($explicitId && $room) {
-        foreach ($room['players'] as $p) {
-            if ($p['id'] === $explicitId) { $uid = $explicitId; break; }
-        }
-    }
-
-    $name = trim($_POST['name'] ?? '');
-    $avatarType = $_POST['avatar_type'] ?? null;
-    $avatarVal = $_POST['avatar_val'] ?? null;
-    $micId = $_POST['mic_device_id'] ?? null;
-
-    if ($name !== '') $_SESSION['user_name'] = htmlspecialchars($name);
-    if ($avatarType) $_SESSION['user_avatar_type'] = $avatarType;
-    if ($avatarVal) $_SESSION['user_avatar_val'] = $avatarVal;
-    if ($micId !== null) $_SESSION['preferred_mic'] = $micId;
-
-    if ($room) {
-        foreach ($room['players'] as &$p) {
-            if ($p['id'] === $uid) {
-                if ($name !== '') $p['name'] = $_SESSION['user_name'];
-                if ($avatarType) $p['avatar_type'] = $avatarType;
-                if ($avatarVal) $p['avatar_val'] = $avatarVal;
-                break;
-            }
-        }
-        saveRoom($roomId, $room);
-    }
-
-    $themes[$key] = [
-        'label' => $label,
-        'game_title' => $gameTitle,
-        'room_names' => array_values(array_filter($roomNames, fn($v) => is_string($v) && trim($v) !== '')),
-        'character_names' => array_values(array_filter($characterNames, fn($v) => is_string($v) && trim($v) !== '')),
-        'banner_media' => $banner,
-        'audio_url' => $audio
-    ];
-    saveThemes($themes);
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-
-    $text = $_POST['text'] ?? '';
-    if (!$text) {
-        echo json_encode(['found' => false, 'error' => 'No text provided']);
-        exit;
-    }
-
-    // Get voice preference or default to 'female'
-    $globalConfigFile = __DIR__ . '/data/global_config.json';
-    $config = [];
-    if (file_exists($globalConfigFile)) {
-        $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
-    }
-    $voiceGender = $_POST['voice'] ?? $config['tts_voice'] ?? 'female';
-
-    // Generate MD5 hash of text for filename lookup
-    $hash = md5($text);
-
-    // Normalize underscores to check both formats
-    $textForWhite = trim($text);
-    $textForWhite = preg_replace('/_{3,}/', '', $textForWhite);  // Remove blank markers for white card check
-    $hashForWhite = md5($textForWhite);
-
-    // PRIORITY 1: Check host_messages directory FIRST (these are critical announcements)
-    // Dynamically scan all subdirectories instead of hardcoding categories
-    $hostBaseDir = __DIR__ . "/audio/host_messages/{$voiceGender}";
-    if (is_dir($hostBaseDir)) {
-        foreach (scandir($hostBaseDir) as $category) {
-            if ($category === '.' || $category === '..' || !is_dir("$hostBaseDir/$category")) continue;
-            foreach (['mp3'] as $ext) {
-                $hostPath = "$hostBaseDir/$category/{$hash}.{$ext}";
-                if (file_exists($hostPath)) {
-                    echo json_encode([
-                        'found' => true,
-                        'type' => 'host_message',
-                        'url' => "audio/host_messages/{$voiceGender}/{$category}/{$hash}.{$ext}"
-                    ]);
-                    exit;
-                }
-            }
-        }
-    }
-
-    // PRIORITY 2: Check segments directory (split by blanks in black cards)
-    foreach (['mp3'] as $ext) {
-        $segmentPath = __DIR__ . "/audio/segments/{$voiceGender}/{$hash}.{$ext}";
-        if (file_exists($segmentPath)) {
-            echo json_encode([
-                'found' => true,
-                'type' => 'segment',
-                'url' => "audio/segments/{$voiceGender}/{$hash}.{$ext}"
-            ]);
-            exit;
-        }
-    }
-
-    // PRIORITY 3: Check whites directory (whole white cards)
-    foreach (['mp3'] as $ext) {
-        $whitePath = __DIR__ . "/audio/whites/{$voiceGender}/{$hashForWhite}.{$ext}";
-        if (file_exists($whitePath)) {
-            echo json_encode([
-                'found' => true,
-                'type' => 'white',
-                'url' => "audio/whites/{$voiceGender}/{$hashForWhite}.{$ext}"
-            ]);
-            exit;
-        }
-    }
-
-    // PRIORITY 4: Check TTS cache BEFORE making API calls (Version 1.43)
-    // Cache is created by get_tts action and stored as base64 + metadata
-    $cacheDir = __DIR__ . '/data/tts_cache';
-    $cacheKey = md5($text . '::' . (($_POST['provider'] ?? 'elevenlabs')) . '::' . $voiceGender);
-    $cacheFile = $cacheDir . '/' . $cacheKey . '.cache';
-
-    if (file_exists($cacheFile)) {
-        $cached = json_decode(file_get_contents($cacheFile), true);
-        if ($cached && isset($cached['audio'])) {
-            echo json_encode([
-                'found' => true,
-                'type' => 'tts_cache',
-                'audio' => $cached['audio'],  // Base64 encoded
-                'mime' => $cached['mime'] ?? 'audio/mp3',
-                'cached' => true
-            ]);
-            exit;
-        }
-    }
-
-    // No pre-recorded file found
-    echo json_encode(['found' => false, 'error' => 'No pre-recorded audio available']);
     exit;
 }
 
@@ -4109,7 +3675,6 @@ if ($action === 'update_profile') {
     echo json_encode(['success' => true]);
     exit;
 }
-
 // Play again action: resets scores, deals hands, and starts game immediately with same players & deck order
 if ($action === 'play_again') {
     $roomId = $_POST['room_id'] ?? '';

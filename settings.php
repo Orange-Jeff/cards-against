@@ -61,6 +61,17 @@ function save_global_config(array $config): void
     file_put_contents($globalConfigFile, json_encode($config, JSON_PRETTY_PRINT));
 }
 
+// Wrapper functions for camelCase naming
+function getGlobalConfig()
+{
+    return load_global_config();
+}
+
+function saveGlobalConfig(array $config): void
+{
+    save_global_config($config);
+}
+
 // cleanCardTextPHP is provided by deck_parser.php
 
 /**
@@ -1667,10 +1678,10 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
 
     <!-- BRANDING BANNER -->
     <div class="bg-[#141517] border-b border-gray-800 py-2 flex-none">
-        <div class="max-w-4xl mx-auto px-4 flex items-center justify-center gap-2">
-            <i class="fas fa-tshirt text-orange-500 text-xl sm:text-2xl"></i>
-            <h1 class="text-lg sm:text-xl font-black uppercase tracking-[0.15em] text-gray-200">
-                Cards Against <span class="text-orange-500"><?php echo htmlspecialchars($defaultTheme['game_name_suffix'] ?? 'Everyone'); ?></span>
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h1 class="text-sm sm:text-base font-black uppercase tracking-[0.18em]">
+                <span class="text-orange-500">CARDS AGAINST</span>
+                <span class="text-gray-200">(<?php echo htmlspecialchars($defaultTheme['game_name_suffix'] ?? 'Everyone'); ?>)</span>
             </h1>
         </div>
     </div>
@@ -2765,7 +2776,7 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
 
                 <!-- 1. SEARCH -->
                 <div class="mb-6 bg-gray-850 p-4 rounded-lg border border-gray-700">
-                    <button type="button" onclick="onclick="document.getElementById('deck-search-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase mb-3">
+                    <button type="button" onclick="document.getElementById('deck-search-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase mb-3">
                         <span class="flex items-center"><i class="fas fa-search mr-2 text-orange-400"></i> Search Cards Across All Decks</span>
                         <i class="fas fa-chevron-down ml-auto"></i>
                     </button>
@@ -3736,7 +3747,13 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
 
                 try {
                     const res = await fetch('api.php?action=get_deck_cards&deck=' + encodeURIComponent(tag));
+                    if (!res.ok) {
+                        throw new Error('Network response was not OK (' + res.status + ')');
+                    }
                     const data = await res.json();
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
 
                     blackList.innerHTML = '';
                     whiteList.innerHTML = '';
@@ -3750,8 +3767,8 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                     }
                 } catch (e) {
                     console.error(e);
-                    blackList.innerHTML = '<div class="text-center text-red-500 text-xs pt-10">Error loading cards</div>';
-                    whiteList.innerHTML = '<div class="text-center text-red-500 text-xs pt-10">Error loading cards</div>';
+                    blackList.innerHTML = '<div class="text-center text-red-500 text-xs pt-10">Network/server error loading cards</div>';
+                    whiteList.innerHTML = '<div class="text-center text-red-500 text-xs pt-10">Network/server error loading cards</div>';
                 }
             }
 
