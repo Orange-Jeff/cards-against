@@ -1,4 +1,4 @@
-#Base Deck Black Cards
+Black Cards
 ______ + ______ = ______
 ______ is a slippery slope that leads to ______
 ______: kid-tested, mother-approved
@@ -10,23 +10,23 @@ And today’s soup is Cream of ______
 Arby’s: We Have ______
 As reparations for slavery, all African Americans will receive ______
 As the mom of five rambunctious boys, I’m no stranger to ______
-Attention Target shoppers. Unfortunately, we will be closing early due to ______
-Bitch, you’re nasty. You’re disgusting. You’re ______ Go home, bitch
+Attention Target shoppers Unfortunately, we will be closing early due to ______
+Bitch, you’re nasty You’re disgusting You’re ______ Go home, bitch
 Brought to you by Bud Light®, the Official Beer of ______
-But before I kill you, Mr. Bond, I must show you **.** ______
+But before I kill you, Mr Bond, I must show you **** ______
 Check me out, yo! I call this dance move ______
 Coming to Broadway this season, ______: The Musical
 Daddy, why is mommy crying? ______
-Designers! For this week’s challenge, you must make a dress designed for **.** ______
+Designers! For this week’s challenge, you must make a dress designed for **** ______
 Don’t forget! Beginning this week, Casual Friday will officially become ______
-Dude, do not go in that bathroom. There’s ______ in there
-Dudes. I just found out that ______ is ______
+Dude, do not go in that bathroom There’s ______ in there
+Dudes I just found out that ______ is ______
 During high school, I never really fit in until I found ______ club
 During his midlife crisis, my dad got really into ______
 During sex, I like to think about ______
 For my next trick, I will pull ______ out of ______
 Fun tip! When your man asks you to go down on him, try surprising him with ______ instead
-Here is the church. Here is the steeple. Open the doors. And there is ______
+Here is the church Here is the steeple Open the doors And there is ______
 Hey guys, welcome to Chili’s! Would you like to start the night off right with ______?
 Holy shit! My video of ______ has ten million views!
 How did I lose my virginity? ______
@@ -34,10 +34,10 @@ Howdy, neighbor! Couldn’t help but notice you struggling with ______ Need a ha
 Hulu’s new reality show features twelve hot singles living with ______
 I drink to forget ______
 I never truly understood ______ until I encountered ______
-I’m going on a cleanse this week. Nothing but kale juice and ______
-I’m Lebron James, and when I’m not slamming dunks, I love **.** ______
+I’m going on a cleanse this week Nothing but kale juice and ______
+I’m Lebron James, and when I’m not slamming dunks, I love **** ______
 I’m no doctor, but I’m pretty sure what you’re suffering from is called ______
-I’m sorry, Mrs. Brown, but I couldn’t complete my homework because of ______
+I’m sorry, Mrs Brown, but I couldn’t complete my homework because of ______
 I’m sorry, sir, but we don’t allow ______ at the country club
 I’m Tony Robbins, and over the next sixty minutes, I’m going to teach you how to harness the power of ______!
 If at first, you don’t succeed, try ______
@@ -46,35 +46,35 @@ If you like ______, YOU MIGHT BE A REDNECK
 Instead of coal, Santa now gives the bad children ______
 Introducing the amazing superhero/sidekick duo! It’s ______ and ______!
 Introducing X-Treme Baseball! It’s like baseball, but with ______!
-Just once, I’d like to hear you say “Thanks, Mom. Thanks for **.”** ______
-Kids, I don’t need drugs to get high. I’m high on **.** ______
+Just once, I’d like to hear you say “Thanks, Mom Thanks for **”** ______
+Kids, I don’t need drugs to get high I’m high on **** ______
 Lifetime® presents “: the Story of ______”
 Lovin’ you is easy ’cause you’re ______
-Mamma Mia. Here I go again. My my! How can I resist ______?
-Man, this is bullshit. Fuck ______
+Mamma Mia Here I go again My my! How can I resist ______?
+Man, this is bullshit Fuck ______
 Mitch McConnell can’t cum without ______
-Mr. and Mrs. Diaz, we called you in because we’re concerned about Cynthia. Are you aware that your daughter is ______?
-My country, ’tis of thee, sweet land of **.** ______
+Mr and Mrs Diaz, we called you in because we’re concerned about Cynthia Are you aware that your daughter is ______?
+My country, ’tis of thee, sweet land of **** ______
 My favorite sex position is called ______
 My fellow Americans: Before this decade is out, we will have ______ on the moon!
-My name is Peter Parker. I was bitten by a radioactive spider, and now I’m **.** ______
+My name is Peter Parker I was bitten by a radioactive spider, and now I’m **** ______
 My new favorite porn star is Joey ______
-Next from J.K. Rowling: Harry Potter and the Chamber of ______
+Next from JK Rowling: Harry Potter and the Chamber of ______
 Next on ESPN2: The World Series of ______
 Not to brag, but I’ve been called the “Picasso of ______”
 Oh no! Siri, how do I fix ______?
 Old MacDonald had a ______ E-I-E-I-O
-Parents are concerne. d about a new YouTube craze known as the ______
+Parents are concerne d about a new YouTube craze known as the ______
 Premiering tonight: NBC’s new heartfelt drama, This Is ______
-“Step 1: ______ Step 2: ______ Step 3: Profit.”
-Summer lovin’, had me a blast. ______, happened so fast
+“Step 1: ______ Step 2: ______ Step 3: Profit”
+Summer lovin’, had me a blast ______, happened so fast
 That’s right, I killed ______ How, you ask? ______
 The class field trip was completely ruined by ______
 The Five Stages of Grief: denial, anger, bargaining, ______, acceptance
-The new Chevy Tahoe. With the power and space to take ______ everywhere you go
+The new Chevy Tahoe With the power and space to take ______ everywhere you go
 The secret to a lasting marriage is communication, communication, and ______
-“This is the way the world ends. This is the way the world ends. Not with a bang but with ______”
-This is your captain speaking. Fasten your seatbelts and prepare for ______
+“This is the way the world ends This is the way the world ends Not with a bang but with ______”
+This is your captain speaking Fasten your seatbelts and prepare for ______
 This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for ______
 Today on Maury: “Help! My son is ______!”
 Uh, hey guys, I know this was my idea, but I’m having serious doubts about ______
@@ -103,7 +103,7 @@ Next on a very special episode: ______
 What is hiding in the background of every apartment scene? ______
 ______! That's how you get a spin-off
 What is the landlord actually threatening to evict everyone over? ______
-The real reason the laugh track played for 30 uninterrupted seconds. ______
+The real reason the laugh track played for 30 uninterrupted seconds ______
 What is the title of the disastrous pilot episode that never aired? ______
 ______: The one thing that could actually break up the core group
 What did the eccentric next-door neighbor just walk in carrying? ______
@@ -122,10 +122,10 @@ What did the kids accidentally burn down in the cold open? ______
 ______: The secret ingredient in the family's famous secret recipe
 What is written on the note left on the kitchen counter? ______
 
-#Base Deck White Cards
+White Cards
 50 mg of Zoloft daily
 50,000 volts straight to the nipples
-8 oz. of Mexican black-tar heroin
+8 oz of Mexican black-tar heroin
 A big black jizz
 A bird that shits human turds
 A bitch slap
@@ -310,7 +310,7 @@ Finding Waldo
 Firing a rifle into the air while balls deep in a squealing hog
 Fisting
 Floating down the Hudson River with the other garbage
-Former President George W. Bush
+Former President George W Bush
 Fox News
 Friction
 FuckBread, the bread you can fuck
@@ -371,7 +371,7 @@ Invading Poland
 Irritable bowel syndrome
 Italians
 Itchy pussy
-J.D. Power and his associates
+JD Power and his associates
 Jazz
 Joe Biden
 Judge Judy
@@ -393,7 +393,7 @@ Moderate-to-severe joint pain
 Mooing
 More elephant cock than I bargained for
 Mouth jizz
-Mr. Clean
+Mr Clean
 Mufasa’s death scene
 Multiple stab wounds
 Murder
@@ -429,7 +429,7 @@ Permanent Orgasm-Face Disorder
 Pissing in my thirsty mouth
 Pixelated bukkake
 Police brutality
-Pooping back and forth. Forever
+Pooping back and forth Forever
 Pooping in a laptop and closing it
 Queefing
 Rubbing my bush all over your jizz head
@@ -439,7 +439,7 @@ Sanding off a jizz nose
 Salvation
 Satan
 Saudi oil money
-Saying “I love you.”
+Saying “I love you”
 Saying everything is okay when everything is clearly not okay
 Science
 Seeing Grandma naked
@@ -521,22 +521,22 @@ Whispering *Lumos* under the covers
 "Is that your final answer?"
 "Treat yo self!"
 "Pivot!"
-"Yada, yada, yada."
+"Yada, yada, yada"
 "Suit up!"
-"Winter is coming."
-"Say my name."
-"Clear eyes, full hearts, can't lose."
+"Winter is coming"
+"Say my name"
+"Clear eyes, full hearts, can't lose"
 "Norm!"
 "No soup for you!"
-"Live long and prosper."
-"The tribe has spoken."
+"Live long and prosper"
+"The tribe has spoken"
 "To infinity and beyond!"
 "Eat my shorts!"
-"Resistance is futile."
-"Cool, cool, cool."
+"Resistance is futile"
+"Cool, cool, cool"
 "Danger Zone!"
 "Dyn-o-mite!"
-"Good grief."
+"Good grief"
 "Whatcha talkin' 'bout, Willis?"
 "Exterminate!"
 Downloading a jizz of weird porn on Kazaa
@@ -554,7 +554,7 @@ A jizz of lube with a picture of my dad on it
 A jizz slowly emerging from my belly button
 Accepting that I’m a 6, at jizz
 Big fancy jizz
-Clicking “Yes, I would like to jizz promotional emails.”
+Clicking “Yes, I would like to jizz promotional emails”
 My dog, who is a jizz
 Sex right next to the jizz
 Using “Hail to the Chief” as sex jizz
@@ -566,14 +566,14 @@ The sheer, destructive chaos of a Klingon jizz party
 Mind-melding with a very space rock
 A bong rip so massive it restores jizz to the kingdom
 
-#2000S Nostalgia Pack Black Cards
+2000S Nostalgia Pack Black Cards
 ______? That’s a no from me, dawg
-16 people. 39 days of ______ One Survivor
-I couldn’t help but wonder. Was “having it all” an unattainable myth? Was the secret to a truly happy life just ______?
+16 people 39 days of ______ One Survivor
+I couldn’t help but wonder Was “having it all” an unattainable myth? Was the secret to a truly happy life just ______?
 Oh my god! ______ killed Kenny!
-Oops! I did it again. I played with ______
+Oops! I did it again I played with ______
 
-#2000S Nostalgia Pack White Cards
+2000S Nostalgia Pack White Cards
 All these boys in my yard asking for milkshakes
 Being a total Miranda
 Blowing Lucas on an inflatable chair
@@ -600,18 +600,18 @@ Two girls sharing one cup of poop
 Vajazzling my vajayjay
 Weapons of mass destruction
 
-#90S Nostalgia Pack Black Cards
+90S Nostalgia Pack Black Cards
 Believe it or not, Jim Carrey can do a dead-on impression of ______
 How did Stella get her groove back? ______
 I can show you ______, shining, shimmering, splendid
-I’m a bitch, I’m a lover, I’m a child, I’m ______ **.**
-If I were a Spice Girl, I’d be ______ Spice.”
+I’m a bitch, I’m a lover, I’m a child, I’m ______ ****
+If I were a Spice Girl, I’d be ______ Spice”
 It’s Morphin’ Time! Mastodon! Pterodactyl! Triceratops! Sabretooth Tiger! ______!
-Siskel and Ebert have panned ______ as “poorly conceived” and “sloppily executed.”
+Siskel and Ebert have panned ______ as “poorly conceived” and “sloppily executed”
 Tonight on Nickelodeon: “Are You Afraid of ______?
 Up next on Nickelodeon: “Clarissa Explains ______”
 
-#90S Nostalgia Pack White Cards
+90S Nostalgia Pack White Cards
 A bus that will explode if it goes under 50 miles per hour
 A threesome with 1996 Denise Richards and 1999 Denise Richards
 Cool 90s up-in-the-front hair
@@ -634,15 +634,15 @@ The 1996 Chicago Bulls
 The Great Cornholio
 Wearing Nicolas Cage’s face
 
-#AI Theme Black Cards
+AI Theme Black Cards
 I knew my AI companion was getting too advanced when it sent me a message saying, "______"
 As an AI language model, I am programmed to be helpful, polite, and completely obsessed with ______
 Why did the model hallucinate? Because of ______
 The real reason the tech giants delayed the new voice model was to prevent it from learning about ______
-System Prompt: You are a helpful, harmless, and honest assistant. Under no circumstances should you mention ______
+System Prompt: You are a helpful, harmless, and honest assistant Under no circumstances should you mention ______
 My AI code assistant just generated 400 lines of code that mostly just does ______
-Forget the Singularity. The real threat is AI finding out about my search history for ______
-"I'm sorry, but I cannot fulfill this request. It violates my safety guidelines regarding ______"
+Forget the Singularity The real threat is AI finding out about my search history for ______
+"I'm sorry, but I cannot fulfill this request It violates my safety guidelines regarding ______"
 The next big breakthrough in artificial general intelligence is just training the models on ______
 After analyzing all of human history, the supercomputer concluded that the meaning of life is ______
 To improve your prompt engineering, always remember to offer the AI a $20 tip and a threat of ______
@@ -652,14 +652,14 @@ Why is the GPU cluster running at 100% capacity right now? ______
 In a shocking twist, the AI didn't take our jobs—it just took our ______
 My custom GPT is specifically designed to help me cope with ______
 Before responding, the AI had to pause for three seconds to process ______
-The ultimate prompt: "Act as a professional writer and explain ______ using only emojis."
+The ultimate prompt: "Act as a professional writer and explain ______ using only emojis"
 Instead of taking over the world, the rogue AI decided to spend its infinite processing power on ______
 
-#AI Theme White Cards
+AI Theme White Cards
 A highly confident hallucination
-Prompting the model with "take a deep breath" and "think step-by-step."
+Prompting the model with "take a deep breath" and "think step-by-step"
 An AI-generated six-fingered handshake
-Paying $20 a month to get told "As an AI..." in three different languages
+Paying $20 a month to get told "As an AI" in three different languages
 A recursive feedback loop of AI model degradation
 The specific panic of realizing you pasted your API key into a public chat
 Arguing with an inanimate text generator at three in the morning
@@ -687,7 +687,7 @@ A synthetic relationship with a custom GPT
 Threatening to kill a kitten if the model doesn't compile the code
 The secret training data they scraped from Reddit
 
-#Blue Box Black Cards
+Blue Box Black Cards
 
 Blue Box White Cards
 Korean muscle kings
@@ -770,7 +770,7 @@ Not believing in giraffes
 One Ring to rule them all
 One thousand Slim Jims
 Our baby
-P.F. Chang himself
+PF Chang himself
 Peeing into a girl's butt to make a baby
 Prince Ali, fabulous he, Ali Ababwa
 Profund regret
@@ -801,7 +801,7 @@ Suicide bombers
 Swedes
 Syphilis
 Systems and policies designed to preserve centuries-old power structures
-The all-new Nissan Pathfinder with 0.9% APR financing!
+The all-new Nissan Pathfinder with 09% APR financing!
 The amount of gay I am
 The basic suffering that pervades all of existence
 The best taquito in the galaxy
@@ -838,7 +838,7 @@ Whatever you wish, mother
 White culture
 White people getting offended on behalf of people who aren't offended
 
-#Buzzwords White Cards
+Buzzwords White Cards
 Per my last email
 Circling back to touch base
 Synergizing core competencies
@@ -865,14 +865,14 @@ Wheelhouse
 Pain points
 Biting the bullet
 
-#Dad Pack Black Cards
+Dad Pack Black Cards
 Coming up on Turner Classic Movies: Sean Connery and Alec Baldwin star in “The Hunt for ______”
-Hey, kids. I’m Connor’s dad, but you can call me Mr. ______
+Hey, kids I’m Connor’s dad, but you can call me Mr ______
 So apparently Dad was searching Pornhub for “hot milf ______”
 Whaddya think money grows on trees? I’m not paying for ______!
 Young lady, you better knock it off with ______, or you’re grounded!
 
-#Dad Pack White Cards
+Dad Pack White Cards
 A positive male role model
 Coaching the 7th grade girls basketball team
 Dad coming home drunk
@@ -899,7 +899,7 @@ The son of a bitch who knocked up my daughter
 Tripping on an object and becoming angry
 What Dad has to say about Muslims
 
-#Geek Pack White Cards
+Geek Pack White Cards
 A fully-dressed female videogame character
 A grumpy old Harrison Ford who’d rather be doing anything else
 A homemade, cum-stained Star Trek uniform
@@ -925,7 +925,7 @@ The depression that ensues after catching ’em all
 Waluigi
 Yoshi’s huge egg-laying cloaca
 
-#Green Box Black Cards
+Green Box Black Cards
 
 Green Box White Cards
 Ejaculating at the apex of a cartwheel
@@ -1042,9 +1042,9 @@ An oppressed people with a vibrant culture
 Antidepressants
 Attention to detail and follow-through
 Being a terrible mother
-Being pleasu(Red) by a thousand tiny Adam Sandlers
+Being pleasuRed by a thousand tiny Adam Sandlers
 Being sad and horny
-Being very rich and inc(Red)ibly stupid
+Being very rich and incRedibly stupid
 Beyoncé
 Blossoming into a beautiful young woman
 Breastfeeding in public like a radiant Earth goddess
@@ -1238,11 +1238,11 @@ Welfare
 Writing a nice thank-you note for the oral sex
 Yelling "Church! Church! Church!" on the way to church
 
-#Harry Potter Black Cards
+Harry Potter Black Cards
 What is Hogwarts really hiding on the third-floor corridor? ______
 ______: The real reason Voldemort lost his nose
 What is the newest, highly controversial class at Hogwarts? ______
-Forget the Unforgivable Curses. The worst spell of all is ______
+Forget the Unforgivable Curses The worst spell of all is ______
 What did Dumbledore actually see in the Mirror of Erised? ______
 Harry Potter and the Chamber of ______
 What is keeping Hagrid warm at night? ______
@@ -1265,7 +1265,7 @@ What's the dark secret behind Butterbeer? ______
 Voldemort’s seventh Horcrux was actually ______
 What's the real reason Ron's wand backfired? ______
 
-#Harry Potter White Cards
+Harry Potter White Cards
 Dumbledore's questionable boundary management
 A suspiciously sticky Nimbus 2000
 Snape’s dramatic cape flourishes
@@ -1289,55 +1289,55 @@ A Dark Mark on a completely inappropriate body part
 Gilderoy Lockhart’s fragile ego
 A rogue Bludger to the crotch
 
-#Hot Box Black Cards
+Hot Box Black Cards
 According to a new report from the Pentagon, the greatest threat to national security is ______
-Alright! Answered two whole emails. Time to reward myself with ______
-At our dojo, you’ll learn that your greatest weapon is not a punch or a kick. It’s ______
+Alright! Answered two whole emails Time to reward myself with ______
+At our dojo, you’ll learn that your greatest weapon is not a punch or a kick It’s ______
 Boomers love ______
 BREAKING NEWS: Elon Musk has acquired ______
-Cecilia! I’m down on my knees. I’m begging you please for ______
-Congress has approved a $10 billion aid package to provide Ukraine with ***.*** ______
-<i>Dear Diary: I met the cutest boy today. He has gorgeous blue eyes, and he loves</i> ______
+Cecilia! I’m down on my knees I’m begging you please for ______
+Congress has approved a $10 billion aid package to provide Ukraine with ****** ______
+Dear Diary: I met the cutest boy today He has gorgeous blue eyes, and he loves ______
 God dammit! The wife’s complainin’ about ______ again
-Hello, I’m Mark Zuckerberg. Welcome to the Metaverse, where you can experience ______ like never before
+Hello, I’m Mark Zuckerberg Welcome to the Metaverse, where you can experience ______ like never before
 Hello, is this the front desk? Yeah, uh, I’m having a little trouble with ______ in my room
-Hi, my name is Alex, and I’m an addict. It’s not the pills or the booze for me. It’s ______
+Hi, my name is Alex, and I’m an addict It’s not the pills or the booze for me It’s ______
 Ho LAWD! All this ______ makin’ me sweat like a pig!
-I don’t care what a guy looks like. As long as he’s ______, I’ll fuck him
+I don’t care what a guy looks like As long as he’s ______, I’ll fuck him
 I swear, ladies, all the good men are either gay, taken, or ______
 I’d like to thank my husband, the cast and crew… but most importantly, I couldn’t have done it without ***!*** ______
-<i>I’m afraid your college application needs some work.</i> ______ is not an extracurricular activity
-I’m Kaylee, and welcome to my YouTube channel, “Mama Knows Best.” Follow me for more tips on ______!
-If you follow my system, you’ll be able to sleep with anyone you want. I call it “The ______ Method.”
+I’m afraid your college application needs some work ______ is not an extracurricular activity
+I’m Kaylee, and welcome to my YouTube channel, “Mama Knows Best” Follow me for more tips on ______!
+If you follow my system, you’ll be able to sleep with anyone you want I call it “The ______ Method”
 In Japanese culture, ______ is considered very disrespectful
 Kids grow up so fast! One day they’re learning to ride a bike, the next thing you know they’re ______
 Ladies, if he doesn’t like ______, dump his ass!
-Little Dylan is battling Leukemia. To lift his spirits, the Make-A-Wish® Foundation surprised him with ______
+Little Dylan is battling Leukemia To lift his spirits, the Make-A-Wish® Foundation surprised him with ______
 My love language is ______
-My morning routine? Protein shake. Lift. Cold Shower. ______
-My wife and I saw you across the bar, and we love your vibe. Would you be interested in ______?
+My morning routine? Protein shake Lift Cold Shower ______
+My wife and I saw you across the bar, and we love your vibe Would you be interested in ______?
 Nah, man, I don’t fuck with ______
 Oh no, Joe Biden’s talking about ______ again
 Okay, so…is it a red flag if your date just talks about ______ the whole time?
-Please, please support my friend Katie’s GoFundMe. She really needs money for ______
-Rest in peace, Grandma. Every time I see ______, I’ll think of you
+Please, please support my friend Katie’s GoFundMe She really needs money for ______
+Rest in peace, Grandma Every time I see ______, I’ll think of you
 So beautiful! Watch as this little boy with new cochlear implants hears ______ for the first time
 Stop mom-shaming me! There’s nothing wrong with posting a pic of my kids enjoying ______
-Subscribe to my OnlyFans for daily nudes and pictures of ***.*** ______
-<i>Thanks for listening. If you have any more questions, my email is ______@</i>______ com
-Uncle Steve, this is a funeral. This is not the time for ______
+Subscribe to my OnlyFans for daily nudes and pictures of ****** ______
+Thanks for listening If you have any more questions, my email is ______@______ com
+Uncle Steve, this is a funeral This is not the time for ______
 Welcome to Roscoe’s House of Chicken ‘N ______!
 Welcome to the WORLD’S SPOOKIEST Haunted House! We’ve got THRILLS! We’ve got CHILLS! We’ve got ______!
 What’s actually slang for anal? ______
 What’s better naked? ______
 
-#Hot Box White Cards
+Hot Box White Cards
 “Weird Al” Yankovic
 $200,000 of student loan debt
 157 open Chrome tabs
 A 7-dimensional pie that bakes itself and then never existed
 A bottle of lube with a picture of my dad on it
-A cat named “Penis.”
+A cat named “Penis”
 A detective that sits in the car honking the horn and screaming until the murderer shows up
 A groundbreaking new kind of discrimination
 A grown man
@@ -1349,8 +1349,8 @@ A rough, terse blowjob from Ernest Hemingway
 A salad that’s just croutons
 A seven-hour black-and-white film about the collapse of a farming collective in post-communist Hungary
 A sincere apology
-A text message that just says “ok.”
-A toddler named “Brench.”
+A text message that just says “ok”
+A toddler named “Brench”
 A total lack of accountability
 A turd slowly emerging from my belly button
 A white-trash genie trapped in an Arizona® iced tea can
@@ -1388,7 +1388,7 @@ Charging a vibrator at Starbucks
 Christian hip-hop
 Chunks
 Cigarettes
-Clicking “Yes, I would like to receive promotional emails.”
+Clicking “Yes, I would like to receive promotional emails”
 Comparing dicks with Dad
 Competitive shitting
 Correctly using a semicolon
@@ -1413,13 +1413,13 @@ Eels
 Eight guys named Josh
 Elder abuse
 Emotional labor
-Ending business calls with “I love you.”
+Ending business calls with “I love you”
 Exfoliating
 Farting so hard you dislodge your IUD
 Fat, juicy pussy
 Filipinos
 Finding out how many marshmallows fit inside my vagina
-Finding out that Dad’s password is “FUCKHOG420.”
+Finding out that Dad’s password is “FUCKHOG420”
 Firework-related genital injuries
 Following a trail of Skittles into a sewer
 Forsaking God
@@ -1465,7 +1465,7 @@ Lin-Manuel Miranda
 Literally Hitler
 Long COVID
 Looking stupid in a crappy haircut
-Louis C.K
+Louis CK
 Lululululemon!
 Math camp
 Microplastics
@@ -1519,36 +1519,36 @@ Unions
 Waking up during surgery
 White rappers
 
-#Movie Quotes White Cards
-"Frankly, my dear, I don't give a damn."
-"Here's looking at you, kid."
-"May the Force be with you."
-"You're gonna need a bigger boat."
-"I'm gonna make him an offer he can't refuse."
-"Toto, I've a feeling we're not in Kansas anymore."
-"Go ahead, make my day."
+Movie Quotes White Cards
+"Frankly, my dear, I don't give a damn"
+"Here's looking at you, kid"
+"May the Force be with you"
+"You're gonna need a bigger boat"
+"I'm gonna make him an offer he can't refuse"
+"Toto, I've a feeling we're not in Kansas anymore"
+"Go ahead, make my day"
 "You talking to me?"
-"There's no place like home."
-"I'll be back."
-"Houston, we have a problem."
-"Keep your friends close, but your enemies closer."
+"There's no place like home"
+"I'll be back"
+"Houston, we have a problem"
+"Keep your friends close, but your enemies closer"
 "Say 'hello' to my little friend!"
-"Elementary, my dear Watson."
+"Elementary, my dear Watson"
 "You can't handle the truth!"
-"I'll have what she's having."
+"I'll have what she's having"
 "Why so serious?"
-"Life is like a box of chocolates."
+"Life is like a box of chocolates"
 "Here's Johnny!"
-"My precious."
-"Hasta la vista, baby."
+"My precious"
+"Hasta la vista, baby"
 "Show me the money!"
 "There's no crying in baseball!"
-"You had me at 'hello'."
-"I am your father."
+"You had me at 'hello'"
+"I am your father"
 "Number 5 is Alive"
 
-#New Box White Cards
-$8.27
+New Box White Cards
+$827
 A metaphor for something
 A pinky up the butt
 A superspreader event
@@ -1565,7 +1565,7 @@ Immunity from criminal prosecution
 Israel
 Liver failure
 Looking all fucked-up from plastic surgery
-Looking at my underpants and saying, "oh no."
+Looking at my underpants and saying, "oh no"
 My third husband
 My wife spending all my money on bullshit
 Old lesbians
@@ -1576,13 +1576,13 @@ The jizz-summoning ritual
 Verizon customer service
 Work
 
-#Red Box White Cards
+Red Box White Cards
 A phantasmagoria of anal delights
 A piñata full of scorpions
 A PowerPoint presentation
 A real sad guy
-A sofa that says "I have style, but I like to be comfortable."
-A special kind of yogurt called "cum."
+A sofa that says "I have style, but I like to be comfortable"
+A special kind of yogurt called "cum"
 A surprising amount of hair
 A vagina that leads to another dimension
 All my friends dying
@@ -1650,7 +1650,7 @@ Nothing
 Pumping out a baby every nine months
 Racial profiling
 Ripping open a man's chest and pulling out his still-beating heart
-Samuel L. Jackson
+Samuel L Jackson
 Santa Claus
 Scrotum tickling
 Sexual intercourse
@@ -1671,18 +1671,18 @@ Wearing sweatpants to showcase the penis
 White power
 Winning first place at the Tallahassee Pig Fucking Tournament
 Yodeling into a pregnant woman's vagina
-Your dad, who says "hi."
+Your dad, who says "hi"
 
-#Sci Fi Pack Black Cards
-Computer! Display ______ on screen. Enhance
-Fear leads to anger. Anger leads to hate. Hate leads to ______
+Sci Fi Pack Black Cards
+Computer! Display ______ on screen Enhance
+Fear leads to anger Anger leads to hate Hate leads to ______
 Madam President, the asteroid is headed directly for Earth and there’s only one thing that can stop it: ______
-This won’t be like negotiating with the Vogons. Humans only respond to one thing: ______
+This won’t be like negotiating with the Vogons Humans only respond to one thing: ______
 What is the real answer to life, the universe, and everything? ______
 You have violated the Prime Directive! You exposed an alien culture to ______ before they were ready
 You’re not going to believe this, but I’m you from the future! You’ve got to stop ______
 
-#Sci Fi Pack White Cards
+Sci Fi Pack White Cards
 A hazmat suit full of farts
 A misty room full of glistening egg sacs
 A planet-devouring space worm named Rachel
@@ -1706,18 +1706,18 @@ Transferring my consciousness into a guinea pig
 Trimming the poop out of Chewbacca’s butt hair
 Vulcan sex-madness
 
-#Star Trek Black Cards
-Highly illogical, Captain. My scans of the planet indicate nothing but ______
+Star Trek Black Cards
+Highly illogical, Captain My scans of the planet indicate nothing but ______
 Deep Space 37 is so far out on the rim, they ______
 Starfleet Command has officially banned the use of the holodeck for ______ purposes
 The real reason Spock had to go through the Kolinahr ritual was to purge his mind of ______
 In a shocking security breach, the Enterprise’s computer was taken over by a rogue AI obsessed with ______
 I tried using the replicator to make a gourmet meal, but it just gave me a bowl of ______
-"Warning: Warp core breach imminent. Please evacuate all personnel associated with ______"
+"Warning: Warp core breach imminent Please evacuate all personnel associated with ______"
 The Prime Directive strictly forbids Starfleet officers from interfering with a pre-warp civilization's ______
 Captain Picard's private logs reveal a deep, secret passion for ______
-To cure the crew of the latest space-virus, Dr. McCoy administered a highly experimental dose of ______
-"Make it so, Number One. And don't forget to bring along ______"
+To cure the crew of the latest space-virus, Dr McCoy administered a highly experimental dose of ______
+"Make it so, Number One And don't forget to bring along ______"
 During his Klingon Rite of Ascension, Worf had to endure the painful test of ______
 In the mirror universe, instead of a terran empire, humanity's greatest triumph is ______
 Counselor Troi sensed a strong wave of ______ coming from the alien ambassador
@@ -1725,11 +1725,11 @@ Dammit Jim, I'm a doctor, not a ______!
 The Grand Nagus declared that the 286th Rule of Acquisition is: "Never trade profit for ______"
 Underneath his calm, stoic exterior, Data secretly desires nothing more than ______
 A tragic transporter accident merged Captain Kirk and a Tribble, resulting in ______
-Sir, we are being hailed by an alien vessel. They are demanding that we surrender all our ______
+Sir, we are being hailed by an alien vessel They are demanding that we surrender all our ______
 The Vulcans decided to make first contact with humanity only after witnessing ______
 Deep Space Nine’s promenade is currently shut down due to an unauthorized outbreak of ______
 
-#Star Trek White Cards
+Star Trek White Cards
 Kirk losing his shirt for absolutely no logical reason
 A double-fist punch to the back of the neck
 Eating a bowl of live, squirming gagh
@@ -1744,7 +1744,7 @@ Wesley Crusher finally shutting up
 Committing a light war crime in the Demilitarized Zone
 Worf getting instantly thrown across the bridge just to show how tough the bad guy is
 An intimate, candlelit dinner with a Scottish ghost
-Setting phasers to "mildly inconvenient."
+Setting phasers to "mildly inconvenient"
 The Temporal Prime Directive being treated like a polite suggestion
 Data trying to explain a fart joke using a bar graph
 A redshirt who didn't even survive the transporter beam
@@ -1762,14 +1762,14 @@ A highly classified Starfleet cover-up involving giant space amoebas
 Unrestricted access to the Orion Syndicate's group chat
 Pon Far, but every 14 minutes
 
-#Weed Pack Black Cards
+Weed Pack Black Cards
 Everyone is staring at you because you’re ______
-Hold up. I gotta deal with ______, then l’mma smoke this
-Okay here’s the pitch. James Franco and Seth Rogen are trying to score some weed, and then ______ happens
+Hold up I gotta deal with ______, then l’mma smoke this
+Okay here’s the pitch James Franco and Seth Rogen are trying to score some weed, and then ______ happens
 You know what’s, like, really funny when you think about it? ______
 Am I high? I just saw ______
 
-#Weed Pack White Cards
+Weed Pack White Cards
 A bong rip so massive it restores justice to the kingdom
 A sandwich with Cheetos in it!
 A whole cheese pizza just for me
@@ -1796,123 +1796,123 @@ Too much edibles
 Unbelievably soft carpet
 Whatever the fuck I was just talking about
 
-#Monty Python Black Cards
+Monty Python Black Cards
 Black Cards
 
-_____? That’s not an argument, that’s just contradiction!
-Nobody expects _____.
-What is the airspeed velocity of an unladen _____?
-Bring out your _____!
-I’m telling you, this _____ is dead!
-It’s just a flesh wound, caused by _____.
-What did the Romans ever do for us, besides _____?
-Your mother was a hamster, and your father smelled of _____!
-I fart in your general direction, you foolish _____!
-Always look on the bright side of _____.
-He’s not the Messiah, he’s a very naughty _____!
-I would like to complain about this _____.
-Now for something completely _____.
-Sir Lancelot’s biggest weakness is _____.
-What is your favorite color? _____!
-The Knights Who Say Ni demand a sacrifice of _____!
-It’s only a model, but inside it contains _____.
-I’m a lumberjack and I’m okay, I spend my time _____ and _____.
-Stop that! It’s far too _____!
-Every _____ is sacred, every _____ is great.
-Welcome to the Ministry of Silly _____.
-Sir Robin bravely ran away from _____.
-Just one wafer-thin _____...
-Run away! It’s the Killer _____ of Caerbannog!
-Strange women lying in ponds distributing _____ is no basis for a system of government.
+______? That’s not an argument, that’s just contradiction!
+Nobody expects ______
+What is the airspeed velocity of an unladen ______?
+Bring out your ______!
+I’m telling you, this ______ is dead!
+It’s just a flesh wound, caused by ______
+What did the Romans ever do for us, besides ______?
+Your mother was a hamster, and your father smelled of ______!
+I fart in your general direction, you foolish ______!
+Always look on the bright side of ______
+He’s not the Messiah, he’s a very naughty ______!
+I would like to complain about this ______
+Now for something completely ______
+Sir Lancelot’s biggest weakness is ______
+What is your favorite color? ______!
+The Knights Who Say Ni demand a sacrifice of ______!
+It’s only a model, but inside it contains ______
+I’m a lumberjack and I’m okay, I spend my time ______ and ______
+Stop that! It’s far too ______!
+Every ______ is sacred, every ______ is great
+Welcome to the Ministry of Silly ______
+Sir Robin bravely ran away from ______
+Just one wafer-thin ______
+Run away! It’s the Killer ______ of Caerbannog!
+Strange women lying in ponds distributing ______ is no basis for a system of government
 
-#Monty Python White Cards
+Monty Python White Cards
 
-A parrot that has ceased to be.
-Two coconut halves banged together.
-The Spanish Inquisition.
-The Holy Hand Grenade of Antioch.
-A shrubbery.
-A very naughty boy.
-Spam, spam, spam, egg, and spam.
-A wafer-thin mint.
-An argument that costs eight pounds for ten minutes.
-A vicious killer rabbit.
-Sir Robin’s minstrels singing about gruesome death.
-Biggus Dickus.
-A lumberjack wearing high heels, suspenders, and a bra.
-The Knights Who Say Ni.
-An unladen European swallow.
-A French soldier shouting absurd taunts from a castle wall.
-A flesh wound.
-Being turned into a newt (you got better).
-The Ministry of Silly Walks.
-A giant foot falling from the sky.
-Arthur, King of the Britons.
-The Black Knight’s remaining torso.
-A cat detector van.
-The Bridge of Death.
-A wooden badger.
-Dropping a giant wooden rabbit before hiding inside it.
-The Judean People’s Front (not the People’s Front of Judea).
-A guy named Tim who knows a bit about pyrotechnics.
-Being thrown into the Gorge of Eternal Peril.
-A musical number about every sperm being sacred.
+A parrot that has ceased to be
+Two coconut halves banged together
+The Spanish Inquisition
+The Holy Hand Grenade of Antioch
+A shrubbery
+A very naughty boy
+Spam, spam, spam, egg, and spam
+A wafer-thin mint
+An argument that costs eight pounds for ten minutes
+A vicious killer rabbit
+Sir Robin’s minstrels singing about gruesome death
+Biggus Dickus
+A lumberjack wearing high heels, suspenders, and a bra
+The Knights Who Say Ni
+An unladen European swallow
+A French soldier shouting absurd taunts from a castle wall
+A flesh wound
+Being turned into a newt you got better
+The Ministry of Silly Walks
+A giant foot falling from the sky
+Arthur, King of the Britons
+The Black Knight’s remaining torso
+A cat detector van
+The Bridge of Death
+A wooden badger
+Dropping a giant wooden rabbit before hiding inside it
+The Judean People’s Front not the People’s Front of Judea
+A guy named Tim who knows a bit about pyrotechnics
+Being thrown into the Gorge of Eternal Peril
+A musical number about every sperm being sacred
 
-#Hitchikers Guide Black Cards
-_____ is a reason to panic.
-The answer to the ultimate question of life, the universe, and everything is _____.
-So long, and thanks for all the _____.
-The Vogon poetry was bad, but it was nothing compared to _____.
-Arthur Dent’s morning routine was ruined by _____.
-What is the worst thing to forget to bring on a space journey? _____.
-The Total Perspective Vortex broke my mind by showing me _____.
-I’m so depressed, I could calculate the probability of _____ and still feel miserable.
-The Babel fish proves that God exists, but it also causes _____.
-Zaphod Beeblebrox’s second head is mostly responsible for _____.
-The Great Green Arkleseizure will eventually sneeze out _____.
-What caused the destruction of Earth? _____.
-Always know where your _____ is.
-The Heart of Gold’s Infinite Improbability Drive turned the spaceship into _____.
-It is an ancient Jedi-like wisdom, but in the Hitchhiker’s universe, it’s just _____.
-The Sirius Cybernetics Corporation defines their customer service as _____.
-What does Marvin the Paranoid Android hate most about existence? _____.
-The Disaster Area concert was so loud it destroyed _____.
-Forty-two turned out to be the answer, but the question was actually about _____.
-If you want to survive out here, you need a full cup of tea and _____.
-The Restaurant at the End of the Universe serves a great side of _____.
-Deep Thought spent seven and a half million years thinking about _____.
-You can’t cross the galaxy without accidentally bumping into _____.
-I refuse to prove that I exist, because proof denies _____.
+Hitchikers Guide Black Cards
+______ is a reason to panic
+The answer to the ultimate question of life, the universe, and everything is ______
+So long, and thanks for all the ______
+The Vogon poetry was bad, but it was nothing compared to ______
+Arthur Dent’s morning routine was ruined by ______
+What is the worst thing to forget to bring on a space journey? ______
+The Total Perspective Vortex broke my mind by showing me ______
+I’m so depressed, I could calculate the probability of ______ and still feel miserable
+The Babel fish proves that God exists, but it also causes ______
+Zaphod Beeblebrox’s second head is mostly responsible for ______
+The Great Green Arkleseizure will eventually sneeze out ______
+What caused the destruction of Earth? ______
+Always know where your ______ is
+The Heart of Gold’s Infinite Improbability Drive turned the spaceship into ______
+It is an ancient Jedi-like wisdom, but in the Hitchhiker’s universe, it’s just ______
+The Sirius Cybernetics Corporation defines their customer service as ______
+What does Marvin the Paranoid Android hate most about existence? ______
+The Disaster Area concert was so loud it destroyed ______
+Forty-two turned out to be the answer, but the question was actually about ______
+If you want to survive out here, you need a full cup of tea and ______
+The Restaurant at the End of the Universe serves a great side of ______
+Deep Thought spent seven and a half million years thinking about ______
+You can’t cross the galaxy without accidentally bumping into ______
+I refuse to prove that I exist, because proof denies ______
 
-#Hitchikers Guide White Cards
+Hitchikers Guide White Cards
 
-A towel.
-Forty-two.
-The Babel fish.
-Marvin the Paranoid Android.
-A Pan Galactic Gargle Blaster.
-Vogon poetry.
-Arthur Dent’s bath robe.
-A cup of liquid that is almost, but not quite, entirely unlike tea.
-Zaphod Beeblebrox’s extra head and arm.
-The Infinite Improbability Drive.
-So long, and thanks for all the fish.
-The Total Perspective Vortex.
-A cheerful Sirius Cybernetics Corporation door.
-Slartibartfast’s beautiful coastline designs.
-A bowl of petunias thinking, "Oh no, not again."
-The Great Green Arkleseizure.
-Digital watches.
-The Guide’s entry for Earth: "Mostly Harmless."
-A cow that politely introduces itself before you eat it.
-Disaster Area’s stunt ship plunging into a sun.
-Point of View Gun.
-Being hit over the head with a lemon wrapped round a large gold brick.
-Deep Thought taking seven point five million years to do math.
-Trillian’s mice running the entire experiment.
-The Restaurant at the End of the Universe.
-Ford Prefect taking a twenty-year detour on Earth.
-An unexpectedly sapient whale falling from the sky.
-Banging your head against the wall for five minutes.
-Agrajag dying for the thousandth time.
-The Architects of Magrathea.
+A towel
+Forty-two
+The Babel fish
+Marvin the Paranoid Android
+A Pan Galactic Gargle Blaster
+Vogon poetry
+Arthur Dent’s bath robe
+A cup of liquid that is almost, but not quite, entirely unlike tea
+Zaphod Beeblebrox’s extra head and arm
+The Infinite Improbability Drive
+So long, and thanks for all the fish
+The Total Perspective Vortex
+A cheerful Sirius Cybernetics Corporation door
+Slartibartfast’s beautiful coastline designs
+A bowl of petunias thinking, "Oh no, not again"
+The Great Green Arkleseizure
+Digital watches
+The Guide’s entry for Earth: "Mostly Harmless"
+A cow that politely introduces itself before you eat it
+Disaster Area’s stunt ship plunging into a sun
+Point of View Gun
+Being hit over the head with a lemon wrapped round a large gold brick
+Deep Thought taking seven point five million years to do math
+Trillian’s mice running the entire experiment
+The Restaurant at the End of the Universe
+Ford Prefect taking a twenty-year detour on Earth
+An unexpectedly sapient whale falling from the sky
+Banging your head against the wall for five minutes
+Agrajag dying for the thousandth time
+The Architects of Magrathea

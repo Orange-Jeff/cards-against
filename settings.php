@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version: 4.10.1 - Fix Gemini model name typo
+ * Version: 4.10 - Fix Card Edit text visibility and styling
  * Changes:
  *   - Upgraded version number to 4.10.
  *   - Added explicit inline styling to card edit inputs (avoiding white-on-white text input visibility issues).
@@ -707,7 +707,7 @@ if (isset($_POST['action'])) {
             exit;
         }
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
         $payload = [
             "contents" => [
                 ["role" => "user", "parts" => [["text" => "Test connection. Respond with only the word: 'OK'."]]]

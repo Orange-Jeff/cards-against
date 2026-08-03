@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version: 4.9.2 - Fix fatal error from duplicated function declarations and AI model selection
+ * Version: 4.9 - Disallow Google TTS key fallback for Gemini AI calls
  * Changes:
  *   - Upgraded version number to 4.9.
  *   - Added check to ignore GEMINI_API_KEY environment variable if it matches the configured Google TTS API key (to avoid key mismatch/silent AI failures).
@@ -174,7 +174,7 @@ function queryAIAgainstDetailed(string $systemPrompt, string $userPrompt, float 
         ];
         $headers = ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey];
     } else {
-        $modelName = 'gemini-1.5-flash';
+        $modelName = !empty($ai['model']) ? $ai['model'] : 'gemini-2.5-flash';
         $url = "https://generativelanguage.googleapis.com/v1beta/models/" . urlencode($modelName) . ":generateContent?key=" . rawurlencode($apiKey);
         $payload = [
             'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],

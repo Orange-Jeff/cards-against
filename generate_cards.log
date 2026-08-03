@@ -1,0 +1,87 @@
+Warning: Composer dependencies not found. Google Cloud TTS will use REST API.
+ℹ️  Using Google Cloud API Key from global_config.json
+=== Against Game Audio Generation ===
+Batch Size: 50 cards/batch
+Start Index: 0
+Stop Index: ALL
+Mode: PRODUCTION (actual TTS)
+Voices: male, female, british
+=================================
+
+Total unique cards found: 360 black, 1367 white.
+📋 Decks loaded:
+   • Black cards: 348
+   • White cards: 1365
+
+🎵 Generating audio for all cards...
+
+=== BLACK CARDS ===
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 18.696859905s.
+⏳ Rate limited. Backing off for 15s (Retry 1)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 3.569130472s.
+⏳ Rate limited. Backing off for 15s (Retry 2)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 48.386878005s.
+⏳ Rate limited. Backing off for 15s (Retry 3)... 
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+❌ FAILED: All models and retries exhausted for '+'
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 20.600423333s.
+⏳ Rate limited. Backing off for 15s (Retry 1)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 5.491538013s.
+⏳ Rate limited. Backing off for 15s (Retry 2)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 50.380765872s.
+⏳ Rate limited. Backing off for 15s (Retry 3)... 
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+❌ FAILED: All models and retries exhausted for '+'
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 22.596182417s.
+⏳ Rate limited. Backing off for 15s (Retry 1)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 7.474108906s.
+⏳ Rate limited. Backing off for 15s (Retry 2)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 52.347585209s.
+⏳ Rate limited. Backing off for 15s (Retry 3)... 
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-2.0-flash): [400] Model does not support the requested response modalities: audio
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+⚠️  Gemini Error (gemini-1.5-flash): [404] models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.
+❌ FAILED: All models and retries exhausted for '+'
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 24.556448198s.
+⏳ Rate limited. Backing off for 15s (Retry 1)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 9.41084032s.
+⏳ Rate limited. Backing off for 15s (Retry 2)... 
+⚠️  Gemini Error (gemini-2.5-flash-preview-tts): [429] You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. 
+* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10, model: gemini-2.5-flash-tts
+Please retry in 54.295828311s.
+⏳ Rate limited. Backing off for 15s (Retry 3)... 
