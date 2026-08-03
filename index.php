@@ -327,10 +327,9 @@ foreach ($userActiveRooms as $activeRoom) {
     <!-- TOP TITLE LINE -->
     <div class="bg-[#111214] border-b border-gray-800 py-2 flex-none">
         <div class="max-w-4xl mx-auto px-4 text-center">
-            <h1 class="text-sm sm:text-base font-black uppercase tracking-[0.18em]">
+            <h1 class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
-                <span class="text-gray-200">(<?php echo htmlspecialchars($themeKeyword); ?>)</span>
-                <span class="text-[10px] lowercase text-gray-300 font-normal tracking-wide ml-2">v4.9</span>
+                <span class="text-gray-200"><?php echo htmlspecialchars($themeKeyword); ?></span>
             </h1>
         </div>
     </div>

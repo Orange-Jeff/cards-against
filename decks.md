@@ -13,11 +13,11 @@ As the mom of five rambunctious boys, I’m no stranger to ______
 Attention Target shoppers Unfortunately, we will be closing early due to ______
 Bitch, you’re nasty You’re disgusting You’re ______ Go home, bitch
 Brought to you by Bud Light®, the Official Beer of ______
-But before I kill you, Mr Bond, I must show you **** ______
+But before I kill you, Mr Bond, I must show you ______
 Check me out, yo! I call this dance move ______
 Coming to Broadway this season, ______: The Musical
 Daddy, why is mommy crying? ______
-Designers! For this week’s challenge, you must make a dress designed for **** ______
+Designers! For this week’s challenge, you must make a dress designed for ______
 Don’t forget! Beginning this week, Casual Friday will officially become ______
 Dude, do not go in that bathroom There’s ______ in there
 Dudes I just found out that ______ is ______
@@ -35,7 +35,7 @@ Hulu’s new reality show features twelve hot singles living with ______
 I drink to forget ______
 I never truly understood ______ until I encountered ______
 I’m going on a cleanse this week Nothing but kale juice and ______
-I’m Lebron James, and when I’m not slamming dunks, I love **** ______
+I’m Lebron James, and when I’m not slamming dunks, I love ______
 I’m no doctor, but I’m pretty sure what you’re suffering from is called ______
 I’m sorry, Mrs Brown, but I couldn’t complete my homework because of ______
 I’m sorry, sir, but we don’t allow ______ at the country club
@@ -46,18 +46,18 @@ If you like ______, YOU MIGHT BE A REDNECK
 Instead of coal, Santa now gives the bad children ______
 Introducing the amazing superhero/sidekick duo! It’s ______ and ______!
 Introducing X-Treme Baseball! It’s like baseball, but with ______!
-Just once, I’d like to hear you say “Thanks, Mom Thanks for **”** ______
-Kids, I don’t need drugs to get high I’m high on **** ______
+Just once, I’d like to hear you say “Thanks, Mom Thanks for ______
+Kids, I don’t need drugs to get high I’m high on ______
 Lifetime® presents “: the Story of ______”
 Lovin’ you is easy ’cause you’re ______
 Mamma Mia Here I go again My my! How can I resist ______?
 Man, this is bullshit Fuck ______
 Mitch McConnell can’t cum without ______
 Mr and Mrs Diaz, we called you in because we’re concerned about Cynthia Are you aware that your daughter is ______?
-My country, ’tis of thee, sweet land of **** ______
+My country, ’tis of thee, sweet land of ______
 My favorite sex position is called ______
 My fellow Americans: Before this decade is out, we will have ______ on the moon!
-My name is Peter Parker I was bitten by a radioactive spider, and now I’m **** ______
+My name is Peter Parker I was bitten by a radioactive spider, and now I’m ______
 My new favorite porn star is Joey ______
 Next from JK Rowling: Harry Potter and the Chamber of ______
 Next on ESPN2: The World Series of ______
@@ -512,8 +512,8 @@ Waking up half-naked in a Denny’s parking lot
 Women’s suffrage
 Your dick in them pants
 Your mom
-Using *Accio* on things you're too lazy to reach for
-Whispering *Lumos* under the covers
+Using Accio on things you're too lazy to reach for
+Whispering Lumos under the covers
 "Bazinga!"
 "How you doin'?"
 "Did I do that?"
@@ -604,7 +604,7 @@ Weapons of mass destruction
 Believe it or not, Jim Carrey can do a dead-on impression of ______
 How did Stella get her groove back? ______
 I can show you ______, shining, shimmering, splendid
-I’m a bitch, I’m a lover, I’m a child, I’m ______ ****
+I’m a bitch, I’m a lover, I’m a child, I’m ______
 If I were a Spice Girl, I’d be ______ Spice”
 It’s Morphin’ Time! Mastodon! Pterodactyl! Triceratops! Sabretooth Tiger! ______!
 Siskel and Ebert have panned ______ as “poorly conceived” and “sloppily executed”
@@ -1296,7 +1296,7 @@ At our dojo, you’ll learn that your greatest weapon is not a punch or a kick I
 Boomers love ______
 BREAKING NEWS: Elon Musk has acquired ______
 Cecilia! I’m down on my knees I’m begging you please for ______
-Congress has approved a $10 billion aid package to provide Ukraine with ****** ______
+Congress has approved a $10 billion aid package to provide Ukraine with ______
 Dear Diary: I met the cutest boy today He has gorgeous blue eyes, and he loves ______
 God dammit! The wife’s complainin’ about ______ again
 Hello, I’m Mark Zuckerberg Welcome to the Metaverse, where you can experience ______ like never before
@@ -1305,7 +1305,7 @@ Hi, my name is Alex, and I’m an addict It’s not the pills or the booze for m
 Ho LAWD! All this ______ makin’ me sweat like a pig!
 I don’t care what a guy looks like As long as he’s ______, I’ll fuck him
 I swear, ladies, all the good men are either gay, taken, or ______
-I’d like to thank my husband, the cast and crew… but most importantly, I couldn’t have done it without ***!*** ______
+I’d like to thank my husband, the cast and crew… but most importantly, I couldn’t have done it without ______
 I’m afraid your college application needs some work ______ is not an extracurricular activity
 I’m Kaylee, and welcome to my YouTube channel, “Mama Knows Best” Follow me for more tips on ______!
 If you follow my system, you’ll be able to sleep with anyone you want I call it “The ______ Method”
@@ -1323,7 +1323,7 @@ Please, please support my friend Katie’s GoFundMe She really needs money for _
 Rest in peace, Grandma Every time I see ______, I’ll think of you
 So beautiful! Watch as this little boy with new cochlear implants hears ______ for the first time
 Stop mom-shaming me! There’s nothing wrong with posting a pic of my kids enjoying ______
-Subscribe to my OnlyFans for daily nudes and pictures of ****** ______
+Subscribe to my OnlyFans for daily nudes and pictures of ______
 Thanks for listening If you have any more questions, my email is ______@______ com
 Uncle Steve, this is a funeral This is not the time for ______
 Welcome to Roscoe’s House of Chicken ‘N ______!

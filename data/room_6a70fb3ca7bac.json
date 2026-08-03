@@ -1,0 +1,3191 @@
+{
+    "id": "6a70fb3ca7bac",
+    "config": {
+        "room_name": "Smoke Circle",
+        "self_vote": true,
+        "allow_join_mid_game": true,
+        "allow_watchers": true,
+        "enable_chat": true,
+        "enable_tts": true,
+        "use_ai_host": true,
+        "use_ai_bots": true,
+        "decks[]": "base_deck",
+        "win_limit": "5",
+        "timer": "60",
+        "hand_size": "7",
+        "max_players": "8",
+        "decks": [
+            "base_deck"
+        ],
+        "theme_key": "stoner",
+        "game_tts_provider": "browser",
+        "offline_tts": false,
+        "game_chrome_voice": "",
+        "theme": {
+            "label": "Stoner",
+            "game_name_suffix": "The Munchies",
+            "room_names": [
+                "The Couch",
+                "Cloud Nine",
+                "Smoke Circle",
+                "Baked Alley",
+                "The Dispensary",
+                "Munchie Haven"
+            ],
+            "character_names": [
+                "Cheech",
+                "Chong",
+                "Snoop",
+                "Mary Jane",
+                "Bud",
+                "Ziggy",
+                "Herb",
+                "Baked Potato",
+                "Roach",
+                "The Dude",
+                "Blazer",
+                "Ganja Guru"
+            ],
+            "banner_media": "assets/themes/stoner.jpg",
+            "intro_audio_url": "",
+            "win_audio_url": ""
+        },
+        "min_players": 3,
+        "fill_bots": false,
+        "ai_provider": "gemini",
+        "ai_api_key": "AQ.Ab8RN6KTS9FHZIjAbKkJjwAUhs_3JxDzYMMhPkPGJO27J8Rvyg"
+    },
+    "state": "lobby",
+    "is_tie_breaker": false,
+    "players": [
+        {
+            "id": "usr_6a70dc0e35005",
+            "name": "Deputy Doofus",
+            "name_source": "hand_entered",
+            "avatar_type": "dicebear",
+            "avatar_val": "Deputy Doofus",
+            "voice_opt_in": false,
+            "score": 0,
+            "hand": [],
+            "status": "ready",
+            "is_host": true,
+            "is_bot": false,
+            "is_waiting": false,
+            "muted_players": [],
+            "idle_misses": 0,
+            "muted_mic": true
+        }
+    ],
+    "chat": [
+        {
+            "player_id": "system",
+            "name": "System",
+            "msg": "Deputy Doofus has joined the game",
+            "ts": 1785789245,
+            "type": "join"
+        }
+    ],
+    "votes": [],
+    "black_deck": [
+        {
+            "text": "Dude, do not go in that bathroom There’s ______ in there",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ccd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Brought to you by Bud Light®, the Official Beer of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cb4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My name is Peter Parker I was bitten by a radioactive spider, and now I’m ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d51",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Stop that! It’s far too ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8be5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What finally caused the long-running \"will-they-won't-they\" couple to break up? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e37",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Every ______ is sacred, every ______ is great",
+            "pick": 2,
+            "id": "b_6a70fb3ca8be8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______? That’s not an argument, that’s just contradiction!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8baf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What’s my secret power? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dce",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______: The secret ingredient in the family's famous secret recipe",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e53",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Just once, I’d like to hear you say “Thanks, Mom Thanks for ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d2c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Oh no! Siri, how do I fix ______?",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d61",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m telling you, this ______ is dead!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bbb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Check me out, yo! I call this dance move ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cbb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "White people like ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ddf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Attention Target shoppers Unfortunately, we will be closing early due to ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cac",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Parents are concerne d about a new YouTube craze known as the ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d68",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What caused the massive fight in the season finale cliffhanger? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dfa",
+            "deck": "base_deck"
+        },
+        {
+            "text": "If you can’t be with the one you love, love ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d1b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the real reason the gang got banned from the local diner? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7df4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Next on ESPN2: The World Series of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d5b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______: The real reason the show got canceled after one season",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e3b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Man, this is bullshit Fuck ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d3c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the landlord actually threatening to evict everyone over? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e15",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I would like to complain about this ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bd0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Don’t forget! Beginning this week, Casual Friday will officially become ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cca",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Why is Brett so sweaty? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dec",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My favorite sex position is called ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d49",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I never truly understood ______ until I encountered ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca7cfe",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My fellow Americans: Before this decade is out, we will have ______ on the moon!",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d4d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______: The one thing that could actually break up the core group",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e21",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Introducing X-Treme Baseball! It’s like baseball, but with ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d29",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______ is the reason nobody ever seems to do any actual work at their job",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e30",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The secret to a lasting marriage is communication, communication, and ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7da8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I drink to forget ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cfa",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Not to brag, but I’ve been called the “Picasso of ______”",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d5e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "It’s only a model, but inside it contains ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bde",
+            "deck": "base_deck"
+        },
+        {
+            "text": "He’s not the Messiah, he’s a very naughty ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bcd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______! That's how you get a spin-off",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e11",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______ is a slippery slope that leads to ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca7c83",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______ + ______ = ______",
+            "pick": 3,
+            "id": "b_6a70fb3ca7c7c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m a lumberjack and I’m okay, I spend my time ______ and ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca8be2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "If you like ______, YOU MIGHT BE A REDNECK",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d1e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A successful job interview begins with a firm handshake and ends with ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7c95",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m no doctor, but I’m pretty sure what you’re suffering from is called ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d09",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What made my first kiss so awkward? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dc7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "That’s right, I killed ______ How, you ask? ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca7d90",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What did the kids accidentally burn down in the cold open? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e50",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______: The secret to surviving a 90s sitcom family reunion",
+            "pick": 1,
+            "id": "b_6a70fb3ca7df7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "“Step 1: ______ Step 2: ______ Step 3: Profit”",
+            "pick": 2,
+            "id": "b_6a70fb3ca7d85",
+            "deck": "base_deck"
+        },
+        {
+            "text": "“This is the way the world ends This is the way the world ends Not with a bang but with ______”",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dac",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Why can’t I sleep at night? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7de8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Hulu’s new reality show features twelve hot singles living with ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cf7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Strange women lying in ponds distributing ______ is no basis for a system of government",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bf7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Why do I hurt all over? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dea",
+            "deck": "base_deck"
+        },
+        {
+            "text": "WHOOO! God damn I love ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca7de2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What’s that sound? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dd1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Why is the main character’s boss completely furious today? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e29",
+            "deck": "base_deck"
+        },
+        {
+            "text": "This is your captain speaking Fasten your seatbelts and prepare for ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7db0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The new Chevy Tahoe With the power and space to take ______ everywhere you go",
+            "pick": 1,
+            "id": "b_6a70fb3ca7da2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Lovin’ you is easy ’cause you’re ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d36",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m Tony Robbins, and over the next sixty minutes, I’m going to teach you how to harness the power of ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d14",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the title of the disastrous pilot episode that never aired? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e1e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Bring out your ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bb8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Arby’s: We Have ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ca0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fun tip! When your man asks you to go down on him, try surprising him with ______ instead",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ce2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What was the worst advice given by the wise older relative? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e33",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Introducing the amazing superhero/sidekick duo! It’s ______ and ______!",
+            "pick": 2,
+            "id": "b_6a70fb3ca7d25",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Coming to Broadway this season, ______: The Musical",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cbe",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Always look on the bright side of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bca",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What’s the best metaphor for our political system? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dd4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "But before I kill you, Mr Bond, I must show you ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cb8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Summer lovin’, had me a blast ______, happened so fast",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d8a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What ended my last relationship? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dc4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What’s there a ton of in heaven? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dd9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______: The real reason nobody ever leaves the local coffee shop",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e48",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Five Stages of Grief: denial, anger, bargaining, ______, acceptance",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d9c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Hey guys, welcome to Chili’s! Would you like to start the night off right with ______?",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cea",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Why am I sticky? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7de5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Nobody expects ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bb3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The class field trip was completely ruined by ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d97",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What brought the orgy to a grinding halt? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dc1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Daddy, why is mommy crying? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cc1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the surprise celebrity guest star promoting? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e42",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m sorry, sir, but we don’t allow ______ at the country club",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d10",
+            "deck": "base_deck"
+        },
+        {
+            "text": "As reparations for slavery, all African Americans will receive ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ca4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mamma Mia Here I go again My my! How can I resist ______?",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d39",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What’s the most emo? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dd6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Welcome to the Ministry of Silly ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8beb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Next from JK Rowling: Harry Potter and the Chamber of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d58",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A romantic, candlelit dinner would be incomplete without ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7c91",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Lifetime® presents “: the Story of ______”",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d33",
+            "deck": "base_deck"
+        },
+        {
+            "text": "It’s just a flesh wound, caused by ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bbf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Next on a very special episode: ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dfd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the name of the terrible community theater play everyone has to attend? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e3f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What did the eccentric next-door neighbor just walk in carrying? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e25",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Just one wafer-thin ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bf1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "During high school, I never really fit in until I found ______ club",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cd4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "How did I lose my virginity? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cf0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Uh, hey guys, I know this was my idea, but I’m having serious doubts about ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dbb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dudes I just found out that ______ is ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca7cd0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Well if ______ is a crime, then lock me up!",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dbe",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m Lebron James, and when I’m not slamming dunks, I love ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d05",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What did the Romans ever do for us, besides ______?",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bc1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mr and Mrs Diaz, we called you in because we’re concerned about Cynthia Are you aware that your daughter is ______?",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d43",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The real reason the laugh track played for 30 uninterrupted seconds ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e1a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "This season at Steppenwolf, Samuel Beckett’s classic existential play: Waiting for ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7db3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is hiding in the background of every apartment scene? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e01",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sir Robin bravely ran away from ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bee",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Designers! For this week’s challenge, you must make a dress designed for ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cc5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Here is the church Here is the steeple Open the doors And there is ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ce6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the airspeed velocity of an unladen ______?",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bb6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "For my next trick, I will pull ______ out of ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca7cde",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mitch McConnell can’t cum without ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d3f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m sorry, Mrs Brown, but I couldn’t complete my homework because of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d0d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sir Lancelot’s biggest weakness is ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bd6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I fart in your general direction, you foolish ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bc7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What would grandma find disturbing, yet oddly charming? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7dcb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Kids, I don’t need drugs to get high I’m high on ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d30",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the ultimate punishment handed down by the high school principal? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e4c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "I’m going on a cleanse this week Nothing but kale juice and ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d02",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Your mother was a hamster, and your father smelled of ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bc4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "And today’s soup is Cream of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7c9d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Today on Maury: “Help! My son is ______!”",
+            "pick": 1,
+            "id": "b_6a70fb3ca7db7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Now for something completely ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bd3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "When I pooped, what came out of my butt? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ddd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______ High five, bro",
+            "pick": 1,
+            "id": "b_6a70fb3ca7c8c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Run away! It’s the Killer ______ of Caerbannog!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bf4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Bitch, you’re nasty You’re disgusting You’re ______ Go home, bitch",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cb0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My new favorite porn star is Joey ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d54",
+            "deck": "base_deck"
+        },
+        {
+            "text": "______: kid-tested, mother-approved",
+            "pick": 1,
+            "id": "b_6a70fb3ca7c88",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is written on the note left on the kitchen counter? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e56",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What made the wacky roommate lose their mind this week? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e45",
+            "deck": "base_deck"
+        },
+        {
+            "text": "And the Academy Award for ______ goes to ______",
+            "pick": 2,
+            "id": "b_6a70fb3ca7c99",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Your dreams are one click away! Learn more at ______ com",
+            "pick": 1,
+            "id": "b_6a70fb3ca7df0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "During his midlife crisis, my dad got really into ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cd8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My country, ’tis of thee, sweet land of ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d46",
+            "deck": "base_deck"
+        },
+        {
+            "text": "During sex, I like to think about ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cdb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Instead of coal, Santa now gives the bad children ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d21",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is your favorite color? ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bd8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Knights Who Say Ni demand a sacrifice of ______!",
+            "pick": 1,
+            "id": "b_6a70fb3ca8bdb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Holy shit! My video of ______ has ten million views!",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ced",
+            "deck": "base_deck"
+        },
+        {
+            "text": "As the mom of five rambunctious boys, I’m no stranger to ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7ca8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Howdy, neighbor! Couldn’t help but notice you struggling with ______ Need a hand?",
+            "pick": 1,
+            "id": "b_6a70fb3ca7cf4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Old MacDonald had a ______ E-I-E-I-O",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d64",
+            "deck": "base_deck"
+        },
+        {
+            "text": "If at first, you don’t succeed, try ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d18",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Premiering tonight: NBC’s new heartfelt drama, This Is ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7d7e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "What is the terrible secret kept in the closet for ten seasons? ______",
+            "pick": 1,
+            "id": "b_6a70fb3ca7e2c",
+            "deck": "base_deck"
+        }
+    ],
+    "white_deck": [
+        {
+            "text": "Gloryholes",
+            "id": "w_6a70fb3ca7ff0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Girls",
+            "id": "w_6a70fb3ca7feb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Twenty cheerleaders laughing at your tiny penis",
+            "id": "w_6a70fb3ca8119",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Pissing in my thirsty mouth",
+            "id": "w_6a70fb3ca8086",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Downloading a jizz of weird porn on Kazaa",
+            "id": "w_6a70fb3ca8150",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A brain tumor",
+            "id": "w_6a70fb3ca7e6a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Kayaking with my sluts",
+            "id": "w_6a70fb3ca8032",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Committing treason",
+            "id": "w_6a70fb3ca7f40",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Ethnic cleansing",
+            "id": "w_6a70fb3ca7f99",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting caught by the police and going to jail",
+            "id": "w_6a70fb3ca7fd0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Jazz",
+            "id": "w_6a70fb3ca8026",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A bitch slap",
+            "id": "w_6a70fb3ca7e66",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My neck, my back, my pussy, and my crack",
+            "id": "w_6a70fb3ca8069",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Seeing my father cry",
+            "id": "w_6a70fb3ca80a4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting crushed by a vending machine",
+            "id": "w_6a70fb3ca7fd4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Critical race theory",
+            "id": "w_6a70fb3ca7f53",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Doing white people shit with a bunch of white people",
+            "id": "w_6a70fb3ca7f79",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Staring at a painting and going “hmmmmmmm…”",
+            "id": "w_6a70fb3ca80d2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My horny, horny son",
+            "id": "w_6a70fb3ca8066",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A Bop It™",
+            "id": "w_6a70fb3ca7e68",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Depression",
+            "id": "w_6a70fb3ca7f6c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fake tits",
+            "id": "w_6a70fb3ca7fa3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The vanishing line between truth and misinformation",
+            "id": "w_6a70fb3ca810c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A three-way with my wife and Shaquille O’Neal",
+            "id": "w_6a70fb3ca7eb4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Finding a nice elevator to poop in",
+            "id": "w_6a70fb3ca7fad",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Some guy",
+            "id": "w_6a70fb3ca80c5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Covering myself with Parmesan cheese and chili flakes because I am pizza",
+            "id": "w_6a70fb3ca7f4b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Changing a person’s mind with logic and facts",
+            "id": "w_6a70fb3ca7f30",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Pivot!\"",
+            "id": "w_6a70fb3ca8130",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dead birds everywhere",
+            "id": "w_6a70fb3ca7f69",
+            "deck": "base_deck"
+        },
+        {
+            "text": "FuckBread, the bread you can fuck",
+            "id": "w_6a70fb3ca7fbc",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fisting",
+            "id": "w_6a70fb3ca7fb3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Eat my shorts!\"",
+            "id": "w_6a70fb3ca8142",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The clitoris",
+            "id": "w_6a70fb3ca80f1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Geese",
+            "id": "w_6a70fb3ca7fc5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A mistake",
+            "id": "w_6a70fb3ca7e9d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Running naked through a mall, pissing and shitting everywhere",
+            "id": "w_6a70fb3ca8095",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Brown people",
+            "id": "w_6a70fb3ca7f22",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My balls on your face",
+            "id": "w_6a70fb3ca8056",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An older woman who knows her way around the penis",
+            "id": "w_6a70fb3ca7ee0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting cummed on",
+            "id": "w_6a70fb3ca7fd6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Your mom",
+            "id": "w_6a70fb3ca8120",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Assassinating the president",
+            "id": "w_6a70fb3ca7ee9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "How bad my daughter fucked up her dance recital",
+            "id": "w_6a70fb3ca8014",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Stockholm Syndrome",
+            "id": "w_6a70fb3ca80d5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Exterminate!\"",
+            "id": "w_6a70fb3ca814d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Ghosts",
+            "id": "w_6a70fb3ca7fe8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "This week’s mass shooting",
+            "id": "w_6a70fb3ca8112",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Daddy issues",
+            "id": "w_6a70fb3ca7f5f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The bond between a woman and her horse",
+            "id": "w_6a70fb3ca80ef",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Throwing a virgin into a volcano",
+            "id": "w_6a70fb3ca8114",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Masturbating",
+            "id": "w_6a70fb3ca803b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A man on the brink of orgasm",
+            "id": "w_6a70fb3ca7e94",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Penis breath",
+            "id": "w_6a70fb3ca8080",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A positive attitude!",
+            "id": "w_6a70fb3ca7ea5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Chugging a lava lamp",
+            "id": "w_6a70fb3ca7f36",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Genuine human connection",
+            "id": "w_6a70fb3ca7fcb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A Super Soaker™ full of cat pee",
+            "id": "w_6a70fb3ca7eae",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Nasty shit, like real sick stuff",
+            "id": "w_6a70fb3ca8070",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Big Bang",
+            "id": "w_6a70fb3ca80eb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Giving birth in prison",
+            "id": "w_6a70fb3ca7fed",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Going down on a woman, discovering that her vagina is filled with eyeballs, and being totally into that",
+            "id": "w_6a70fb3ca7ff7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Big ol’ floppy titties",
+            "id": "w_6a70fb3ca7f11",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Adderall®",
+            "id": "w_6a70fb3ca7ec2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A whole thing of jizz",
+            "id": "w_6a70fb3ca7ebb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Actually getting shot, for real",
+            "id": "w_6a70fb3ca7ec0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Former President George W Bush",
+            "id": "w_6a70fb3ca7fb7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An AR-15 jizz rifle",
+            "id": "w_6a70fb3ca7ed0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting crushed between Serena Williams’ thighs",
+            "id": "w_6a70fb3ca7fd2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Slamming a jizz",
+            "id": "w_6a70fb3ca80b9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Crucifixion",
+            "id": "w_6a70fb3ca7f54",
+            "deck": "base_deck"
+        },
+        {
+            "text": "50 mg of Zoloft daily",
+            "id": "w_6a70fb3ca7e5b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A gossamer stream of jizz that catches the light as it arcs through the morning air",
+            "id": "w_6a70fb3ca7e88",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Some punk kid who stole my turkey sandwich",
+            "id": "w_6a70fb3ca80c8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Resistance is futile\"",
+            "id": "w_6a70fb3ca8144",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Liberals",
+            "id": "w_6a70fb3ca8039",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Doo-doo",
+            "id": "w_6a70fb3ca7f7b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "More elephant cock than I bargained for",
+            "id": "w_6a70fb3ca8049",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"To infinity and beyond!\"",
+            "id": "w_6a70fb3ca8141",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Running a child sex trafficking ring out of a pizzeria",
+            "id": "w_6a70fb3ca8093",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Tech bros",
+            "id": "w_6a70fb3ca80df",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting serial killed",
+            "id": "w_6a70fb3ca7fe6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Nipple blades",
+            "id": "w_6a70fb3ca8078",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A sweaty, panting leather daddy",
+            "id": "w_6a70fb3ca7eb2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"D'oh!\"",
+            "id": "w_6a70fb3ca812b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A fuck-ton of almonds",
+            "id": "w_6a70fb3ca7e82",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Drinking gasoline to see what it tastes like",
+            "id": "w_6a70fb3ca7f7f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Pedophiles",
+            "id": "w_6a70fb3ca807d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Kamala Harris",
+            "id": "w_6a70fb3ca802d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Clicking “Yes, I would like to jizz promotional emails”",
+            "id": "w_6a70fb3ca816f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting decapitated by a helicopter",
+            "id": "w_6a70fb3ca7fd8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Seeing what happens when you lock people in a room with hungry seagulls",
+            "id": "w_6a70fb3ca80a6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Cool, cool, cool\"",
+            "id": "w_6a70fb3ca8145",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Danny DeVito",
+            "id": "w_6a70fb3ca7f65",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Grandma shakin' her jizz",
+            "id": "w_6a70fb3ca8179",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The complex geopolitical quagmire that is the Middle East",
+            "id": "w_6a70fb3ca80f6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Burgers and pussy",
+            "id": "w_6a70fb3ca7f25",
+            "deck": "base_deck"
+        },
+        {
+            "text": "BATMAN!",
+            "id": "w_6a70fb3ca7efb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Daddy’s belt",
+            "id": "w_6a70fb3ca7f61",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A homoerotic volleyball montage",
+            "id": "w_6a70fb3ca7e89",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Drowning the kids in the bathtub",
+            "id": "w_6a70fb3ca7f87",
+            "deck": "base_deck"
+        },
+        {
+            "text": "All the dudes I’ve fucked",
+            "id": "w_6a70fb3ca7eca",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Horse meat",
+            "id": "w_6a70fb3ca800c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Saying “I love you”",
+            "id": "w_6a70fb3ca809d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The clown that followed me home from the grocery store",
+            "id": "w_6a70fb3ca80f3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Some douche with an acoustic guitar",
+            "id": "w_6a70fb3ca80c1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Friction",
+            "id": "w_6a70fb3ca7fba",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Announcing that I am about to cum",
+            "id": "w_6a70fb3ca7ee4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Moderate-to-severe joint pain",
+            "id": "w_6a70fb3ca8045",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The biggest jizz in the hospice care facility",
+            "id": "w_6a70fb3ca8163",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Gender dysphoria",
+            "id": "w_6a70fb3ca7fc7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An Oedipus complex",
+            "id": "w_6a70fb3ca7ed9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Boneless buffalo wings",
+            "id": "w_6a70fb3ca7f1d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Stuffing my peehole with Tic Tacs",
+            "id": "w_6a70fb3ca80d7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Pixelated bukkake",
+            "id": "w_6a70fb3ca8087",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Barack Obama",
+            "id": "w_6a70fb3ca7ef8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Suit up!\"",
+            "id": "w_6a70fb3ca8133",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Slaughtering innocent civilians",
+            "id": "w_6a70fb3ca80ba",
+            "deck": "base_deck"
+        },
+        {
+            "text": "That bitch, Stacy",
+            "id": "w_6a70fb3ca80e4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A fetus",
+            "id": "w_6a70fb3ca7e7e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Typing \"please\" and \"thank you\" to the jizz just in case it remembers",
+            "id": "w_6a70fb3ca8155",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Science",
+            "id": "w_6a70fb3ca80a1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sexually active band geeks",
+            "id": "w_6a70fb3ca80ae",
+            "deck": "base_deck"
+        },
+        {
+            "text": "GoGurt®",
+            "id": "w_6a70fb3ca7ff4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Salvation",
+            "id": "w_6a70fb3ca8099",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My machete",
+            "id": "w_6a70fb3ca8067",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mufasa’s death scene",
+            "id": "w_6a70fb3ca804e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Crumbs all over the god damn carpet",
+            "id": "w_6a70fb3ca7f56",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The total collapse of the global financial system",
+            "id": "w_6a70fb3ca8106",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sitting on my face and telling me I’m garbage",
+            "id": "w_6a70fb3ca80b7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Giggling like an anime girl",
+            "id": "w_6a70fb3ca7fea",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Balls",
+            "id": "w_6a70fb3ca7ef6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Irritable bowel syndrome",
+            "id": "w_6a70fb3ca8020",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Blood of Christ",
+            "id": "w_6a70fb3ca80ed",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Grandma",
+            "id": "w_6a70fb3ca7ffb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Pizza in the morning, pizza in the evening, pizza at supper jizz",
+            "id": "w_6a70fb3ca8152",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Casually suggesting a threesome",
+            "id": "w_6a70fb3ca7f2d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A cat video so cute that your eyes roll back and your spine slides out of your anus",
+            "id": "w_6a70fb3ca7e6f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Gay conversion therapy",
+            "id": "w_6a70fb3ca7fc4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Having big dreams but no realistic way to achieve them",
+            "id": "w_6a70fb3ca8005",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Literally eating jizz",
+            "id": "w_6a70fb3ca817a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Filling every orifice with butterscotch pudding",
+            "id": "w_6a70fb3ca7fab",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My fuckslave, Reginald",
+            "id": "w_6a70fb3ca8062",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Coming out as non-binary and nobody caring",
+            "id": "w_6a70fb3ca7f3d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Active listening",
+            "id": "w_6a70fb3ca7ebf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Extremely tight pants",
+            "id": "w_6a70fb3ca7fa2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Stalin",
+            "id": "w_6a70fb3ca80cf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My wife having sex with your wife",
+            "id": "w_6a70fb3ca806c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Me jubbly bubblies",
+            "id": "w_6a70fb3ca803c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Drinking alone",
+            "id": "w_6a70fb3ca7f7c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Assaulting a police officer",
+            "id": "w_6a70fb3ca7eeb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Bubble butt bottom boys",
+            "id": "w_6a70fb3ca7f23",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Tiny tits that say “Yippee!” when you touch them",
+            "id": "w_6a70fb3ca8115",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Natural selection",
+            "id": "w_6a70fb3ca8071",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Only dating Asian women",
+            "id": "w_6a70fb3ca8079",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The violation of our most basic human rights",
+            "id": "w_6a70fb3ca810e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Starting a shitty podcast",
+            "id": "w_6a70fb3ca80d3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Smelling of cum",
+            "id": "w_6a70fb3ca80bd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Big fancy jizz",
+            "id": "w_6a70fb3ca816d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My cat that died",
+            "id": "w_6a70fb3ca805b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Complaining",
+            "id": "w_6a70fb3ca7f42",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Eating a hard-boiled egg out of my husband’s asshole",
+            "id": "w_6a70fb3ca7f8d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A windmill full of corpses",
+            "id": "w_6a70fb3ca7ebd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "God",
+            "id": "w_6a70fb3ca7ff2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A disappointing birthday party",
+            "id": "w_6a70fb3ca7e77",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Burning in Hell",
+            "id": "w_6a70fb3ca7f26",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Black Jesus",
+            "id": "w_6a70fb3ca7f16",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Waking up half-naked in a Denny’s parking lot",
+            "id": "w_6a70fb3ca811b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Finding Waldo",
+            "id": "w_6a70fb3ca7faf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Dyn-o-mite!\"",
+            "id": "w_6a70fb3ca8149",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Harry Potter and all his sexy little friends",
+            "id": "w_6a70fb3ca7fff",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Braiding three penises into a Twizzler",
+            "id": "w_6a70fb3ca7f20",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My fat daughter",
+            "id": "w_6a70fb3ca8061",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My abusive boyfriend who really isn’t so bad once you get to know him",
+            "id": "w_6a70fb3ca8054",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Costco",
+            "id": "w_6a70fb3ca7f48",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Daddy going away forever",
+            "id": "w_6a70fb3ca7f5e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Italians",
+            "id": "w_6a70fb3ca8021",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Bearing many strong sons to work the potato fields",
+            "id": "w_6a70fb3ca7efe",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Goat",
+            "id": "w_6a70fb3ca7ff1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Aunt Jemima’s® racist pancake sauce",
+            "id": "w_6a70fb3ca7eed",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Danger Zone!\"",
+            "id": "w_6a70fb3ca8147",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A time-traveling Chinese general from the Shang Dynasty",
+            "id": "w_6a70fb3ca7eb6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting an abortion",
+            "id": "w_6a70fb3ca7fce",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Half-assed foreplay",
+            "id": "w_6a70fb3ca7ffd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Farting and walking away",
+            "id": "w_6a70fb3ca7fa5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Child labor",
+            "id": "w_6a70fb3ca7f31",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Kissing grandma on the forehead and turning off her life support",
+            "id": "w_6a70fb3ca8035",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Cumming deep and hard inside a Cobb salad",
+            "id": "w_6a70fb3ca7f59",
+            "deck": "base_deck"
+        },
+        {
+            "text": "COVID-19",
+            "id": "w_6a70fb3ca7f4d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The cool, refreshing taste of Pepsi®",
+            "id": "w_6a70fb3ca80f8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Hot doooooooogs!",
+            "id": "w_6a70fb3ca8010",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A jizz of lube with a picture of my dad on it",
+            "id": "w_6a70fb3ca8167",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Your dick in them pants",
+            "id": "w_6a70fb3ca811f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Auschwitz",
+            "id": "w_6a70fb3ca7eee",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Giving birth to the Antichrist",
+            "id": "w_6a70fb3ca7fee",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Prematurely ejaculating like a total jizz",
+            "id": "w_6a70fb3ca8161",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Committing suicide",
+            "id": "w_6a70fb3ca7f3f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Agriculture",
+            "id": "w_6a70fb3ca7ec4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Penis envy",
+            "id": "w_6a70fb3ca8082",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Floating down the Hudson River with the other garbage",
+            "id": "w_6a70fb3ca7fb5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A stray pube",
+            "id": "w_6a70fb3ca7eac",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Whatcha talkin' 'bout, Willis?\"",
+            "id": "w_6a70fb3ca814c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dead parents",
+            "id": "w_6a70fb3ca7f6b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Peeing a little bit",
+            "id": "w_6a70fb3ca807f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Live long and prosper\"",
+            "id": "w_6a70fb3ca813d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "All these decorative pillows",
+            "id": "w_6a70fb3ca7ecc",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An empowered woman",
+            "id": "w_6a70fb3ca7ed1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Illegal immigrants",
+            "id": "w_6a70fb3ca8019",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Using “Hail to the Chief” as sex jizz",
+            "id": "w_6a70fb3ca8175",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Swamp ass",
+            "id": "w_6a70fb3ca80d9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fucking my sister",
+            "id": "w_6a70fb3ca7fbf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A bong rip so massive it restores jizz to the kingdom",
+            "id": "w_6a70fb3ca8184",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Spirit Airlines",
+            "id": "w_6a70fb3ca80cc",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Such a big jizz",
+            "id": "w_6a70fb3ca8158",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A really cool hat",
+            "id": "w_6a70fb3ca7ea7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Holding a pepper grinder for some reason",
+            "id": "w_6a70fb3ca8009",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My dog, who is a jizz",
+            "id": "w_6a70fb3ca8171",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being a motherfucking sorcerer",
+            "id": "w_6a70fb3ca7f05",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Consensual sex",
+            "id": "w_6a70fb3ca7f43",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Cringe",
+            "id": "w_6a70fb3ca7f4f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "AIDS",
+            "id": "w_6a70fb3ca7ec5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dwayne “The Rock” Johnson",
+            "id": "w_6a70fb3ca7f89",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Climbing a telephone pole and becoming one with the T-Mobile network",
+            "id": "w_6a70fb3ca7f39",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Memes",
+            "id": "w_6a70fb3ca803e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fellowship in Christ",
+            "id": "w_6a70fb3ca7fa9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Chinese state propaganda",
+            "id": "w_6a70fb3ca7f35",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A loser like you",
+            "id": "w_6a70fb3ca7e8f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "How far I can get my own penis up my butt",
+            "id": "w_6a70fb3ca8015",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Bees?",
+            "id": "w_6a70fb3ca7eff",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"How you doin'?\"",
+            "id": "w_6a70fb3ca8127",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being a dick to children",
+            "id": "w_6a70fb3ca7f04",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sanding off a jizz nose",
+            "id": "w_6a70fb3ca8097",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being fat and stupid",
+            "id": "w_6a70fb3ca7f09",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Necrophilia",
+            "id": "w_6a70fb3ca8074",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Laughing over champagne flutes while the poor freeze to death outside",
+            "id": "w_6a70fb3ca8038",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An old guy who’s almost dead",
+            "id": "w_6a70fb3ca7edc",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A tiny horse",
+            "id": "w_6a70fb3ca7eb8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Having an awesome time drinking and driving",
+            "id": "w_6a70fb3ca8003",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being on fire",
+            "id": "w_6a70fb3ca7f0c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Nicolas Cage",
+            "id": "w_6a70fb3ca8076",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Seeing Grandma naked",
+            "id": "w_6a70fb3ca80a2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Kanye West",
+            "id": "w_6a70fb3ca802f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A jizz slowly emerging from my belly button",
+            "id": "w_6a70fb3ca8169",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Shutting the fuck up",
+            "id": "w_6a70fb3ca80b1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Queefing",
+            "id": "w_6a70fb3ca808e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A toilet",
+            "id": "w_6a70fb3ca7eb9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Yada, yada, yada\"",
+            "id": "w_6a70fb3ca8131",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The gays",
+            "id": "w_6a70fb3ca80fd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Birth control",
+            "id": "w_6a70fb3ca7f13",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Amish",
+            "id": "w_6a70fb3ca80e6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A sad fat dragon with no friends",
+            "id": "w_6a70fb3ca7ea9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Karen",
+            "id": "w_6a70fb3ca8030",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Drinking out of the toilet and eating garbage",
+            "id": "w_6a70fb3ca7f81",
+            "deck": "base_deck"
+        },
+        {
+            "text": "8 oz of Mexican black-tar heroin",
+            "id": "w_6a70fb3ca7e60",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Generally having no idea what’s going on",
+            "id": "w_6a70fb3ca7fc9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fox News",
+            "id": "w_6a70fb3ca7fb9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fucking all my dad’s friends",
+            "id": "w_6a70fb3ca7fbe",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Tearing that ass up like wrapping paper on Christmas morning",
+            "id": "w_6a70fb3ca80dd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sex with animals",
+            "id": "w_6a70fb3ca80ac",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The death penalty",
+            "id": "w_6a70fb3ca80fa",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A drone strike",
+            "id": "w_6a70fb3ca7e7c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"No soup for you!\"",
+            "id": "w_6a70fb3ca813b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dark and mysterious forces beyond our control",
+            "id": "w_6a70fb3ca7f67",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Murder",
+            "id": "w_6a70fb3ca8051",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Taylor Swift",
+            "id": "w_6a70fb3ca80db",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A pangender octopus who roams the cosmos in search of love",
+            "id": "w_6a70fb3ca7ea0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Crippling debt",
+            "id": "w_6a70fb3ca7f51",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Explaining the difference between sex and gender",
+            "id": "w_6a70fb3ca7fa0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A passionate Latino lover",
+            "id": "w_6a70fb3ca7ea1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting assimilated by the Borg but only for their jizz dental plan",
+            "id": "w_6a70fb3ca817d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A live studio audience",
+            "id": "w_6a70fb3ca7e8e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Yelling \"Church! Church! Church!\" on the way to jizz",
+            "id": "w_6a70fb3ca8165",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mind-melding with a very space rock",
+            "id": "w_6a70fb3ca8182",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A certain je ne sais quoi",
+            "id": "w_6a70fb3ca7e71",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Cardi B",
+            "id": "w_6a70fb3ca7f2a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Crab",
+            "id": "w_6a70fb3ca7f4e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Women’s suffrage",
+            "id": "w_6a70fb3ca811d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Invading Poland",
+            "id": "w_6a70fb3ca801e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Converting to Islam",
+            "id": "w_6a70fb3ca7f45",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A bird that shits human turds",
+            "id": "w_6a70fb3ca7e64",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being popular and good at sports",
+            "id": "w_6a70fb3ca7f10",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Huffing spray paint",
+            "id": "w_6a70fb3ca8017",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Firing a rifle into the air while balls deep in a squealing hog",
+            "id": "w_6a70fb3ca7fb1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting drugs off the street and into my body",
+            "id": "w_6a70fb3ca7fda",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The entire Mormon Tabernacle Choir",
+            "id": "w_6a70fb3ca80fb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The tiger that killed my father",
+            "id": "w_6a70fb3ca8104",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Three ounces of clean jizz",
+            "id": "w_6a70fb3ca815a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being fucking pathetic",
+            "id": "w_6a70fb3ca7f0a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Having a stroke",
+            "id": "w_6a70fb3ca8000",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A Fleshlight",
+            "id": "w_6a70fb3ca7e7f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Seething with quiet resentment",
+            "id": "w_6a70fb3ca80a8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Accepting that I’m a 6, at jizz",
+            "id": "w_6a70fb3ca816b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Meth",
+            "id": "w_6a70fb3ca8041",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Wendy’s Spicy Chicken Sandwich",
+            "id": "w_6a70fb3ca8110",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Underground Railroad",
+            "id": "w_6a70fb3ca810a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Multiple stab wounds",
+            "id": "w_6a70fb3ca8050",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being a busy adult with many important things to do",
+            "id": "w_6a70fb3ca7f02",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Itchy pussy",
+            "id": "w_6a70fb3ca8023",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Norm!\"",
+            "id": "w_6a70fb3ca813a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An older man with a lot of money",
+            "id": "w_6a70fb3ca7ede",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A sorry excuse for a father",
+            "id": "w_6a70fb3ca7eaa",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Incest",
+            "id": "w_6a70fb3ca801a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting married, having a few kids, buying some stuff, retiring to Florida, and dying",
+            "id": "w_6a70fb3ca7fe1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My good bra",
+            "id": "w_6a70fb3ca8064",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sitting on a dick and sipping green tea",
+            "id": "w_6a70fb3ca80b5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Police brutality",
+            "id": "w_6a70fb3ca8089",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Feeding strawberries to my manslut",
+            "id": "w_6a70fb3ca7fa7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Child support payments",
+            "id": "w_6a70fb3ca7f33",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Applying topical ointment to my grandfather’s infected penis",
+            "id": "w_6a70fb3ca7ee6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "How amazing it is to be on mushrooms",
+            "id": "w_6a70fb3ca8011",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Clear eyes, full hearts, can't lose\"",
+            "id": "w_6a70fb3ca8138",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A little boy who won’t shut the fuck up about dinosaurs",
+            "id": "w_6a70fb3ca7e8c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Cards Against Humanity",
+            "id": "w_6a70fb3ca7f2c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Emotions",
+            "id": "w_6a70fb3ca7f94",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Emerging from the sea and rampaging through Tokyo",
+            "id": "w_6a70fb3ca7f92",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Alcoholism",
+            "id": "w_6a70fb3ca7ec7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My bright pink fuckhole",
+            "id": "w_6a70fb3ca8059",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Unlimited soup, salad, and jizz",
+            "id": "w_6a70fb3ca815c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Executing a hostage every hour",
+            "id": "w_6a70fb3ca7f9c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Awesome pictures of planets and stuff",
+            "id": "w_6a70fb3ca7ef3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Some real spicy shramps",
+            "id": "w_6a70fb3ca80c9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting naked and watching Nickelodeon",
+            "id": "w_6a70fb3ca7fe3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Using Accio on things you're too lazy to reach for",
+            "id": "w_6a70fb3ca8122",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An unwanted pregnancy",
+            "id": "w_6a70fb3ca7ee2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Owning and operating a Chili’s® franchise",
+            "id": "w_6a70fb3ca807c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Blowing my boyfriend so hard he shits",
+            "id": "w_6a70fb3ca7f19",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My ex-wife",
+            "id": "w_6a70fb3ca805f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A man in yoga pants with a ponytail and feather earrings",
+            "id": "w_6a70fb3ca7e92",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being a woman",
+            "id": "w_6a70fb3ca7f07",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A Mexican",
+            "id": "w_6a70fb3ca7e95",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Inserting a Mason jar into my anus",
+            "id": "w_6a70fb3ca801c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting fingered",
+            "id": "w_6a70fb3ca7fde",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The sheer, destructive chaos of a Klingon jizz party",
+            "id": "w_6a70fb3ca8180",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A supportive touch on the lower back",
+            "id": "w_6a70fb3ca7eaf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My wife spending all my jizz on bullshit",
+            "id": "w_6a70fb3ca8177",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Doin’ it in the butt",
+            "id": "w_6a70fb3ca7f73",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Is that your final answer?\"",
+            "id": "w_6a70fb3ca812d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mr Clean",
+            "id": "w_6a70fb3ca804c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Whispering Lumos under the covers",
+            "id": "w_6a70fb3ca8124",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sipping kombucha like a smug piece of jizz",
+            "id": "w_6a70fb3ca80b3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Nazis",
+            "id": "w_6a70fb3ca8073",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Treat yo self!\"",
+            "id": "w_6a70fb3ca812e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My vagina",
+            "id": "w_6a70fb3ca806b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Ass to mouth",
+            "id": "w_6a70fb3ca7ee8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Eating pebbles, shitting the pebbles, then eating the shit-pebbles, and then shitting those pebbles again",
+            "id": "w_6a70fb3ca7f90",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Pooping back and forth Forever",
+            "id": "w_6a70fb3ca808b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Menstrual rage",
+            "id": "w_6a70fb3ca803f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Calling the cops on an innocent Black jizz",
+            "id": "w_6a70fb3ca7f28",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Grabbing my man by his love handles and fucking his big ass",
+            "id": "w_6a70fb3ca7ff9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dick pics",
+            "id": "w_6a70fb3ca7f6f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dying",
+            "id": "w_6a70fb3ca7f8b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Heteronormativity",
+            "id": "w_6a70fb3ca8007",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Saying everything is okay when everything is clearly not okay",
+            "id": "w_6a70fb3ca809f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mixing M&Ms and Skittles like some kind of psychopath",
+            "id": "w_6a70fb3ca8043",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Boppin’ my flopper",
+            "id": "w_6a70fb3ca7f1e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Da clurb",
+            "id": "w_6a70fb3ca7f5c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "German dungeon porn",
+            "id": "w_6a70fb3ca7fcd",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An all-white jury",
+            "id": "w_6a70fb3ca7ece",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A burrito that’s just sour cream",
+            "id": "w_6a70fb3ca7e6c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Alexandria Ocasio-Cortez",
+            "id": "w_6a70fb3ca7ec9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A DIY vasectomy",
+            "id": "w_6a70fb3ca7e7a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Black people",
+            "id": "w_6a70fb3ca7f17",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The mere concept of Applebee’s®",
+            "id": "w_6a70fb3ca80ff",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An inability to form meaningful relationships",
+            "id": "w_6a70fb3ca7ed8",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The baby that ruined my pussy",
+            "id": "w_6a70fb3ca80e9",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Bitches",
+            "id": "w_6a70fb3ca7f14",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A disappointing salad",
+            "id": "w_6a70fb3ca7e78",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dropping a hot doodie out of my jizz hole",
+            "id": "w_6a70fb3ca7f85",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Some bitch who loves pineapple",
+            "id": "w_6a70fb3ca80bf",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Squirting",
+            "id": "w_6a70fb3ca80ce",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A middle-aged man on roller skates",
+            "id": "w_6a70fb3ca7e9b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A self-microwaving jizz",
+            "id": "w_6a70fb3ca8156",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Winter is coming\"",
+            "id": "w_6a70fb3ca8135",
+            "deck": "base_deck"
+        },
+        {
+            "text": "50,000 volts straight to the nipples",
+            "id": "w_6a70fb3ca7e5e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A cis man playing a trans woman",
+            "id": "w_6a70fb3ca7e73",
+            "deck": "base_deck"
+        },
+        {
+            "text": "SHAME!",
+            "id": "w_6a70fb3ca80af",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Barely making $25,000 a year",
+            "id": "w_6a70fb3ca7efa",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Backing over a kid with the Buick",
+            "id": "w_6a70fb3ca7ef5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Telling a shitty story that goes nowhere",
+            "id": "w_6a70fb3ca80e1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Saudi oil money",
+            "id": "w_6a70fb3ca809c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A good, strong gorilla",
+            "id": "w_6a70fb3ca7e85",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"The tribe has spoken\"",
+            "id": "w_6a70fb3ca813f",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An endless stream of diarrhea",
+            "id": "w_6a70fb3ca7ed4",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A micropenis",
+            "id": "w_6a70fb3ca7e97",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A big black jizz",
+            "id": "w_6a70fb3ca7e62",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Judge Judy",
+            "id": "w_6a70fb3ca802a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Did I do that?\"",
+            "id": "w_6a70fb3ca8129",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Nachos for the table",
+            "id": "w_6a70fb3ca806e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Cyanide",
+            "id": "w_6a70fb3ca7f5a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My Black ass",
+            "id": "w_6a70fb3ca8058",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Permanent Orgasm-Face Disorder",
+            "id": "w_6a70fb3ca8084",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Spaghetti? Again?",
+            "id": "w_6a70fb3ca80cb",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Erectile dysfunction",
+            "id": "w_6a70fb3ca7f96",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Swooping",
+            "id": "w_6a70fb3ca80da",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Exchanging sex for career jizz",
+            "id": "w_6a70fb3ca7f9b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Twenty bucks",
+            "id": "w_6a70fb3ca8117",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Just now finding out about the Armenian Genocide",
+            "id": "w_6a70fb3ca802c",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The arrival of the pizza",
+            "id": "w_6a70fb3ca80e7",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Smegma",
+            "id": "w_6a70fb3ca80bc",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A micropig wearing a tiny raincoat and booties",
+            "id": "w_6a70fb3ca7e99",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Doing crimes",
+            "id": "w_6a70fb3ca7f75",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Dick fingers",
+            "id": "w_6a70fb3ca7f6e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Corporate America",
+            "id": "w_6a70fb3ca7f47",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Body image issues",
+            "id": "w_6a70fb3ca7f1b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The ol’ penis-in-the-popcorn surprise",
+            "id": "w_6a70fb3ca8100",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A plunger to the face",
+            "id": "w_6a70fb3ca7ea3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Rubbing my bush all over your jizz head",
+            "id": "w_6a70fb3ca8090",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Satan",
+            "id": "w_6a70fb3ca809a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Authentic Mexican cuisine",
+            "id": "w_6a70fb3ca7ef0",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A cock-hungry cumslut",
+            "id": "w_6a70fb3ca7e75",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Cocaine for lunch",
+            "id": "w_6a70fb3ca7f3b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "JD Power and his associates",
+            "id": "w_6a70fb3ca8025",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Pooping in a laptop and closing it",
+            "id": "w_6a70fb3ca808d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Diversity, equity, and inclusion",
+            "id": "w_6a70fb3ca7f71",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Bazinga!\"",
+            "id": "w_6a70fb3ca8126",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Being paralyzed from the neck down",
+            "id": "w_6a70fb3ca7f0e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Existing as a person of color",
+            "id": "w_6a70fb3ca7f9e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting really high",
+            "id": "w_6a70fb3ca7fe5",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Sex right next to the jizz",
+            "id": "w_6a70fb3ca8173",
+            "deck": "base_deck"
+        },
+        {
+            "text": "An erection that lasts longer than four hours",
+            "id": "w_6a70fb3ca7ed6",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Good grief\"",
+            "id": "w_6a70fb3ca814a",
+            "deck": "base_deck"
+        },
+        {
+            "text": "A good sniff",
+            "id": "w_6a70fb3ca7e83",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The Three-Fifths Compromise",
+            "id": "w_6a70fb3ca8102",
+            "deck": "base_deck"
+        },
+        {
+            "text": "The ugliest boy in town",
+            "id": "w_6a70fb3ca8108",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Joe Biden",
+            "id": "w_6a70fb3ca8028",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Getting eaten out by a dog",
+            "id": "w_6a70fb3ca7fdc",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Daniel Radcliffe’s delicious asshole",
+            "id": "w_6a70fb3ca7f63",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mouth jizz",
+            "id": "w_6a70fb3ca804b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Hospice care",
+            "id": "w_6a70fb3ca800e",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Drinking ten 5-hour ENERGYs® to get fifty continuous hours of energy",
+            "id": "w_6a70fb3ca7f83",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Mooing",
+            "id": "w_6a70fb3ca8047",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Fucking the weatherman on live television",
+            "id": "w_6a70fb3ca7fc1",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Some god damn peace and quiet",
+            "id": "w_6a70fb3ca80c3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Holding down a child and farting all over him",
+            "id": "w_6a70fb3ca800b",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Doing drugs with my jizz",
+            "id": "w_6a70fb3ca7f77",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Establishing dominance",
+            "id": "w_6a70fb3ca7f97",
+            "deck": "base_deck"
+        },
+        {
+            "text": "\"Say my name\"",
+            "id": "w_6a70fb3ca8136",
+            "deck": "base_deck"
+        },
+        {
+            "text": "My cheating son-of-a-bitch husband",
+            "id": "w_6a70fb3ca805d",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Tentacle porn",
+            "id": "w_6a70fb3ca80e2",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Seven dead and three in critical condition",
+            "id": "w_6a70fb3ca80aa",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Gandalf",
+            "id": "w_6a70fb3ca7fc3",
+            "deck": "base_deck"
+        },
+        {
+            "text": "Four Black guys, four white guys, some jizz, a few pine cones, and a dead camel",
+            "id": "w_6a70fb3ca815f",
+            "deck": "base_deck"
+        }
+    ],
+    "current_black_card": null,
+    "table_cards": [],
+    "round": 1,
+    "host_id": "usr_6a70dc0e35005",
+    "created_at": 1785789244,
+    "updated_at": 1785789245
+}

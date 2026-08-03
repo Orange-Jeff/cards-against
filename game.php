@@ -92,12 +92,14 @@ if (($roomConfig['ai_provider'] ?? ($globalConfig['ai_provider'] ?? '')) === 'op
 
 $voiceGender = $globalConfig['tts_voice'] ?? ($globalConfig['voice_gender'] ?? 'female');
 $enableChat = $globalConfig['enable_chat'] ?? true;
-$gameTitle = $globalConfig['game_title'] ?? 'Cards Against Everyone';
-$themeKeyword = trim(preg_replace('/^cards against\s+/i', '', $gameTitle));
+$activeTheme = $roomData['theme'] ?? $globalConfig['active_theme'] ?? 'default';
+$themesFile = __DIR__ . '/data/themes.json';
+$themes = file_exists($themesFile) ? (json_decode(file_get_contents($themesFile), true) ?: []) : [];
+$currentTheme = $themes[$activeTheme] ?? ($themes['default'] ?? []);
+$themeKeyword = trim((string)($currentTheme['game_name_suffix'] ?? 'Everyone'));
 if ($themeKeyword === '') {
     $themeKeyword = 'Everyone';
 }
-$activeTheme = $roomData['theme'] ?? $globalConfig['active_theme'] ?? 'default';
 
 // Load customizable voice scripts from JSON
 $voiceScriptsFile = __DIR__ . '/data/voice_scripts.json';
@@ -220,16 +222,16 @@ if (file_exists($voiceScriptsFile)) {
         #game-chat.fixed-height {
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            height: calc(16vh * 3.5 / 2.5); /* Match black card aspect ratio height */
-            min-height: 180px;
-            max-height: 280px;
+            height: calc(18.4vh * 3.5 / 2.5); /* Match black card aspect ratio height */
+            min-height: 207px;
+            max-height: 322px;
         }
         @media (min-width: 640px) {
             /* On wider screens, allow a slightly taller chat */
             #game-chat.fixed-height {
-                height: calc(18vh * 3.5 / 2.5);
-                min-height: 200px;
-                max-height: 320px;
+                height: calc(18.4vh * 3.5 / 2.5);
+                min-height: 230px;
+                max-height: 368px;
             }
         }
 
@@ -295,10 +297,9 @@ if (file_exists($voiceScriptsFile)) {
     <!-- BRANDING BANNER (Line 1) -->
     <div class="bg-[#141517] border-b border-gray-800 py-2 flex-none">
         <div class="max-w-4xl mx-auto px-4 text-center">
-            <h1 class="text-sm sm:text-base font-black uppercase tracking-[0.18em]">
+            <h1 class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
-                <span class="text-gray-200">(<?php echo htmlspecialchars($themeKeyword); ?>)</span>
-                <span class="text-[10px] lowercase text-gray-300 font-normal tracking-wide ml-2">v4.9.1</span>
+                <span class="text-gray-200"><?php echo htmlspecialchars($themeKeyword); ?></span>
             </h1>
         </div>
     </div>
@@ -374,14 +375,14 @@ if (file_exists($voiceScriptsFile)) {
     <div class="w-full max-w-4xl mx-auto">
         <div class="px-4 py-2 flex-none z-10 w-full flex items-start min-h-[190px] sm:min-h-[230px] h-auto relative safe-bottom-offset pb-4">
             <div class="flex-none justify-start pr-2">
-                <div id="black-card" class="hidden bg-black text-white p-3 rounded-lg shadow-2xl w-full max-w-[16vh] flex items-center justify-center text-center border border-gray-700 relative aspect-[2.5/3.5]">
+                <div id="black-card" class="hidden bg-black text-white p-3 rounded-lg shadow-2xl w-full max-w-[18.4vh] flex items-center justify-center text-center border border-gray-700 relative aspect-[2.5/3.5]">
                     <h2 class="text-xs sm:text-sm font-bold leading-tight" id="black-text">...</h2>
                     <span id="pick-badge" class="hidden absolute bottom-1 right-1 bg-white text-black text-[9px] font-bold px-1 rounded">PICK 1</span>
                 </div>
             </div>
 
             <!-- IN-GAME CHAT (beside black card, same height) -->
-            <div id="chat-wrapper" class="flex-1 min-w-0 flex flex-col justify-end pl-2">
+            <div id="chat-wrapper" class="flex-1 min-w-0 max-w-[38vh] flex flex-col justify-end pl-2">
                 <div id="game-chat" class="hidden flex flex-col w-full bg-gray-900/80 rounded-lg border border-gray-700 p-2 shadow-lg fixed-height">
                     <div id="auto-alert" class="hidden bg-blue-600 text-white text-center text-xs font-bold uppercase tracking-wider py-1 z-30 -mx-2 -mt-2 mb-1"></div>
                     <div class="text-[9px] text-gray-300 font-bold uppercase tracking-wider min-h-[12px] mb-1" id="waiting-for"></div>
@@ -646,7 +647,7 @@ if (file_exists($voiceScriptsFile)) {
             <span class="font-bold text-gray-300 ml-2 uppercase text-[10px] tracking-wider">Scores</span>
             <i class="fas fa-chevron-up text-gray-300 mr-2 transition-transform" id="score-arrow"></i>
         </div>
-        <div class="px-4 pb-4 space-y-1 hidden max-h-32 overflow-y-auto" id="score-list"></div>
+        <div class="px-4 pb-1 space-y-1 max-h-0 overflow-y-hidden transition-all duration-300" id="score-list"></div>
     </div>
 
     <!-- VDO VOICE CHAT - REMOVED (Will be redesigned) -->
@@ -1362,6 +1363,7 @@ if (file_exists($voiceScriptsFile)) {
 
         // Mute State (per room, per player)
         let mutedPlayers = new Set(); // player IDs muted in this room
+        let lastRoundStartForScores = null;
 
         /**
          * Check for pre-recorded host audio file
@@ -1385,7 +1387,19 @@ if (file_exists($voiceScriptsFile)) {
             } else {
                 mutedPlayers.add(playerId);
             }
+            applyChatMuteState();
             updateUI(GAME_STATE); // Re-render scoreboard to update mute indicator
+        }
+
+        function applyChatMuteState() {
+            const container = document.getElementById('chat-messages');
+            if (!container) return;
+            const entries = container.querySelectorAll('[data-chat-player-id]');
+            entries.forEach((entry) => {
+                const pid = entry.getAttribute('data-chat-player-id') || '';
+                if (!pid || pid === 'system') return;
+                entry.style.display = mutedPlayers.has(pid) ? 'none' : '';
+            });
         }
 
         // Chat State
@@ -1567,6 +1581,13 @@ if (file_exists($voiceScriptsFile)) {
                 const newMsgs = chatData.slice(lastChatCount);
                 newMsgs.forEach(m => {
                     const el = document.createElement('div');
+                    const playerId = (m.player_id || '').toString();
+                    const canMute = !!playerId && playerId !== 'system' && playerId !== MY_ID;
+                    const muted = mutedPlayers.has(playerId);
+                    const muteBtn = canMute
+                        ? `<button type="button" onclick="toggleMutePlayer('${playerId.replace(/'/g, "\\'")}')" class="ml-1 text-[9px] px-1 py-0.5 rounded border border-gray-600 text-gray-300 hover:text-white hover:border-orange-500">${muted ? 'Unmute' : 'Mute'}</button>`
+                        : '';
+                    el.setAttribute('data-chat-player-id', playerId);
 
                     // Check if this is a system message (join/leave)
                     const isSystem = m.type === 'join' || m.type === 'leave' || m.player_id === 'system';
@@ -1583,9 +1604,9 @@ if (file_exists($voiceScriptsFile)) {
                         } else if (m.audio_url) {
                             sourceBadge = ' <span class="bg-blue-900/40 text-blue-400 text-[9px] px-1 rounded font-normal uppercase tracking-wider ml-1">Voice Clip</span>';
                         }
-                        el.innerHTML = `<span class="text-orange-400 font-bold"><i class="fas fa-robot mr-1"></i>Host:${sourceBadge}</span> <span class="text-gray-200 italic">${safeMsg}</span>`;
+                        el.innerHTML = `<span class="text-orange-400 font-bold"><i class="fas fa-robot mr-1"></i>Host:${sourceBadge}</span>${muteBtn} <span class="text-gray-200 italic">${safeMsg}</span>`;
 
-                        if (ENABLE_TTS && !isMuted) {
+                        if (!muted && ENABLE_TTS && !isMuted) {
                             if (m.audio_url) {
                                 setTimeout(() => playAudioSourceSync(m.audio_url, ++ttsRequestId), 0);
                             } else {
@@ -1629,18 +1650,29 @@ if (file_exists($voiceScriptsFile)) {
                             sourceBadge = ' <span class="bg-green-900/40 text-green-400 text-[9px] px-1 rounded font-normal uppercase tracking-wider ml-1">Gemini AI</span>';
                         }
 
-                        if (mutedPlayers.has(m.player_id)) {
-                            // Render placeholder for muted messages
-                            el.innerHTML = `<span class=\"text-blue-400 font-bold\">${safeName}${sourceBadge}:</span> <span class=\"text-gray-300 italic\">-muted-</span>`;
-                        } else {
-                            el.innerHTML = `<span class=\"text-blue-400 font-bold\">${safeName}${sourceBadge}:</span> <span class=\"text-gray-200\">${safeMsg}</span>`;
-                        }
+                        el.innerHTML = `<span class=\"text-blue-400 font-bold\">${safeName}${sourceBadge}:</span>${muteBtn} <span class=\"text-gray-200\">${safeMsg}</span>`;
                     }
                     container.appendChild(el);
                 });
+                applyChatMuteState();
                 // Auto scroll
                 container.scrollTop = container.scrollHeight;
                 lastChatCount = chatData.length;
+            }
+        }
+
+        function setScoreboardExpanded(expanded) {
+            const list = document.getElementById('score-list');
+            const arrow = document.getElementById('score-arrow');
+            if (!list) return;
+            if (expanded) {
+                list.classList.remove('max-h-0', 'overflow-y-hidden');
+                list.classList.add('max-h-32', 'overflow-y-auto');
+                if (arrow) arrow.classList.add('rotate-180');
+            } else {
+                list.classList.add('max-h-0', 'overflow-y-hidden');
+                list.classList.remove('max-h-32', 'overflow-y-auto');
+                if (arrow) arrow.classList.remove('rotate-180');
             }
         }
 
@@ -2560,6 +2592,15 @@ if (file_exists($voiceScriptsFile)) {
             if (aiBadge) {
                 if (data.config && (data.config.use_ai_host || data.config.use_ai_bots)) {
                     aiBadge.classList.remove('hidden');
+                    const hasHostAI = !!data.config.use_ai_host;
+                    const hasBotAI = !!data.config.use_ai_bots;
+                    if (hasHostAI && hasBotAI) {
+                        aiBadge.innerHTML = '<i class="fas fa-brain text-[10px]"></i> AI Host + Bots';
+                    } else if (hasHostAI) {
+                        aiBadge.innerHTML = '<i class="fas fa-brain text-[10px]"></i> AI Host';
+                    } else {
+                        aiBadge.innerHTML = '<i class="fas fa-brain text-[10px]"></i> AI Bots';
+                    }
                 } else {
                     aiBadge.classList.add('hidden');
                 }
@@ -2743,6 +2784,19 @@ if (file_exists($voiceScriptsFile)) {
                         </div>
                     </div>`;
                 });
+            }
+
+            // Auto-show scores when winner is announced, then hide when next round starts.
+            if (data.state === 'round_end') {
+                setScoreboardExpanded(true);
+            }
+            if (data.state === 'playing' && data.round_start_time) {
+                if (lastRoundStartForScores === null) {
+                    lastRoundStartForScores = data.round_start_time;
+                } else if (lastRoundStartForScores !== data.round_start_time) {
+                    lastRoundStartForScores = data.round_start_time;
+                    setScoreboardExpanded(false);
+                }
             }
         }
 
@@ -2986,7 +3040,9 @@ if (file_exists($voiceScriptsFile)) {
 
         function toggleScoreboard() {
             const l = document.getElementById('score-list');
-            l.classList.toggle('hidden');
+            if (!l) return;
+            const isExpanded = l.classList.contains('max-h-32');
+            setScoreboardExpanded(!isExpanded);
         }
 
         function showGameOver(data) {

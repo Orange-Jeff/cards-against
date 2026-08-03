@@ -112,18 +112,21 @@ if ($doStartupCleanup) {
 
 // --- HELPERS ---
 
-function getAIConfigAgainst(?string $customApiKey = null): array
+function getAIConfigAgainst(?string $customApiKey = null, ?string $forcedProvider = null, ?string $forcedModel = null): array
 {
     $apiKey = trim((string)$customApiKey);
     $provider = '';
     $model = '';
+    $geminiModel = 'gemini-2.5-flash';
+    $openAIModel = 'gpt-4o-mini';
     $googleTtsKey = '';
     $globalConfigFile = __DIR__ . '/data/global_config.json';
     if (file_exists($globalConfigFile)) {
         $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
         $googleTtsKey = $config['google_tts_api_key'] ?? '';
         $provider = strtolower($config['ai_provider'] ?? '');
-        $model = trim($config['openai_model'] ?? '');
+        $geminiModel = trim((string)($config['gemini_model'] ?? 'gemini-2.5-flash'));
+        $openAIModel = trim((string)($config['openai_model'] ?? 'gpt-4o-mini'));
         if (empty($apiKey)) {
             if ($provider === 'openai') {
                 $apiKey = trim($config['openai_api_key'] ?? '');
@@ -149,15 +152,28 @@ function getAIConfigAgainst(?string $customApiKey = null): array
     if ($provider === '') {
         $provider = strncmp($apiKey, 'sk-', 3) === 0 ? 'openai' : 'gemini';
     }
+    if ($forcedProvider !== null && $forcedProvider !== '') {
+        $provider = strtolower(trim($forcedProvider));
+    }
+    if (!in_array($provider, ['openai', 'gemini'], true)) {
+        $provider = 'gemini';
+    }
+    $model = $provider === 'openai' ? $openAIModel : $geminiModel;
+    if ($forcedModel !== null && trim($forcedModel) !== '') {
+        $model = trim($forcedModel);
+    }
     if ($provider === 'gemini' && !empty($googleTtsKey) && $apiKey === $googleTtsKey) {
         $apiKey = '';
     }
-    return ['provider' => $provider, 'api_key' => $apiKey, 'model' => $model ?: 'gpt-5.6-luna'];
+    if ($model === '') {
+        $model = $provider === 'openai' ? 'gpt-4o-mini' : 'gemini-2.5-flash';
+    }
+    return ['provider' => $provider, 'api_key' => $apiKey, 'model' => $model];
 }
 
-function queryAIAgainstDetailed(string $systemPrompt, string $userPrompt, float $temperature = 0.8, ?string $customApiKey = null): array
+function queryAIAgainstDetailed(string $systemPrompt, string $userPrompt, float $temperature = 0.8, ?string $customApiKey = null, ?string $forcedProvider = null, ?string $forcedModel = null): array
 {
-    $ai = getAIConfigAgainst($customApiKey);
+    $ai = getAIConfigAgainst($customApiKey, $forcedProvider, $forcedModel);
     $apiKey = $ai['api_key'];
     if ($apiKey === '') {
         return ['success' => false, 'error' => 'No API key configured or key matched Google TTS key.'];
@@ -1297,9 +1313,11 @@ if ($action === 'download_zip' || $action === 'download_voice_cache_zip') {
 
 if ($action === 'test_ai') {
     $customKey = $_GET['api_key'] ?? $_POST['api_key'] ?? null;
+    $provider = $_GET['provider'] ?? $_POST['provider'] ?? null;
+    $model = $_GET['model'] ?? $_POST['model'] ?? null;
     $systemPrompt = "You are a witty Cards Against Humanity AI host. Respond with a single short sarcastic sentence testing the AI API connection.";
     $userPrompt = "Testing AI connection";
-    $result = queryAIAgainstDetailed($systemPrompt, $userPrompt, 0.7, $customKey);
+    $result = queryAIAgainstDetailed($systemPrompt, $userPrompt, 0.7, $customKey, is_string($provider) ? $provider : null, is_string($model) ? $model : null);
     header('Content-Type: application/json');
     if (!empty($result['success']) && !empty($result['text'])) {
         echo json_encode([

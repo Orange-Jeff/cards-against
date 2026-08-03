@@ -105,9 +105,9 @@ if ($availableDecks !== null) {
     <!-- BRANDING BANNER (Line 2) -->
     <div class="bg-[#141517] border-b border-gray-800 py-2 flex-none">
         <div class="max-w-4xl mx-auto px-4 text-center">
-            <h1 id="game-title" class="text-sm sm:text-base font-black uppercase tracking-[0.18em]">
+            <h1 id="game-title" class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
-                <span class="text-gray-200">(<?php echo htmlspecialchars($currentTheme['game_name_suffix'] ?? 'Everyone'); ?>)</span>
+                <span class="text-gray-200"><?php echo htmlspecialchars($currentTheme['game_name_suffix'] ?? 'Everyone'); ?></span>
             </h1>
         </div>
     </div>

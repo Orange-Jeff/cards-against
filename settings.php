@@ -38,8 +38,10 @@ function load_global_config()
         'blocked_users' => [],
         'admin_password' => 'orange',
         'ai_provider' => 'gemini',
+        'gemini_api_key' => '',
+        'gemini_model' => 'gemini-2.5-flash',
         'openai_api_key' => '',
-        'openai_model' => 'gpt-5.6-luna',
+        'openai_model' => 'gpt-4o-mini',
         'openai_voice' => 'ash',
         'wp_publish_url' => 'https://netbound.ca',
         'wp_publish_username' => '',
@@ -882,6 +884,7 @@ if (isset($_POST['action'])) {
             'wp_publish_username',
             'wp_publish_password',
             'gemini_api_key',
+            'gemini_model',
             'ai_provider',
             'openai_api_key',
             'openai_model',
@@ -1679,9 +1682,9 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
     <!-- BRANDING BANNER -->
     <div class="bg-[#141517] border-b border-gray-800 py-2 flex-none">
         <div class="max-w-4xl mx-auto px-4 text-center">
-            <h1 class="text-sm sm:text-base font-black uppercase tracking-[0.18em]">
+            <h1 class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
-                <span class="text-gray-200">(<?php echo htmlspecialchars($defaultTheme['game_name_suffix'] ?? 'Everyone'); ?>)</span>
+                <span class="text-gray-200"><?php echo htmlspecialchars($defaultTheme['game_name_suffix'] ?? 'Everyone'); ?></span>
             </h1>
         </div>
     </div>
@@ -2369,8 +2372,8 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         <div>
                             <label class="block text-xs font-bold text-gray-200 uppercase mb-1">Selected AI Provider</label>
                             <select name="ai_provider" id="ai-provider" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
-                                <option value="gemini" <?php echo (($globalConfig['ai_provider'] ?? 'gemini') === 'gemini') ? 'selected' : ''; ?>>Google Gemini (gemini-2.5-flash)</option>
-                                <option value="openai" <?php echo (($globalConfig['ai_provider'] ?? 'gemini') === 'openai') ? 'selected' : ''; ?>>OpenAI (gpt-5.6-luna / GPT-4o)</option>
+                                <option value="gemini" <?php echo (($globalConfig['ai_provider'] ?? 'gemini') === 'gemini') ? 'selected' : ''; ?>>Google Gemini</option>
+                                <option value="openai" <?php echo (($globalConfig['ai_provider'] ?? 'gemini') === 'openai') ? 'selected' : ''; ?>>OpenAI</option>
                             </select>
                             <p class="text-[10px] text-gray-400 mt-1">Controls which provider generates host commentary, bot card choices, and chat reactions.</p>
                         </div>
@@ -2389,6 +2392,17 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                                 <input type="password" name="gemini_api_key" value="<?php echo htmlspecialchars($globalConfig['gemini_api_key'] ?? ''); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="AQ.Ab... / AIzaSy...">
                                 <p class="text-[10px] text-gray-400 mt-1">Get your free API key at <a href="https://aistudio.google.com/" target="_blank" class="text-orange-400 underline">Google AI Studio</a>.</p>
                             </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">Gemini Model ID</label>
+                                <input type="text" id="gemini-model" name="gemini_model" value="<?php echo htmlspecialchars($globalConfig['gemini_model'] ?? 'gemini-2.5-flash'); ?>" list="gemini-model-options" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="gemini-2.5-flash">
+                                <datalist id="gemini-model-options">
+                                    <option value="gemini-2.5-flash"></option>
+                                    <option value="gemini-2.5-pro"></option>
+                                    <option value="gemini-2.0-flash"></option>
+                                    <option value="gemini-1.5-pro"></option>
+                                    <option value="gemini-1.5-flash"></option>
+                                </datalist>
+                            </div>
                         </div>
 
                         <!-- OpenAI Section -->
@@ -2404,7 +2418,15 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-gray-300 mb-1">OpenAI Model ID</label>
-                                <input type="text" name="openai_model" value="<?php echo htmlspecialchars($globalConfig['openai_model'] ?? 'gpt-5.6-luna'); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="gpt-5.6-luna">
+                                <input type="text" id="openai-model" name="openai_model" value="<?php echo htmlspecialchars($globalConfig['openai_model'] ?? 'gpt-4o-mini'); ?>" list="openai-model-options" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="gpt-4o-mini">
+                                <datalist id="openai-model-options">
+                                    <option value="gpt-4o-mini"></option>
+                                    <option value="gpt-4o"></option>
+                                    <option value="gpt-4.1-mini"></option>
+                                    <option value="gpt-4.1"></option>
+                                    <option value="o4-mini"></option>
+                                    <option value="o3"></option>
+                                </datalist>
                             </div>
                         </div>
                     </div>
@@ -3507,8 +3529,11 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 const fd = new FormData(form);
                 const provider = fd.get('ai_provider');
                 const apiKey = provider === 'openai' ? fd.get('openai_api_key') : fd.get('gemini_api_key');
+                const model = provider === 'openai' ? fd.get('openai_model') : fd.get('gemini_model');
                 fd.set('action', 'test_ai');
                 fd.set('api_key', apiKey || '');
+                fd.set('provider', provider || 'gemini');
+                fd.set('model', model || '');
 
                 fetch('api.php', {
                     method: 'POST',
