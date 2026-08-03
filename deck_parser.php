@@ -1,192 +1,300 @@
 <?php
-// deck_parser.php
-// Version: 3.03 - Fix card edit lookup key mismatch with trailing periods
+/**
+ * Shared Deck Parser and Sanitizer for Cards Against Humanity
+ */
 
-function get_deck_slug($name) {
-    $name = preg_replace('/^the\s+/i', '', trim($name));
-    $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '_', $name));
-    return trim($slug, '_') ?: 'base_deck';
+if (!function_exists('cleanCardTextPHP')) {
+    /**
+     * Clean and format card text.
+     * Enforces exactly 6 underscores (______) for blanks and strips trailing periods from listings.
+     *
+     * @param string $text
+     * @param bool $isBlack
+     * @return string
+     */
+    function cleanCardTextPHP(string $text, bool $isBlack): string {
+        $cleaned = trim($text);
+        if ($cleaned === '') return '';
+
+        // Strip backslashes if present
+        $cleaned = str_replace('\\', '', $cleaned);
+
+        // Strip <i> and </i> tags
+        $cleaned = preg_replace('/<\/?i\b[^>]*>/i', '', $cleaned);
+
+        // Strip parenthesis characters ( and )
+        $cleaned = str_replace(['(', ')'], '', $cleaned);
+
+        if ($isBlack) {
+            // Replace runs of dots/slashes/underscores representing blanks (e.g. ./././././. or .....) with standard 6 underscores
+            $cleaned = preg_replace('/[._\/]{4,}/', '______', $cleaned);
+            // Replace any run of 2 or more underscores with standard 6-underscore blank
+            $cleaned = preg_replace('/_{2,}/', '______', $cleaned);
+            // Strip remaining period characters
+            $cleaned = str_replace('.', '', $cleaned);
+            // Ensure single space before blank if preceded by word character
+            $cleaned = preg_replace('/(\w)\s*______/', '$1 ______', $cleaned);
+            // Ensure single space after blank if followed by word character
+            $cleaned = preg_replace('/______\s*(\w)/', '______ $1', $cleaned);
+            // Remove space before punctuation following blank
+            $cleaned = preg_replace('/______\s+([,;:?!])/', '______$1', $cleaned);
+            // Collapse multiple spaces
+            $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
+        } else {
+            // White cards: strip all underscores and period characters
+            $cleaned = preg_replace('/_+/', '', $cleaned);
+            $cleaned = str_replace('.', '', $cleaned);
+            // Collapse multiple spaces
+            $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
+            $cleaned = trim($cleaned);
+        }
+        return trim($cleaned);
+    }
 }
 
-function get_deck_label($slug) {
-    $labels = [
-        'base_deck' => 'Base Deck',
-        'hot_box' => 'The Hot Box',
-        'dad_pack' => 'The Dad Pack',
-        'geek_pack' => 'The Geek Pack',
-        'weed_pack' => 'Weed Pack',
-        '90s_nostalgia_pack' => '90s Nostalgia Pack',
-        '2000s_nostalgia_pack' => '2000s Nostalgia Pack',
-        'sci_fi_pack' => 'The Sci-Fi Pack',
-        'green_box' => 'Green Box',
-        'red_box' => 'Red Box',
-        'blue_box' => 'Blue Box',
-        'new_box' => 'New Box',
-        'orange_deck' => 'Orange Deck (User Additions)'
-    ];
-    return $labels[$slug] ?? ucwords(str_replace('_', ' ', $slug));
+if (!function_exists('parseDeckHeaderLine')) {
+    /**
+     * Parse a line to detect if it is a Black/White card section header.
+     * Supports various formats, typos (Lst, Cards Cards), markdown prefixes (#, ===), and trailing words.
+     *
+     * @param string $line
+     * @return array{type: string, raw_pack: string, pack_slug: string}|null
+     */
+    function parseDeckHeaderLine(string $line): ?array {
+        $trimmed = trim($line, " \t\n\r\0\x0B#=*-_[]()");
+        if ($trimmed === '' || strlen($trimmed) > 120) return null;
+
+        // Any header line should NOT contain underscore blanks
+        if (strpos($trimmed, '__') !== false) return null;
+
+        if (preg_match('/^(?:The\s+)?(.*?)\s*[-:\/(]*\s*(Black|White)\s*Cards?(?:\s+(?:Cards\s+)?(?:List|Lst|Pack|Deck)*)*[\)]*$/i', $trimmed, $m)) {
+            $rawPack = trim($m[1], " \t#=*-_[]()");
+            $type = strtolower($m[2]);
+
+            // Exclude normal sentences ending in a period or question mark
+            if ($rawPack !== '' && preg_match('/[.,?!]$/', $rawPack)) {
+                return null;
+            }
+
+            if (strcasecmp($rawPack, 'Cards Against Humanity') === 0 || strcasecmp($rawPack, 'More Cards Against Humanity') === 0 || $rawPack === '') {
+                $rawPack = 'Base Deck';
+                $packSlug = 'base_deck';
+            } else {
+                $packSlug = strtolower(str_replace(' ', '_', preg_replace('/[^a-zA-Z0-9 _-]/', '', $rawPack)));
+                if ($packSlug === '') $packSlug = 'base_deck';
+            }
+
+            return [
+                'type' => $type,
+                'raw_pack' => $rawPack,
+                'pack_slug' => $packSlug
+            ];
+        }
+
+        return null;
+    }
 }
 
-function parseDecksShared($includeDeleted = false) {
-    $DECK_FILE = __DIR__ . '/decks.md';
-    $IMPORTED_FILE = __DIR__ . '/data/imported_decks.md';
-    $BANNED_FILE = __DIR__ . '/data/banned_cards.json';
-    $DELETED_FILE = __DIR__ . '/data/deleted_decks.json';
-    $EDITED_FILE = __DIR__ . '/data/edited_cards.json';
-    
-    if (!file_exists($DECK_FILE) && !file_exists($IMPORTED_FILE)) {
-        return ['black' => [], 'white' => [], 'tags' => ['base_deck']];
-    }
+if (!function_exists('sanitizeDeckContent')) {
+    /**
+     * Sanitize full deck markdown content.
+     *
+     * @param string $content
+     * @return string
+     */
+    function sanitizeDeckContent(string $content): string {
+        $lines = preg_split('/\R/', $content);
+        $cleanedLines = [];
+        $currentType = 'black'; // Default section assumption
 
-    $lines = [];
-    if (file_exists($DECK_FILE)) {
-        $content = file_get_contents($DECK_FILE);
-        $lines = array_merge($lines, preg_split('/\R/', $content));
-    }
-    if (file_exists($IMPORTED_FILE)) {
-        $content = file_get_contents($IMPORTED_FILE);
-        $lines[] = ''; // spacing
-        $lines = array_merge($lines, preg_split('/\R/', $content));
-    }
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
 
-    $deletedDecks = [];
-    if (!$includeDeleted && file_exists($DELETED_FILE)) {
-        $deletedDecks = json_decode(file_get_contents($DELETED_FILE), true) ?: [];
-    }
-
-    $edited = [];
-    if (file_exists($EDITED_FILE)) {
-        $rawEdited = json_decode(file_get_contents($EDITED_FILE), true) ?: [];
-        foreach ($rawEdited as $k => $v) {
-            $edited[trim(strtolower($k))] = trim($v);
-        }
-    }
-
-    $black = [];
-    $white = [];
-    $tags = ['base_deck'];
-    $currentPack = 'base_deck';
-    $type = null;
-    
-    $banned = file_exists($BANNED_FILE) ? (json_decode(file_get_contents($BANNED_FILE), true) ?: []) : [];
-    $bannedTexts = array_map(function ($x) { return trim(strtolower($x['text'] ?? '')); }, $banned);
-
-    foreach ($lines as $line) {
-        $line = trim($line);
-        if ($line === '') continue;
-
-        // Strip backslashes from markdown formatting (e.g. \_\_\_\_\_\_ -> ______)
-        $line = str_replace('\\', '', $line);
-
-        // Normalize any sequence of 2 or more underscores to standard 6 underscores
-        $line = preg_replace('/_{2,}/', '______', $line);
-
-        // Header detection (e.g., The Sci-Fi Pack Black Cards List)
-        if (preg_match('/^(?:The\s+)?(.+?)\s+(Black|White)\s+Cards(?:s)?(?: List)?\s*$/i', $line, $m)) {
-            $packName = strtolower(trim($m[1]));
-            if ($packName !== 'cards against humanity' && $packName !== 'more cards against humanity') {
-                $currentPack = get_deck_slug($packName);
-            } else {
-                $currentPack = 'more_cards_against_humanity';
+            if ($trimmed === '') {
+                $cleanedLines[] = '';
+                continue;
             }
-            $type = strtolower(trim($m[2]));
-            continue;
-        }
 
-        // Fallback header detection for standalone "White Cards List" or "Black Cards List"
-        if (preg_match('/^\s*(Black|White)\s+Cards\s*(?:List)?\s*$/i', $line, $m)) {
-            $type = strtolower(trim($m[1]));
-            continue;
-        }
+            // Detect section headers
+            $hdr = parseDeckHeaderLine($trimmed);
+            if ($hdr !== null) {
+                $currentType = $hdr['type'];
+                // Write out a standardized clean header
+                $cleanedLines[] = ($hdr['raw_pack'] === 'Base Deck' ? '' : $hdr['raw_pack'] . ' ') . ucfirst($hdr['type']) . ' Cards';
+                continue;
+            }
+            if (stripos($trimmed, 'Cards List') !== false) {
+                $cleanedLines[] = $trimmed;
+                continue;
+            }
 
-        // Skip other subheaders
-        if (stripos($line, 'Cards List') !== false) continue;
+            $isBlack = ($currentType === 'black');
+            $cleanedCard = cleanCardTextPHP($trimmed, $isBlack);
 
-        $deckTag = $currentPack;
-
-        // Extract inline tags like "(Red)", "(Blue)", etc. at the very end of the line
-        $inlineTag = null;
-        if (preg_match('/\s+\((red|blue|green|new)\)$/i', $line, $m)) {
-            $inlineTag = strtolower(trim($m[1]));
-            // Strip it from the card text
-            $line = trim(preg_replace('/\s+\((?:red|blue|green|new)\)$/i', '', $line));
-        }
-
-        // Map inline tags or categorize them
-        if ($inlineTag !== null) {
-            if ($inlineTag === 'red') $deckTag = 'red_box';
-            elseif ($inlineTag === 'blue') $deckTag = 'blue_box';
-            elseif ($inlineTag === 'green') $deckTag = 'green_box';
-            elseif ($inlineTag === 'new') $deckTag = 'new_box';
-            else $deckTag = $inlineTag;
-        } elseif ($currentPack === 'more_cards_against_humanity') {
-            // Check specific untagged ones under More Cards Against Humanity
-            $lineLower = strtolower($line);
-            if (strpos($lineLower, '10 football players') !== false || 
-                strpos($lineLower, 'resexualizing') !== false ||
-                strpos($lineLower, 'offended on behalf') !== false) {
-                $deckTag = 'green_box';
-            } else {
-                $deckTag = 'new_box';
+            if ($cleanedCard !== '') {
+                // If it's a black card without any blank, append standard blank
+                if ($isBlack && strpos($cleanedCard, '______') === false) {
+                    $cleanedCard .= ' ______';
+                    $cleanedCard = cleanCardTextPHP($cleanedCard, true);
+                }
+                $cleanedLines[] = $cleanedCard;
             }
         }
 
-        if (!$includeDeleted && in_array($deckTag, $deletedDecks, true)) {
-            continue;
-        }
-
-        if (!in_array($deckTag, $tags, true)) {
-            $tags[] = $deckTag;
-        }
-
-        // Check if there is an edit for this card text
-        $trimmedLine = trim($line);
-        $editKey = strtolower($trimmedLine);
-        $editKeyNoPeriod = rtrim($editKey, '.');
-        $originalLineText = $trimmedLine;
-        if (isset($edited[$editKey])) {
-            $line = $edited[$editKey];
-        } elseif (isset($edited[$editKeyNoPeriod])) {
-            $line = $edited[$editKeyNoPeriod];
-        }
-
-        if ($type === 'black') {
-            $lc = strtolower($line);
-            $isHaiku = (strpos($lc, 'make a haiku') !== false);
-            $isInsteadOf = (strpos($lc, 'instead of') === 0);
-            
-            // Check if card has no blank; if so, append one at the end
-            $hasBlank = (strpos($line, '______') !== false);
-            if (!$hasBlank && !$isHaiku && !$isInsteadOf) {
-                $line .= ' ______';
-                $hasBlank = true;
-            }
-
-            if ($hasBlank && !$isHaiku && !$isInsteadOf && !in_array(trim($lc), $bannedTexts, true)) {
-                $pick = max(1, substr_count($line, '______'));
-                $black[] = [
-                    'text' => $line,
-                    'original_text' => $originalLineText,
-                    'pick' => $pick,
-                    'id' => uniqid('b_'),
-                    'deck' => $deckTag
-                ];
-            }
-        } elseif ($type === 'white') {
-            if (!in_array(trim(strtolower($line)), $bannedTexts, true)) {
-                $cleanLine = rtrim($line, '.');
-                $white[] = [
-                    'text' => $cleanLine,
-                    'original_text' => $originalLineText,
-                    'id' => uniqid('w_'),
-                    'deck' => $deckTag
-                ];
-            }
-        }
+        return implode("\n", $cleanedLines);
     }
+}
 
-    // Filter out 'more_cards_against_humanity' from tags if empty
-    $tags = array_filter($tags, function($t) { return $t !== 'more_cards_against_humanity'; });
+if (!function_exists('sanitizeDeckFile')) {
+    /**
+     * Sanitize a deck file in place.
+     *
+     * @param string $filepath
+     * @return bool
+     */
+    function sanitizeDeckFile(string $filepath): bool {
+        if (!file_exists($filepath)) return false;
+        $content = file_get_contents($filepath);
+        if ($content === false) return false;
+        $sanitized = sanitizeDeckContent($content);
+        return file_put_contents($filepath, $sanitized) !== false;
+    }
+}
 
-    return ['black' => $black, 'white' => $white, 'tags' => array_values(array_unique($tags))];
+if (!function_exists('parseDecksShared')) {
+    /**
+     * Parses decks from decks.md and data/imported_decks.md.
+     *
+     * @param bool $includeDeleted
+     * @return array{black: array<int, array<string, mixed>>, white: array<int, array<string, mixed>>, tags: array<int, string>}
+     */
+    function parseDecksShared(bool $includeDeleted = false): array {
+        $deckFiles = [
+            __DIR__ . '/decks.md',
+            __DIR__ . '/data/imported_decks.md'
+        ];
+
+        $black = [];
+        $white = [];
+        $tags = ['base_deck'];
+
+        $bannedFile = __DIR__ . '/data/banned_cards.json';
+        $bannedMap = [];
+        if (!$includeDeleted && file_exists($bannedFile)) {
+            $banned = json_decode(file_get_contents($bannedFile), true) ?: [];
+            foreach ($banned as $b) {
+                if (!empty($b['text'])) {
+                    $bDeck = !empty($b['deck']) ? trim(strtolower($b['deck'])) : 'all';
+                    $bText1 = trim(strtolower(cleanCardTextPHP($b['text'], true)));
+                    $bText2 = trim(strtolower(cleanCardTextPHP($b['text'], false)));
+                    $bannedMap[$bDeck . '::' . $bText1] = true;
+                    $bannedMap[$bDeck . '::' . $bText2] = true;
+                }
+            }
+        }
+
+        $editedFile = __DIR__ . '/data/edited_cards.json';
+        $editedMap = [];
+        if (file_exists($editedFile)) {
+            $editedMap = json_decode(file_get_contents($editedFile), true) ?: [];
+        }
+
+        foreach ($deckFiles as $file) {
+            if (!file_exists($file)) continue;
+
+            $content = file_get_contents($file);
+            if (!$content) continue;
+
+            $lines = preg_split('/\R/', $content);
+            $type = 'black';
+            $currentPack = 'base_deck';
+
+            foreach ($lines as $line) {
+                $trimmed = trim($line);
+                if ($trimmed === '') continue;
+
+                $hdr = parseDeckHeaderLine($trimmed);
+                if ($hdr !== null) {
+                    $currentPack = $hdr['pack_slug'];
+                    $type = $hdr['type'];
+                    if (!in_array($currentPack, $tags, true)) $tags[] = $currentPack;
+                    continue;
+                }
+
+                if (stripos($trimmed, 'Cards List') !== false) continue;
+
+                $deckTag = $currentPack;
+                if (preg_match('/\(([^)]+)\)\s*$/', $trimmed, $m)) {
+                    $inlineTag = strtolower(trim($m[1]));
+                    $deckTag = str_replace(' ', '_', $inlineTag);
+                    $trimmed = trim(preg_replace('/\s*\([^)]+\)\s*$/', '', $trimmed));
+                }
+
+                if (!in_array($deckTag, $tags, true)) $tags[] = $deckTag;
+
+                $isBlack = ($type === 'black');
+                $cleanText = cleanCardTextPHP($trimmed, $isBlack);
+                if ($cleanText === '') continue;
+
+                $normTextOriginal = trim(strtolower($cleanText));
+                $normDeck = trim(strtolower($deckTag));
+
+                // 1. Check if banned by original text
+                if (!$includeDeleted && (isset($bannedMap['all::' . $normTextOriginal]) || isset($bannedMap[$normDeck . '::' . $normTextOriginal]))) {
+                    continue; // Skip banned card
+                }
+
+                // 2. Apply edits if present
+                if (isset($editedMap[$normTextOriginal])) {
+                    $cleanText = $editedMap[$normTextOriginal];
+                }
+
+                $normText = trim(strtolower($cleanText));
+
+                // 3. Check if banned by edited text
+                if (!$includeDeleted && (isset($bannedMap['all::' . $normText]) || isset($bannedMap[$normDeck . '::' . $normText]))) {
+                    continue; // Skip banned card
+                }
+
+                if ($isBlack) {
+                    if (strpos($cleanText, '______') === false) {
+                        $cleanText .= ' ______';
+                    }
+                    $pick = max(1, substr_count($cleanText, '______'));
+                    $black[] = [
+                        'text' => $cleanText,
+                        'pick' => $pick,
+                        'id' => uniqid('b_'),
+                        'deck' => $deckTag
+                    ];
+                } else {
+                    $white[] = [
+                        'text' => $cleanText,
+                        'id' => uniqid('w_'),
+                        'deck' => $deckTag
+                    ];
+                }
+            }
+        }
+
+        return [
+            'black' => $black,
+            'white' => $white,
+            'tags' => array_values(array_unique($tags))
+        ];
+    }
+}
+
+if (!function_exists('get_deck_label')) {
+    /**
+     * Get a human-readable label for a deck tag.
+     *
+     * @param string $tag
+     * @return string
+     */
+    function get_deck_label(string $tag): string {
+        if ($tag === 'base_deck') return 'Base Deck (Original)';
+        if ($tag === 'orange_deck') return 'Orange Deck (User Additions)';
+        return ucwords(str_replace('_', ' ', $tag));
+    }
 }

@@ -150,7 +150,7 @@ if ($availableDecks !== null) {
             </div>
 
             <div class="bg-[#25262b] p-6 rounded-xl shadow-xl border border-gray-800">
-                <label class="font-bold text-sm text-gray-200 uppercase mb-2 block"><i class="fas fa-tag mr-1"></i> Game Name</label>
+                <label class="font-bold text-sm text-gray-200 uppercase mb-2 block"><i class="fas fa-tag mr-1"></i> Room Name</label>
                 <div class="flex gap-2">
                     <input type="text" name="room_name" id="room_name_input" value="<?php echo htmlspecialchars($roomNameDefault); ?>" class="flex-1 bg-gray-800 border border-gray-600 rounded-lg p-3 text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all shadow-inner">
                     <button type="button" onclick="diceRoomName()" class="px-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600"><i class="fas fa-dice"></i></button>
@@ -158,7 +158,7 @@ if ($availableDecks !== null) {
             </div>
 
             <?php
-            // Check for pre-configured Gemini API Key
+            // Check for pre-configured Gemini or OpenAI API Key
             $envPath = dirname(__DIR__) . '/.env';
             $envApiKey = '';
             if (file_exists($envPath)) {
@@ -168,13 +168,13 @@ if ($availableDecks !== null) {
                     if ($line === '' || strpos($line, '#') === 0) continue;
                     if (strpos($line, '=') !== false) {
                         list($key, $val) = explode('=', $line, 2);
-                        if (trim($key) === 'GEMINI_API_KEY') {
+                        if (trim($key) === 'GEMINI_API_KEY' || trim($key) === 'OPENAI_API_KEY') {
                             $envApiKey = trim($val);
                         }
                     }
                 }
             }
-            $configApiKey = $globalConfig['gemini_api_key'] ?? '';
+            $configApiKey = $globalConfig['gemini_api_key'] ?? ($globalConfig['openai_api_key'] ?? '');
             $hasPreConfiguredKey = !empty($envApiKey) || !empty($configApiKey);
             ?>
 
@@ -199,65 +199,52 @@ if ($availableDecks !== null) {
                     <input type="checkbox" name="allow_watchers" id="st-watchers" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
                 </label>
 
-                <?php if($masterEnableChat): ?>
                 <label class="flex items-center justify-between cursor-pointer group">
-                    <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors"><i class="fas fa-comments mr-2 text-gray-300"></i> Enable Text Chat</span>
+                    <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors"><i class="fas fa-comments mr-2 text-gray-300"></i> Enable text chat between players</span>
                     <input type="checkbox" name="enable_chat" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
                 </label>
-                <?php endif; ?>
             </div>
 
-            <!-- Game Hosts & Bots Category -->
+            <!-- Voice & AI Settings Category -->
             <div class="bg-[#25262b] p-6 rounded-xl shadow-xl border border-gray-800 space-y-4">
                 <h3 class="font-bold text-sm text-gray-200 uppercase block mb-1">
-                    <i class="fas fa-robot mr-2 text-orange-500"></i> Game Hosts & Bots
+                    <i class="fas fa-volume-up mr-2 text-orange-500"></i> Voice & AI Options
                 </h3>
 
                 <!-- Digital Voice Toggle -->
-                <?php if($masterEnableTTS): ?>
                 <label class="flex items-center justify-between cursor-pointer group">
                     <div>
-                        <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">Digital Voice (TTS Host)</span>
-                        <span class="block text-[10px] text-gray-300 font-normal">Enable host audio announcements</span>
+                        <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">Digital Voice</span>
+                        <span class="block text-[10px] text-gray-400 font-normal">Enable host audio card readings and game announcements</span>
                     </div>
-                    <input type="checkbox" name="enable_tts" id="enable_tts_toggle" onchange="toggleVoiceSettings()" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
+                    <input type="checkbox" name="enable_tts" id="enable_tts_toggle" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
                 </label>
 
-                <!-- Voice Settings Sub-Panel -->
-                <div id="voice_settings_sub" class="pl-4 border-l-2 border-gray-700 space-y-3 mt-2">
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-200 uppercase mb-1">Digital Voice Selection</label>
-                        <select name="voice_gender" id="voice_gender_select" class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm text-white">
-                            <option value="male" <?php echo ($globalConfig['voice_gender'] ?? 'male') === 'male' ? 'selected' : ''; ?>>Male (High Quality Fenrir)</option>
-                            <option value="female" <?php echo ($globalConfig['voice_gender'] ?? 'male') === 'female' ? 'selected' : ''; ?>>Female (High Quality Aoede)</option>
-                        </select>
-                    </div>
-                </div>
+                <hr class="border-gray-700/50 my-2">
 
-                <!-- Force offline and browser TTS for gameplay -->
-                <input type="hidden" name="game_tts_provider" value="browser">
-                <input type="hidden" name="offline_tts" value="on">
-                <?php endif; ?>
-
-                <?php if($hasPreConfiguredKey): ?>
-                <!-- AI Host Toggle -->
-                <label class="flex items-center justify-between cursor-pointer group pt-2 border-t border-gray-700/50">
+                <!-- AI Personality Toggle -->
+                <label class="flex items-center justify-between cursor-pointer group <?php echo !$hasPreConfiguredKey ? 'opacity-40 cursor-not-allowed' : ''; ?>">
                     <div>
-                        <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">AI Host (I Host)</span>
-                        <span class="block text-[10px] text-gray-300 font-normal">Self-aware AI roasts, start announcements, and commentary</span>
+                        <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">
+                            AI Personality
+                            <?php if (!$hasPreConfiguredKey): ?><span class="text-[10px] text-yellow-500 font-bold ml-2">⚠ (API not connected)</span><?php endif; ?>
+                        </span>
+                        <span class="block text-[10px] text-gray-400 font-normal">Self-aware AI host roasts, game intro comments, and round analysis</span>
                     </div>
-                    <input type="checkbox" name="use_ai_host" id="use_ai_host_toggle" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
+                    <input type="checkbox" name="use_ai_host" id="use_ai_host_toggle" <?php echo $hasPreConfiguredKey ? 'checked' : 'disabled'; ?> class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
                 </label>
 
-                <!-- AI Bots Toggle -->
-                <label class="flex items-center justify-between cursor-pointer group">
+                <!-- AI Smart Chat Bots Toggle -->
+                <label class="flex items-center justify-between cursor-pointer group <?php echo !$hasPreConfiguredKey ? 'opacity-40 cursor-not-allowed' : ''; ?>">
                     <div>
-                        <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">AI Bots</span>
-                        <span class="block text-[10px] text-gray-300 font-normal">Enables self-aware smart bots chat roasts and card selection</span>
+                        <span class="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">
+                            AI Smart Chat bots
+                            <?php if (!$hasPreConfiguredKey): ?><span class="text-[10px] text-yellow-500 font-bold ml-2">⚠ (API not connected)</span><?php endif; ?>
+                        </span>
+                        <span class="block text-[10px] text-gray-400 font-normal">Enables self-aware smart bots chat roasts and card selection</span>
                     </div>
-                    <input type="checkbox" name="use_ai_bots" id="use_ai_bots_toggle" checked class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
+                    <input type="checkbox" name="use_ai_bots" id="use_ai_bots_toggle" <?php echo $hasPreConfiguredKey ? 'checked' : 'disabled'; ?> class="w-5 h-5 accent-orange-500 rounded cursor-pointer">
                 </label>
-                <?php endif; ?>
 
             </div>
 
@@ -444,7 +431,10 @@ if ($availableDecks !== null) {
             // Per-game voice settings
             data.game_tts_provider = formData.get('game_tts_provider') || 'browser';
             data.offline_tts = formData.get('offline_tts') === 'on';
-            data.voice_gender = document.getElementById('voice_gender_select')?.value || 'male';
+            data.game_chrome_voice = document.getElementById('setup-chrome-voice-select')?.value || '';
+            if (data.game_chrome_voice) {
+                localStorage.setItem('game_tts_voice_name', data.game_chrome_voice);
+            }
 
             try {
                 const controller = new AbortController();
@@ -520,7 +510,6 @@ if ($availableDecks !== null) {
                     const ttsToggle = document.getElementById('enable_tts_toggle');
                     if (ttsToggle) {
                         ttsToggle.checked = !!t.enable_tts;
-                        if (typeof toggleVoiceSettings === 'function') toggleVoiceSettings();
                     }
                 }
                 
@@ -588,15 +577,6 @@ if ($availableDecks !== null) {
             }
         }
 
-        // Toggle voice settings visibility
-        function toggleVoiceSettings() {
-            const enabled = document.getElementById('enable_tts_toggle')?.checked;
-            const settings = document.getElementById('voice_settings_sub');
-            if (settings) {
-                settings.classList.toggle('hidden', !enabled);
-            }
-        }
-
         function toggleGameTTSFields() {
             const provider = document.getElementById('game_tts_provider')?.value || 'browser';
             const googleFields = document.getElementById('game_google_fields');
@@ -611,7 +591,133 @@ if ($availableDecks !== null) {
             checkboxes.forEach(cb => cb.checked = !allChecked);
         }
 
-        // Theme-related helpers removed: setup uses master defaults only
+        let setupVoices = [];
+
+        function populateSetupVoicesDropdown() {
+            const select = document.getElementById('setup-chrome-voice-select');
+            if (!select) return;
+
+            if (window.speechSynthesis) {
+                setupVoices = window.speechSynthesis.getVoices();
+            }
+
+            if (setupVoices.length === 0) return;
+
+            select.innerHTML = '';
+            
+            const defOpt = document.createElement('option');
+            defOpt.value = '';
+            defOpt.textContent = 'Default Browser Voice';
+            select.appendChild(defOpt);
+
+            const isNaturalVoice = (v) => {
+                const n = v.name.toLowerCase();
+                return n.includes('natural') || n.includes('enhanced') || n.includes('google us english') || n.includes('google uk english') || n.includes('online (natural)') || n.includes('premium');
+            };
+
+            const englishVoices = setupVoices.filter(v => v.lang && v.lang.startsWith('en'));
+            const otherVoices = setupVoices.filter(v => !v.lang || !v.lang.startsWith('en'));
+
+            const naturalVoices = englishVoices.filter(isNaturalVoice).sort((a, b) => a.name.localeCompare(b.name));
+            const standardEnglish = englishVoices.filter(v => !isNaturalVoice(v)).sort((a, b) => a.name.localeCompare(b.name));
+
+            const savedVoice = localStorage.getItem('game_tts_voice_name') || '';
+
+            if (naturalVoices.length > 0) {
+                const grpNat = document.createElement('optgroup');
+                grpNat.label = '🌟 High Quality / Natural Voices';
+                naturalVoices.forEach(voice => {
+                    const opt = document.createElement('option');
+                    opt.value = voice.name;
+                    opt.textContent = '🌟 ' + voice.name + ' (' + voice.lang + ')';
+                    if (savedVoice && voice.name === savedVoice) opt.selected = true;
+                    grpNat.appendChild(opt);
+                });
+                select.appendChild(grpNat);
+            }
+
+            if (standardEnglish.length > 0) {
+                const grpStd = document.createElement('optgroup');
+                grpStd.label = 'Standard Voices';
+                standardEnglish.forEach(voice => {
+                    const opt = document.createElement('option');
+                    opt.value = voice.name;
+                    opt.textContent = voice.name + ' (' + voice.lang + ')';
+                    if (savedVoice && voice.name === savedVoice) opt.selected = true;
+                    grpStd.appendChild(opt);
+                });
+                select.appendChild(grpStd);
+            }
+
+            if (otherVoices.length > 0) {
+                const grpOther = document.createElement('optgroup');
+                grpOther.label = 'Other Languages';
+                otherVoices.forEach(voice => {
+                    const opt = document.createElement('option');
+                    opt.value = voice.name;
+                    opt.textContent = voice.name + ' (' + voice.lang + ')';
+                    if (savedVoice && voice.name === savedVoice) opt.selected = true;
+                    grpOther.appendChild(opt);
+                });
+                select.appendChild(grpOther);
+            }
+        }
+
+        function onSetupVoiceChange() {
+            const select = document.getElementById('setup-chrome-voice-select');
+            if (select && select.value) {
+                localStorage.setItem('game_tts_voice_name', select.value);
+            }
+        }
+
+        function toggleVoiceSelectUI() {
+            const chk = document.getElementById('enable_tts_toggle');
+            const container = document.getElementById('setup-voice-select-container');
+            if (container) {
+                container.classList.toggle('hidden', !chk || !chk.checked);
+            }
+        }
+
+        function testSetupVoice() {
+            if (!window.speechSynthesis) {
+                alert('Speech synthesis is not supported in this browser.');
+                return;
+            }
+            window.speechSynthesis.cancel();
+            const select = document.getElementById('setup-chrome-voice-select');
+            const voiceName = select ? select.value : '';
+
+            if (setupVoices.length === 0) {
+                setupVoices = window.speechSynthesis.getVoices();
+            }
+
+            let chosen = setupVoices.find(v => v.name === voiceName);
+            if (!chosen && voiceName) {
+                chosen = setupVoices.find(v => v.name.includes(voiceName));
+            }
+
+            const testText = "Welcome to Cards Against Everyone! Voice settings test active.";
+            const ut = new SpeechSynthesisUtterance(testText);
+            if (chosen) ut.voice = chosen;
+            ut.pitch = 0.9;
+            ut.rate = 1.0;
+
+            const btn = document.getElementById('test-voice-btn');
+            if (btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin text-orange-400 text-[10px]"></i> Speaking...';
+            
+            ut.onend = ut.onerror = () => {
+                if (btn) btn.innerHTML = '<i class="fas fa-play text-orange-400 text-[10px]"></i> Test Voice';
+            };
+
+            window.speechSynthesis.speak(ut);
+        }
+
+        if (window.speechSynthesis) {
+            if (speechSynthesis.onvoiceschanged !== undefined) {
+                speechSynthesis.onvoiceschanged = populateSetupVoicesDropdown;
+            }
+            setTimeout(populateSetupVoicesDropdown, 250);
+        }
     </script>
 </body>
 </html>

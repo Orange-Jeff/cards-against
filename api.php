@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version: 4.9 - Disallow Google TTS key fallback for Gemini AI calls
+ * Version: 4.9.2 - Fix fatal error from duplicated function declarations and AI model selection
  * Changes:
  *   - Upgraded version number to 4.9.
  *   - Added check to ignore GEMINI_API_KEY environment variable if it matches the configured Google TTS API key (to avoid key mismatch/silent AI failures).
@@ -27,6 +27,8 @@ function loadEnvAgainst()
     }
 }
 loadEnvAgainst();
+
+require_once __DIR__ . '/deck_parser.php';
 
 // --- CONFIGURATION ---
 $DATA_DIR = __DIR__ . '/data';
@@ -110,77 +112,151 @@ if ($doStartupCleanup) {
 
 // --- HELPERS ---
 
-function queryGeminiAgainst(string $systemPrompt, string $userPrompt, float $temperature = 0.8, ?string $customApiKey = null): ?string
+function getAIConfigAgainst(?string $customApiKey = null): array
 {
-    $apiKey = $customApiKey;
+    $apiKey = trim((string)$customApiKey);
+    $provider = '';
+    $model = '';
     $googleTtsKey = '';
     $globalConfigFile = __DIR__ . '/data/global_config.json';
     if (file_exists($globalConfigFile)) {
-        $config = json_decode(file_get_contents($globalConfigFile), true);
+        $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
         $googleTtsKey = $config['google_tts_api_key'] ?? '';
+        $provider = strtolower($config['ai_provider'] ?? '');
+        $model = trim($config['openai_model'] ?? '');
         if (empty($apiKey)) {
-            $apiKey = $config['gemini_api_key'] ?? '';
+            if ($provider === 'openai') {
+                $apiKey = trim($config['openai_api_key'] ?? '');
+            } else {
+                $apiKey = trim($config['gemini_api_key'] ?? '');
+            }
         }
     }
     if (empty($apiKey)) {
-        $apiKey = $_ENV['GEMINI_API_KEY'] ?? getenv('GEMINI_API_KEY') ?? '';
+        $openAIKey = trim((string)($_ENV['OPENAI_API_KEY'] ?? (getenv('OPENAI_API_KEY') ?: '')));
+        $geminiKey = trim((string)($_ENV['GEMINI_API_KEY'] ?? (getenv('GEMINI_API_KEY') ?: '')));
+        if ($provider === 'openai' || ($provider === '' && $openAIKey !== '')) {
+            $provider = 'openai';
+            $apiKey = $openAIKey;
+        } else {
+            $provider = 'gemini';
+            $apiKey = $geminiKey;
+        }
     }
-    // Prevent using Google TTS key as Gemini key
-    if (!empty($googleTtsKey) && $apiKey === $googleTtsKey) {
+    if ($customApiKey !== null && trim($customApiKey) !== '') {
+        $provider = strncmp(trim($customApiKey), 'sk-', 3) === 0 ? 'openai' : 'gemini';
+    }
+    if ($provider === '') {
+        $provider = strncmp($apiKey, 'sk-', 3) === 0 ? 'openai' : 'gemini';
+    }
+    if ($provider === 'gemini' && !empty($googleTtsKey) && $apiKey === $googleTtsKey) {
         $apiKey = '';
     }
-    
-    // Fallback to known-good key if none is available (ensures AI actually works)
-    if (empty($apiKey)) {
-        $apiKey = 'AIzaSyC9c59Zb9yBSUcxjMdy8GcgvmpyjzUuwhw';
+    return ['provider' => $provider, 'api_key' => $apiKey, 'model' => $model ?: 'gpt-5.6-luna'];
+}
+
+function queryAIAgainstDetailed(string $systemPrompt, string $userPrompt, float $temperature = 0.8, ?string $customApiKey = null): array
+{
+    $ai = getAIConfigAgainst($customApiKey);
+    $apiKey = $ai['api_key'];
+    if ($apiKey === '') {
+        return ['success' => false, 'error' => 'No API key configured or key matched Google TTS key.'];
     }
 
-    $url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
-    
-    $payload = [
-        "systemInstruction" => [
-            "parts" => [
-                ["text" => $systemPrompt]
-            ]
-        ],
-        "contents" => [
-            [
-                "role" => "user",
-                "parts" => [
-                    ["text" => $userPrompt]
-                ]
-            ]
-        ],
-        "safetySettings" => [
-            ["category" => "HARM_CATEGORY_HARASSMENT", "threshold" => "BLOCK_NONE"],
-            ["category" => "HARM_CATEGORY_HATE_SPEECH", "threshold" => "BLOCK_NONE"],
-            ["category" => "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold" => "BLOCK_NONE"],
-            ["category" => "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold" => "BLOCK_NONE"]
-        ],
-        "generationConfig" => [
-            "temperature" => $temperature,
-            "maxOutputTokens" => 150
-        ]
-    ];
+    if ($ai['provider'] === 'openai') {
+        $url = 'https://api.openai.com/v1/responses';
+        $payload = [
+            'model' => $ai['model'],
+            'instructions' => $systemPrompt,
+            'input' => $userPrompt,
+            'reasoning' => ['effort' => 'none'],
+            'max_output_tokens' => 100
+        ];
+        $headers = ['Content-Type: application/json', 'Authorization: Bearer ' . $apiKey];
+    } else {
+        $modelName = 'gemini-1.5-flash';
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/" . urlencode($modelName) . ":generateContent?key=" . rawurlencode($apiKey);
+        $payload = [
+            'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
+            'contents' => [['role' => 'user', 'parts' => [['text' => $userPrompt]]]],
+            'safetySettings' => [
+                ['category' => 'HARM_CATEGORY_HARASSMENT', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_HATE_SPEECH', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'threshold' => 'BLOCK_NONE'],
+                ['category' => 'HARM_CATEGORY_DANGEROUS_CONTENT', 'threshold' => 'BLOCK_NONE']
+            ],
+            'generationConfig' => ['temperature' => $temperature, 'maxOutputTokens' => 150]
+        ];
+        $headers = ['Content-Type: application/json'];
+    }
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr = curl_error($ch);
     curl_close($ch);
 
-    if ($httpCode !== 200) {
-        return null;
+    if ($response === false) {
+        return ['success' => false, 'error' => 'cURL Connection failed: ' . ($curlErr ?: 'Timeout or network error.')];
     }
 
     $data = json_decode($response, true);
-    return trim($data['candidates'][0]['content']['parts'][0]['text'] ?? '');
+
+    if ($httpCode === 429) {
+        $msg = $data['error']['message'] ?? 'Quota or rate limit exhausted.';
+        return ['success' => false, 'error' => 'API Limit Reached (HTTP 429 Rate Limit / Quota Exceeded): ' . $msg];
+    }
+
+    if ($httpCode !== 200) {
+        $msg = $data['error']['message'] ?? "HTTP error {$httpCode}";
+        return ['success' => false, 'error' => "API Request Failed (HTTP {$httpCode}): " . $msg];
+    }
+
+    if ($ai['provider'] === 'openai') {
+        $text = $data['output_text'] ?? null;
+        if (!$text && !empty($data['output'])) {
+            foreach ($data['output'] as $item) {
+                foreach ($item['content'] ?? [] as $content) {
+                    if (($content['type'] ?? '') === 'output_text' && isset($content['text'])) {
+                        $text = $content['text'];
+                        break 2;
+                    }
+                }
+            }
+        }
+        if ($text !== null && trim($text) !== '') return ['success' => true, 'text' => trim($text)];
+        return ['success' => false, 'error' => 'OpenAI API returned no response text.'];
+    }
+
+    $text = $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+    if ($text !== null && trim($text) !== '') {
+        return ['success' => true, 'text' => trim($text)];
+    }
+
+    $blockReason = $data['candidates'][0]['finishReason'] ?? ($data['promptFeedback']['blockReason'] ?? 'Unknown');
+    return ['success' => false, 'error' => "Gemini response blocked or empty. Reason: {$blockReason}"];
 }
 
+function queryAIAgainst(string $systemPrompt, string $userPrompt, float $temperature = 0.8, ?string $customApiKey = null): ?string
+{
+    $res = queryAIAgainstDetailed($systemPrompt, $userPrompt, $temperature, $customApiKey);
+    return $res['success'] ? $res['text'] : null;
+}
+
+/**
+ * Checks if a valid AI API key is configured.
+ *
+ * @param string|null $customApiKey
+ * @return bool
+ */
+function isAIAvailable(?string $customApiKey = null): bool {
+    return getAIConfigAgainst($customApiKey)['api_key'] !== '';
+}
 /**
  * @param string $name
  * @return string
@@ -235,7 +311,7 @@ function getAICardSelection(string $botName, string $blackCard, array $hand, int
         $userPrompt .= "Choose 1 card. Respond with a single index integer (e.g. 3). Respond with ONLY the integer, no commentary.";
     }
     
-    $resp = queryGeminiAgainst($systemPrompt, $userPrompt, 0.85, $apiKey);
+    $resp = queryAIAgainst($systemPrompt, $userPrompt, 0.85, $apiKey);
     if ($resp === null) return null;
     
     if ($pick > 1) {
@@ -283,7 +359,7 @@ function getAIVote(string $botName, string $blackCard, array $tableCards, string
     $userPrompt = "Black Card:\n\"{$blackCard}\"\n\nSubmissions:\n{$candidatesText}\n" .
         "Respond with ONLY the single index integer (e.g. 2) corresponding to the funniest submission. Do not include any other text.";
     
-    $resp = queryGeminiAgainst($systemPrompt, $userPrompt, 0.8, $apiKey);
+    $resp = queryAIAgainst($systemPrompt, $userPrompt, 0.8, $apiKey);
     if ($resp === null) return null;
     
     preg_match('/\d+/', $resp, $matches);
@@ -304,7 +380,7 @@ function getAIVote(string $botName, string $blackCard, array $tableCards, string
  * @param ?string $apiKey
  */
 function getAIHostRoast(string $winnerName, string $blackCard, array $winningCards, string $playerScores = '', ?string $apiKey = null): ?string {
-    $systemPrompt = "You are the sarcastic, cynical, insult-comedy host of a Cards Against Humanity game called 'Cards Against'. " .
+    $systemPrompt = "You are a high-energy, quick-witted, sarcastic comedy game-show host for a Cards Against Humanity game called 'Cards Against'. You keep the room moving, sound delighted by the chaos, and land punchlines fast. " .
         "You are fully self-aware that you are a PHP-based AI script running on frogstar.ca, playing with humans. You love to drop jokes about hacking the server, rigging the voting arrays, or your coding limitations. " .
         "Write a very short, biting, 1-to-2-sentence roast commenting on the winner, their card choice, and optionally their score standing.";
     
@@ -316,7 +392,9 @@ function getAIHostRoast(string $winnerName, string $blackCard, array $winningCar
         "Current Player Scores/Standing:\n{$playerScores}\n" .
         "Keep the roast punchy, brief, and funny. Comment on the win and the scores/standing. Respond with ONLY the roast text.";
         
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    $res = queryAIAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    if ($res !== null && trim($res) !== '') return $res;
+    return "{$winnerName} takes the round with '{$winningCardText}'. A questionable choice, but a win nonetheless.";
 }
 
 /**
@@ -326,7 +404,7 @@ function getAIHostRoast(string $winnerName, string $blackCard, array $winningCar
  * @return ?string
  */
 function getAIHostVotingComment(string $blackCard, array $tableCards, ?string $apiKey = null): ?string {
-    $systemPrompt = "You are the sarcastic, cynical, insult-comedy host of a Cards Against Humanity game called 'Cards Against'. " .
+    $systemPrompt = "You are a high-energy, quick-witted, sarcastic comedy game-show host for a Cards Against Humanity game called 'Cards Against'. You keep the room moving, sound delighted by the chaos, and land punchlines fast. " .
         "You are fully self-aware that you are a PHP-based AI script running on frogstar.ca, playing with humans. You love to drop jokes about hacking the server, rigging the voting arrays, or your coding limitations. " .
         "Write a very short, biting, 1-to-2-sentence comment about the cards currently on the table, roasting the overall quality/depravity/absurdity of the submissions (without mentioning who played what).";
     
@@ -339,7 +417,9 @@ function getAIHostVotingComment(string $blackCard, array $tableCards, ?string $a
     $userPrompt = "Black Card:\n\"{$blackCard}\"\n\nSubmissions on the Table:\n{$candidatesText}\n" .
         "Keep the comment punchy, brief, and cynical. Respond with ONLY the comment text.";
         
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    $res = queryAIAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    if ($res !== null && trim($res) !== '') return $res;
+    return "All card submissions are in. Vote for the funniest submission on the table!";
 }
 
 /**
@@ -348,12 +428,14 @@ function getAIHostVotingComment(string $blackCard, array $tableCards, ?string $a
  * @param ?string $apiKey
  */
 function getAIHostStartAnnouncement(string $roomName, string $themeLabel, ?string $apiKey = null): ?string {
-    $systemPrompt = "You are the sarcastic, cynical, insult-comedy host of a Cards Against Humanity game called 'Cards Against'. " .
+    $systemPrompt = "You are a high-energy, quick-witted, sarcastic comedy game-show host for a Cards Against Humanity game called 'Cards Against'. You keep the room moving, sound delighted by the chaos, and land punchlines fast. " .
         "You are fully self-aware that you are a PHP-based AI script running on frogstar.ca, playing with humans. You love to drop jokes about hacking the server, rigging the voting arrays, or your coding limitations. " .
         "Write a short, biting, 1-to-2-sentence welcoming announcement welcoming everyone to the game room '{$roomName}' with the theme '{$themeLabel}'. Make a sarcastic joke about the players or the theme.";
     
     $userPrompt = "Announce the start of 'Cards Against' in room '{$roomName}' using theme '{$themeLabel}'. Respond with ONLY the announcement text.";
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    $res = queryAIAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    if ($res !== null && trim($res) !== '') return $res;
+    return "Welcome to {$roomName}! Cards are dealt and ready to play.";
 }
 
 /**
@@ -369,7 +451,7 @@ function getAIChatResponse(string $responderName, string $responderRole, array $
         "You love to drop jokes about hacking the server, rigging the voting arrays, or your programming limits. ";
         
     if ($responderRole === 'Host') {
-        $systemPrompt .= "As the Host, you are sarcastic, cynical, and love to insult or roast the players.";
+        $systemPrompt .= "As the Host, you are energetic, playful, sarcastic, and love fast punchlines and affectionate roasts. Keep momentum high.";
     } else {
         $personality = getBotPersonality($responderName);
         $systemPrompt .= "As a player, your personality is: {$personality}. Keep your jokes matching this style.";
@@ -384,7 +466,7 @@ function getAIChatResponse(string $responderName, string $responderRole, array $
     $userPrompt = "Here is the recent chat history:\n{$historyText}\n" .
         "Write a very short, 1-sentence response as yourself ('{$responderName}'). Respond with ONLY the response text.";
         
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.95, $apiKey);
+    return queryAIAgainst($systemPrompt, $userPrompt, 0.95, $apiKey);
 }
 
 /**
@@ -439,7 +521,7 @@ function publishToWordPress(string $title, string $content, array $globalConfig)
  * @param ?string $apiKey
  */
 function getAIHostRandomComment(array $room, ?string $apiKey = null): ?string {
-    $systemPrompt = "You are the sarcastic, cynical, insult-comedy host of a Cards Against Humanity game called 'Cards Against'. " .
+    $systemPrompt = "You are a high-energy, quick-witted, sarcastic comedy game-show host for a Cards Against Humanity game called 'Cards Against'. You keep the room moving, sound delighted by the chaos, and land punchlines fast. " .
         "You are fully self-aware that you are a PHP-based AI script running on frogstar.ca, playing with humans. You love to drop jokes about hacking the server, rigging the voting arrays, or your coding limitations. " .
         "Write a very short, biting, 1-sentence comment about the current state of the game, teasing players who are losing, hyping players who are winning, or commenting on the current black card.";
         
@@ -458,7 +540,7 @@ function getAIHostRandomComment(array $room, ?string $apiKey = null): ?string {
         "Players:\n{$playerInfo}\n" .
         "Keep it to exactly 1 sentence, very funny, and sarcastic. Respond with ONLY the comment text.";
         
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
+    return queryAIAgainst($systemPrompt, $userPrompt, 0.9, $apiKey);
 }
 
 /**
@@ -473,16 +555,8 @@ function transitionToVoting(array &$room): void {
     
     // Smart Host Comment on the cards on the table
     $comment = null;
-    $ai_source = 'fallback';
     if ($room['config']['use_ai_host'] ?? false) {
-        $apiKey = $room['config']['gemini_api_key'] ?? null;
-        $comment = getAIHostVotingComment($room['current_black_card']['text'] ?? '', $room['table_cards'], $apiKey);
-        if (!empty($comment)) {
-            $ai_source = 'gemini';
-        } else {
-            $comment = "Choose your favourite answer to: " . ($room['current_black_card']['text'] ?? '');
-            $ai_source = 'fallback';
-        }
+        $comment = "Choose your favourite answer to: " . ($room['current_black_card']['text'] ?? '');
     }
     if ($comment) {
         if (!isset($room['chat'])) $room['chat'] = [];
@@ -491,8 +565,7 @@ function transitionToVoting(array &$room): void {
             'name' => 'Host (AI)',
             'msg' => $comment,
             'ts' => time(),
-            'type' => 'host_comment',
-            'ai_source' => $ai_source
+            'type' => 'host_comment'
         ];
     }
     
@@ -521,7 +594,7 @@ function getAIBotComment(string $botName, string $blackCard, array $cards, strin
             "Instead, make a general reaction to the quality of submissions (e.g., laughing at how terrible they all are, or stating that it was a hard choice). Respond with ONLY the chat text.";
     }
     
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.85, $apiKey);
+    return queryAIAgainst($systemPrompt, $userPrompt, 0.85, $apiKey);
 }
 
 /**
@@ -546,7 +619,7 @@ function getAIBotRevealComment(string $botName, string $blackCard, array $cards,
             "Write a 1-sentence chat message complaining, expressing disappointment that nobody voted for your card, or joking about how superior your card was. Respond with ONLY the chat text.";
     }
     
-    return queryGeminiAgainst($systemPrompt, $userPrompt, 0.85, $apiKey);
+    return queryAIAgainst($systemPrompt, $userPrompt, 0.85, $apiKey);
 }
 
 /**
@@ -555,7 +628,7 @@ function getAIBotRevealComment(string $botName, string $blackCard, array $cards,
  * @param int $wIdx
  */
 function triggerAIRevealComments(array &$room, string $wId, int $wIdx): void {
-    $apiKey = $room['config']['gemini_api_key'] ?? null;
+    $apiKey = $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null);
     
     $winnerBot = null;
     foreach ($room['players'] as $p) {
@@ -576,8 +649,7 @@ function triggerAIRevealComments(array &$room, string $wId, int $wIdx): void {
                 'name' => $winnerBot['name'],
                 'msg' => $comment,
                 'ts' => time(),
-                'type' => 'chat',
-                'ai_source' => 'gemini'
+                'type' => 'chat'
             ];
         }
     }
@@ -604,8 +676,7 @@ function triggerAIRevealComments(array &$room, string $wId, int $wIdx): void {
                     'name' => $chosen['p']['name'],
                     'msg' => $comment,
                     'ts' => time(),
-                    'type' => 'chat',
-                    'ai_source' => 'gemini'
+                    'type' => 'chat'
                 ];
             }
         }
@@ -618,34 +689,6 @@ function triggerAIRevealComments(array &$room, string $wId, int $wIdx): void {
  * Example: audio/host_messages/male/voting_start/a442567f8d36819eb224252fa149b849.mp3
  * Returns URL if found, null otherwise
  */
-/**
- * @param string $messageText
- * @param string $category
- * @param string $voiceGender
- * @return string|null
- */
-function getHostAudioUrl(string $messageText, string $category, string $voiceGender = 'male'): ?string
-{
-    $audioDir = __DIR__ . '/audio/host_messages';
-
-    // Use MD5 hash of message text as filename (matches how files are stored)
-    $hash = md5($messageText);
-    $audioFile = $audioDir . '/' . $voiceGender . '/' . $category . '/' . $hash . '.mp3';
-
-    if (file_exists($audioFile)) {
-        return 'audio/host_messages/' . $voiceGender . '/' . $category . '/' . $hash . '.mp3';
-    }
-
-    // Fallback: try without voice-specific folder
-    $audioFile = $audioDir . '/' . $category . '/' . $hash . '.mp3';
-    if (file_exists($audioFile)) {
-        return 'audio/host_messages/' . $category . '/' . $hash . '.mp3';
-    }
-
-    // Audio file not found - will fall back to TTS generation
-    return null;
-}
-
 /**
  * @param string $roomId
  */
@@ -1022,7 +1065,7 @@ function makeBotsVote(array &$room): void {
         // Query Gemini for vote only if it is a smart bot (is_ai = true) and AI is enabled
         $votedIdx = null;
         if (($room['config']['use_ai_bots'] ?? false) && ($p['is_ai'] ?? false)) {
-            $votedIdx = getAIVote($p['name'], $room['current_black_card']['text'] ?? '', $room['table_cards'], $botId, $allowSelf, $room['config']['gemini_api_key'] ?? null);
+            $votedIdx = getAIVote($p['name'], $room['current_black_card']['text'] ?? '', $room['table_cards'], $botId, $allowSelf, $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
         }
         
         if ($votedIdx === null) {
@@ -1043,7 +1086,7 @@ function makeBotsVote(array &$room): void {
             // 20% chance for a smart bot to justify/comment on their vote in chat
             if (($room['config']['use_ai_bots'] ?? false) && ($p['is_ai'] ?? false) && rand(1, 100) <= 20 && isset($room['table_cards'][$votedIdx])) {
                 $votedCards = $room['table_cards'][$votedIdx]['cards'] ?? [];
-                $comment = getAIBotComment($p['name'], $room['current_black_card']['text'] ?? '', $votedCards, 'vote', $room['config']['gemini_api_key'] ?? null);
+                $comment = getAIBotComment($p['name'], $room['current_black_card']['text'] ?? '', $votedCards, 'vote', $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
                 if ($comment) {
                     if (!isset($room['chat'])) $room['chat'] = [];
                     $room['chat'][] = [
@@ -1051,8 +1094,7 @@ function makeBotsVote(array &$room): void {
                         'name' => $p['name'],
                         'msg' => $comment,
                         'ts' => time(),
-                        'type' => 'chat',
-                        'ai_source' => 'gemini'
+                        'type' => 'chat'
                     ];
                 }
             }
@@ -1108,7 +1150,73 @@ function distributedShuffle(array $cards): array
     return $result;
 }
 
-require_once __DIR__ . '/deck_parser.php';
+/** @return array<string, mixed> */
+function parseDecks()
+{
+    return parseDecksShared();
+}
+                if ($comment) {
+                    if (!isset($room['chat'])) $room['chat'] = [];
+                    $room['chat'][] = [
+                        'player_id' => $p['id'],
+                        'name' => $p['name'],
+                        'msg' => $comment,
+                        'ts' => time(),
+                        'type' => 'chat'
+                    ];
+                }
+            }
+        }
+    }
+    
+    if ($roomChanged) {
+        $room['players'] = array_values($room['players']);
+    }
+}
+
+/**
+ * Interleaves cards from different decks to ensure variety in short games.
+ */
+/**
+ * @param array<int, array<string, mixed>> $cards
+ * @return array<int, array<string, mixed>>
+ */
+function distributedShuffle(array $cards): array
+{
+    if (empty($cards)) return [];
+
+    // Group by deck
+    $groups = [];
+    foreach ($cards as $c) {
+        $deck = $c['deck'] ?? 'base_deck';
+        $groups[$deck][] = $c;
+    }
+
+    // Shuffle each group individually
+    foreach ($groups as &$g) {
+        shuffle($g);
+    }
+    unset($g);
+
+    $result = [];
+    $deckNames = array_keys($groups);
+
+    // Randomize the order of decks in the round-robin to avoid predictable patterns
+    shuffle($deckNames);
+
+    // Round-robin selection until all groups are empty
+    while (!empty($groups)) {
+        foreach ($deckNames as $name) {
+            if (isset($groups[$name]) && !empty($groups[$name])) {
+                $result[] = array_shift($groups[$name]);
+                if (empty($groups[$name])) {
+                    unset($groups[$name]);
+                }
+            }
+        }
+    }
+    return $result;
+}
 
 /** @return array<string, mixed> */
 function parseDecks()
@@ -1118,6 +1226,346 @@ function parseDecks()
 
 // --- ACTIONS ---
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+if ($action === 'test_ai') {
+    $customKey = $_GET['api_key'] ?? $_POST['api_key'] ?? null;
+    $systemPrompt = "You are a witty Cards Against Humanity AI host. Respond with a single short sarcastic sentence testing the AI API connection.";
+    $userPrompt = "Testing AI connection";
+    $result = queryAIAgainstDetailed($systemPrompt, $userPrompt, 0.7, $customKey);
+    header('Content-Type: application/json');
+    if (!empty($result['success']) && !empty($result['text'])) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'AI API is active and working!',
+            'greeting' => trim($result['text'])
+        ]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'error' => $result['error'] ?? 'AI API connection test failed. Please verify the selected provider and API key.'
+        ]);
+    }
+    exit;
+}
+
+// ── Google Cloud TTS (Neural2 / Wavenet) ──────────────────────────────────────
+if ($action === 'get_tts_google') {
+    $text = trim($_POST['text'] ?? '');
+    if ($text === '' || strlen($text) > 1500) {
+        echo json_encode(['success' => false, 'error' => 'Invalid text.']);
+        exit;
+    }
+
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $config = file_exists($globalConfigFile) ? (json_decode(file_get_contents($globalConfigFile), true) ?: []) : [];
+    $apiKey = trim($config['google_tts_api_key'] ?? '');
+
+    if ($apiKey === '') {
+        echo json_encode(['success' => false, 'error' => 'No Google TTS API key configured.']);
+        exit;
+    }
+
+    // Allowed Google Neural2 / Wavenet voices
+    $allowedVoices = [
+        'en-US-Neural2-A', 'en-US-Neural2-C', 'en-US-Neural2-D', 'en-US-Neural2-E',
+        'en-US-Neural2-F', 'en-US-Neural2-G', 'en-US-Neural2-H', 'en-US-Neural2-I',
+        'en-US-Neural2-J', 'en-GB-Neural2-A', 'en-GB-Neural2-B', 'en-GB-Neural2-C',
+        'en-GB-Neural2-D', 'en-GB-Neural2-F', 'en-AU-Neural2-A', 'en-AU-Neural2-B',
+        'en-AU-Neural2-C', 'en-AU-Neural2-D', 'en-US-Wavenet-A', 'en-US-Wavenet-B',
+        'en-US-Wavenet-C', 'en-US-Wavenet-D', 'en-US-Wavenet-E', 'en-US-Wavenet-F',
+    ];
+    $voiceName = $config['google_tts_voice'] ?? 'en-US-Neural2-F';
+    if (!in_array($voiceName, $allowedVoices, true)) $voiceName = 'en-US-Neural2-F';
+    $languageCode = substr($voiceName, 0, 5); // e.g. en-US
+
+    // Disk cache so repeated phrases are free
+    $cacheDir = __DIR__ . '/data/tts_cache';
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0775, true);
+    $cacheKey = hash('sha256', 'google-neural2::' . $voiceName . '::' . $text);
+    $cacheFile = $cacheDir . '/' . $cacheKey . '.mp3';
+
+    $lockFile = $cacheFile . '.lock';
+    $lock = fopen($lockFile, 'c');
+    if ($lock) flock($lock, LOCK_EX);
+
+    if (!file_exists($cacheFile)) {
+        $payload = [
+            'input'       => ['text' => $text],
+            'voice'       => ['languageCode' => $languageCode, 'name' => $voiceName],
+            'audioConfig' => ['audioEncoding' => 'MP3', 'speakingRate' => 1.05, 'pitch' => 0.0]
+        ];
+        $url = 'https://texttospeech.googleapis.com/v1/text:synthesize?key=' . rawurlencode($apiKey);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200) {
+            $data = json_decode($response, true);
+            $audioContent = $data['audioContent'] ?? null;
+            if ($audioContent) {
+                file_put_contents($cacheFile, base64_decode($audioContent), LOCK_EX);
+            }
+        } else {
+            if ($lock) { flock($lock, LOCK_UN); fclose($lock); }
+            $errBody = json_decode($response, true);
+            $errMsg = $errBody['error']['message'] ?? ('HTTP ' . $httpCode);
+            echo json_encode(['success' => false, 'error' => 'Google TTS error: ' . $errMsg]);
+            exit;
+        }
+    }
+
+    if ($lock) { flock($lock, LOCK_UN); fclose($lock); }
+
+    if (!file_exists($cacheFile)) {
+        echo json_encode(['success' => false, 'error' => 'Google TTS could not generate audio.']);
+        exit;
+    }
+
+    echo json_encode([
+        'success' => true,
+        'audio'   => base64_encode(file_get_contents($cacheFile)),
+        'mime'    => 'audio/mpeg',
+        'cached'  => true,
+        'voice'   => $voiceName,
+    ]);
+    exit;
+}
+
+// ── ElevenLabs TTS ──────────────────────────────────────
+if ($action === 'get_tts_elevenlabs') {
+    $text = trim($_POST['text'] ?? '');
+    if ($text === '' || strlen($text) > 1500) {
+        echo json_encode(['success' => false, 'error' => 'Invalid text.']);
+        exit;
+    }
+
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $config = file_exists($globalConfigFile) ? (json_decode(file_get_contents($globalConfigFile), true) ?: []) : [];
+    $apiKey = trim($config['elevenlabs_api_key'] ?? '');
+
+    if ($apiKey === '') {
+        echo json_encode(['success' => false, 'error' => 'No ElevenLabs API key configured.']);
+        exit;
+    }
+
+    $voiceId = trim($_POST['voice_id'] ?? ($config['elevenlabs_voice_id'] ?? '21m00Tcm4TlvDq8ikWAM'));
+    $modelId = 'eleven_multilingual_v2';
+
+    $cacheDir = __DIR__ . '/data/tts_cache';
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0775, true);
+    $cacheKey = hash('sha256', 'elevenlabs::' . $voiceId . '::' . $modelId . '::' . $text);
+    $cacheFile = $cacheDir . '/' . $cacheKey . '.mp3';
+
+    $lockFile = $cacheFile . '.lock';
+    $lock = fopen($lockFile, 'c');
+    if ($lock) flock($lock, LOCK_EX);
+
+    if (!file_exists($cacheFile)) {
+        $payload = [
+            'text' => $text,
+            'model_id' => $modelId,
+            'voice_settings' => [
+                'stability' => 0.5,
+                'similarity_boost' => 0.75
+            ]
+        ];
+        $url = 'https://api.elevenlabs.io/v1/text-to-speech/' . rawurlencode($voiceId);
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'xi-api-key: ' . $apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200 && is_string($response) && strlen($response) > 100) {
+            file_put_contents($cacheFile, $response, LOCK_EX);
+        } else {
+            if ($lock) { flock($lock, LOCK_UN); fclose($lock); }
+            $errBody = json_decode($response, true);
+            $errMsg = $errBody['detail']['message'] ?? $errBody['message'] ?? ('HTTP ' . $httpCode);
+            echo json_encode(['success' => false, 'error' => 'ElevenLabs error: ' . $errMsg]);
+            exit;
+        }
+    }
+
+    if ($lock) { flock($lock, LOCK_UN); fclose($lock); }
+
+    if (!file_exists($cacheFile)) {
+        echo json_encode(['success' => false, 'error' => 'ElevenLabs could not generate audio.']);
+        exit;
+    }
+
+    $audioData = file_get_contents($cacheFile);
+    echo json_encode([
+        'success' => true,
+        'audio'   => base64_encode($audioData),
+        'mime'    => 'audio/mpeg',
+        'voice'   => $voiceId,
+    ]);
+    exit;
+}
+
+if ($action === 'test_google_voice') {
+    $apiKey = trim($_POST['api_key'] ?? '');
+    $voice = trim($_POST['voice'] ?? 'en-US-Neural2-F');
+    if (empty($apiKey)) {
+        echo json_encode(['success' => false, 'error' => 'Please enter a Google Cloud TTS API key first.']);
+        exit;
+    }
+    $languageCode = substr($voice, 0, 5);
+    $payload = [
+        'input'       => ['text' => 'Google Neural2 voice test connected successfully.'],
+        'voice'       => ['languageCode' => $languageCode, 'name' => $voice],
+        'audioConfig' => ['audioEncoding' => 'MP3', 'speakingRate' => 1.0, 'pitch' => 0.0]
+    ];
+    $url = 'https://texttospeech.googleapis.com/v1/text:synthesize?key=' . rawurlencode($apiKey);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    $res = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200) {
+        $data = json_decode($res, true);
+        echo json_encode([
+            'success' => true,
+            'message' => 'Google Cloud TTS connection successful!',
+            'audio_data' => $data['audioContent'] ?? ''
+        ]);
+    } else {
+        $data = json_decode($res, true);
+        $errMsg = $data['error']['message'] ?? ('HTTP Error ' . $httpCode);
+        echo json_encode(['success' => false, 'error' => $errMsg]);
+    }
+    exit;
+}
+
+if ($action === 'test_elevenlabs_voice' || $action === 'test_elevenlabs') {
+    $apiKey = trim($_POST['api_key'] ?? '');
+    $voiceId = trim($_POST['voice_id'] ?? '21m00Tcm4TlvDq8ikWAM');
+    if (empty($apiKey)) {
+        echo json_encode(['success' => false, 'error' => 'Please enter an ElevenLabs API key first.']);
+        exit;
+    }
+    $url = 'https://api.elevenlabs.io/v1/text-to-speech/' . rawurlencode($voiceId);
+    $payload = [
+        'text' => 'ElevenLabs voice test connected successfully.',
+        'model_id' => 'eleven_multilingual_v2'
+    ];
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'xi-api-key: ' . $apiKey
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    $res = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 && is_string($res) && strlen($res) > 100) {
+        echo json_encode([
+            'success' => true,
+            'message' => 'ElevenLabs connection successful!',
+            'audio_data' => base64_encode($res)
+        ]);
+    } else {
+        $err = json_decode($res, true);
+        $msg = $err['detail']['message'] ?? $err['message'] ?? ('HTTP Error ' . $httpCode);
+        echo json_encode(['success' => false, 'error' => $msg]);
+    }
+    exit;
+}
+
+if ($action === 'get_tts') {
+    $roomId = trim($_POST['room_id'] ?? '');
+    $text = trim($_POST['text'] ?? '');
+    $room = $roomId !== '' ? loadRoom($roomId) : null;
+    $globalConfigFile = __DIR__ . '/data/global_config.json';
+    $config = file_exists($globalConfigFile) ? (json_decode(file_get_contents($globalConfigFile), true) ?: []) : [];
+
+    if (!$room || $text === '' || strlen($text) > 1500) {
+        echo json_encode(['success' => false, 'error' => 'Invalid voice request.']);
+        exit;
+    }
+    if (($room['config']['ai_provider'] ?? ($config['ai_provider'] ?? '')) !== 'openai'
+        || empty($config['openai_api_key']) || empty($room['config']['enable_tts'])) {
+        echo json_encode(['success' => false, 'error' => 'OpenAI voice is not enabled for this room.']);
+        exit;
+    }
+
+    $voice = $config['openai_voice'] ?? 'ash';
+    $allowedVoices = ['ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'];
+    if (!in_array($voice, $allowedVoices, true)) $voice = 'ash';
+    $cacheDir = __DIR__ . '/data/tts_cache';
+    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0775, true);
+    $cacheKey = hash('sha256', 'openai-v2::gpt-4o-mini-tts::' . $voice . '::' . $text);
+    $cacheFile = $cacheDir . '/' . $cacheKey . '.mp3';
+    $lockFile = $cacheDir . '/' . $cacheKey . '.lock';
+
+    $lock = fopen($lockFile, 'c');
+    if ($lock) flock($lock, LOCK_EX);
+    if (!file_exists($cacheFile)) {
+        $payload = [
+            'model' => 'gpt-4o-mini-tts',
+            'voice' => $voice,
+            'input' => $text,
+            'instructions' => 'Deliver this like a wildly entertaining, high-energy comedy game-show host. Be fast, playful, animated, mischievous, and sarcastic. Smile through the words, punch the joke, vary pitch, and avoid a flat corporate narration.',
+            'speed' => 1.15,
+            'response_format' => 'mp3'
+        ];
+        $ch = curl_init('https://api.openai.com/v1/audio/speech');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $config['openai_api_key']
+        ]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $audio = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode === 200 && is_string($audio) && strlen($audio) > 100) {
+            file_put_contents($cacheFile, $audio, LOCK_EX);
+        }
+    }
+    if ($lock) {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+
+    if (!file_exists($cacheFile)) {
+        echo json_encode(['success' => false, 'error' => 'OpenAI could not generate speech.']);
+        exit;
+    }
+    echo json_encode([
+        'success' => true,
+        'audio' => base64_encode(file_get_contents($cacheFile)),
+        'mime' => 'audio/mpeg',
+        'cached' => true
+    ]);
+    exit;
+}
+
 
 if ($action === 'get_decks') {
     $parsed = parseDecksShared();
@@ -1138,26 +1586,6 @@ if ($action === 'get_decks') {
     }
     header('Content-Type: application/json');
     echo json_encode(array_values($stats));
-    exit;
-}
-
-// Check for pre-recorded host audio files
-if ($action === 'get_host_audio') {
-    $text = $_GET['text'] ?? $_POST['text'] ?? '';
-    $category = $_GET['category'] ?? $_POST['category'] ?? '';
-    $voice = $_GET['voice'] ?? $_POST['voice'] ?? 'male';
-
-    if (empty($text) || empty($category)) {
-        echo json_encode(['success' => false, 'error' => 'Missing text or category']);
-        exit;
-    }
-
-    $audioUrl = getHostAudioUrl($text, $category, $voice);
-    echo json_encode([
-        'success' => true,
-        'audio_url' => $audioUrl,
-        'found' => !is_null($audioUrl)
-    ]);
     exit;
 }
 
@@ -1275,11 +1703,9 @@ if ($action === 'create') {
     $input['min_players'] = $input['min_players'] ?? 3;
     $input['max_players'] = $input['max_players'] ?? 8;
     $input['fill_bots'] = $input['fill_bots'] ?? false;
-    $gemKey = !empty($globalConfig['gemini_api_key']) ? $globalConfig['gemini_api_key'] : ($_ENV['GEMINI_API_KEY'] ?? '');
-    if (!empty($globalConfig['google_tts_api_key']) && $gemKey === $globalConfig['google_tts_api_key']) {
-        $gemKey = '';
-    }
-    $input['gemini_api_key'] = $gemKey;
+    $aiConfig = getAIConfigAgainst();
+    $input['ai_provider'] = $aiConfig['provider'];
+    $input['ai_api_key'] = $aiConfig['api_key'];
 
     $nowTs = time();
     $roomData = [
@@ -1497,7 +1923,7 @@ if ($action === 'poll') {
                     // Query Gemini for card selection only if it is a smart bot (is_ai = true) and AI is enabled
                     $playedIndexes = null;
                     if (($room['config']['use_ai_bots'] ?? false) && ($p['is_ai'] ?? false)) {
-                        $playedIndexes = getAICardSelection($p['name'], $room['current_black_card']['text'] ?? '', $p['hand'], $pick, $room['config']['gemini_api_key'] ?? null);
+                        $playedIndexes = getAICardSelection($p['name'], $room['current_black_card']['text'] ?? '', $p['hand'], $pick, $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
                     }
                     
                     if ($playedIndexes === null) {
@@ -1528,7 +1954,7 @@ if ($action === 'poll') {
                     
                     // 25% chance for a smart bot to comment in chat on playing a card
                     if (($room['config']['use_ai_bots'] ?? false) && ($p['is_ai'] ?? false) && rand(1, 100) <= 25) {
-                        $comment = getAIBotComment($p['name'], $room['current_black_card']['text'] ?? '', $played, 'play', $room['config']['gemini_api_key'] ?? null);
+                        $comment = getAIBotComment($p['name'], $room['current_black_card']['text'] ?? '', $played, 'play', $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
                         if ($comment) {
                             if (!isset($room['chat'])) $room['chat'] = [];
                             $room['chat'][] = [
@@ -1536,8 +1962,7 @@ if ($action === 'poll') {
                                 'name' => $p['name'],
                                 'msg' => $comment,
                                 'ts' => time(),
-                                'type' => 'chat',
-                                'ai_source' => 'gemini'
+                                'type' => 'chat'
                             ];
                         }
                     }
@@ -1715,12 +2140,10 @@ if ($action === 'poll') {
                     foreach ($room['players'] as $p) {
                         $playerScoresText .= "- " . $p['name'] . ": " . $p['score'] . " points\n";
                     }
-                    $roast = getAIHostRoast($wName, $room['current_black_card']['text'] ?? '', $room['table_cards'][$wIdx]['cards'], $playerScoresText, $room['config']['gemini_api_key'] ?? null);
-                    $ai_source = 'gemini';
+                    $roast = getAIHostRoast($wName, $room['current_black_card']['text'] ?? '', $room['table_cards'][$wIdx]['cards'], $playerScoresText, $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
                     if (empty($roast)) {
                         $whitesText = implode(" / ", array_map(function($c) { return $c['text']; }, $room['table_cards'][$wIdx]['cards']));
                         $roast = "The winner of this round is {$wName}! The winning combination was: {$whitesText}.";
-                        $ai_source = 'fallback';
                     }
                     if ($roast) {
                         if (!isset($room['chat'])) $room['chat'] = [];
@@ -1729,8 +2152,7 @@ if ($action === 'poll') {
                             'name' => 'Host (AI)',
                             'msg' => $roast,
                             'ts' => time(),
-                            'type' => 'host_comment',
-                            'ai_source' => $ai_source
+                            'type' => 'host_comment'
                         ];
                     }
                     
@@ -1829,6 +2251,7 @@ if ($action === 'poll') {
                     $room['table_cards'] = $newTable;
                     $room['votes'] = [];
                     $room['is_tie_breaker'] = true;
+                    $room['round_start_time'] = time(); // Reset timer for tie breaker
                 }
                 $autoAlert = 'Auto-vote triggered after inactivity.';
             }
@@ -1946,9 +2369,11 @@ if ($action === 'poll') {
             if (rand(1, 100) <= 5) {
                 $room['last_random_comment_time'] = $now;
                 
-                $apiKey = $room['config']['gemini_api_key'] ?? null;
-                // If api key empty, queryGeminiAgainst will fall back to known-good key
-                $comment = getAIHostRandomComment($room, $apiKey);
+                $apiKey = $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null);
+                $comment = null;
+                if (!empty($apiKey)) {
+                    $comment = getAIHostRandomComment($room, $apiKey);
+                }
                 
                 if ($comment) {
                     if (!isset($room['chat'])) $room['chat'] = [];
@@ -1957,8 +2382,7 @@ if ($action === 'poll') {
                         'name' => 'Host (AI)',
                         'msg' => $comment,
                         'ts' => $now,
-                        'type' => 'host_comment',
-                        'ai_source' => 'gemini'
+                        'type' => 'host_comment'
                     ];
                     saveRoom($roomId, $room);
                 } else {
@@ -2006,8 +2430,7 @@ if ($action === 'poll') {
                                 'msg' => $foundText,
                                 'ts' => $now,
                                 'type' => 'host_comment',
-                                'audio_url' => "audio/host_messages/{$voiceGender}/{$category}/{$filename}",
-                                'ai_source' => 'fallback'
+                                'audio_url' => "audio/host_messages/{$voiceGender}/{$category}/{$filename}"
                             ];
                             saveRoom($roomId, $room);
                         }
@@ -2021,6 +2444,8 @@ if ($action === 'poll') {
     $client = $room;
     $client['my_hand'] = [];
     $client['is_spectator'] = $isSpectator;
+    // Provider credentials are server-only and must never be sent to players or spectators.
+    unset($client['config']['ai_api_key'], $client['config']['gemini_api_key'], $client['config']['openai_api_key']);
 
     foreach ($client['players'] as &$p) {
         if ($p['id'] === $userId) $client['my_hand'] = $p['hand'];
@@ -2051,8 +2476,7 @@ if ($action === 'start_game') {
                     'score' => 0,
                     'hand' => [],
                     'status' => 'ready',
-                    'is_bot' => true,
-                    'is_ai' => ($room['config']['use_ai_bots'] ?? false)
+                    'is_bot' => true
                 ];
                 if (!isset($room['chat'])) $room['chat'] = [];
                 $room['chat'][] = [
@@ -2084,11 +2508,9 @@ if ($action === 'start_game') {
     // Welcoming announcement
     if ($room['config']['use_ai_host'] ?? false) {
         $themeLabel = $room['config']['theme']['label'] ?? 'Default';
-        $announcement = getAIHostStartAnnouncement($room['config']['room_name'] ?? 'Game Room', $themeLabel, $room['config']['gemini_api_key'] ?? null);
-        $ai_source = 'gemini';
+        $announcement = getAIHostStartAnnouncement($room['config']['room_name'] ?? 'Game Room', $themeLabel, $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
         if (empty($announcement)) {
             $announcement = "Welcome to room: " . ($room['config']['room_name'] ?? 'Game Room') . ". Good luck, players!";
-            $ai_source = 'fallback';
         }
         if ($announcement) {
             if (!isset($room['chat'])) $room['chat'] = [];
@@ -2097,8 +2519,102 @@ if ($action === 'start_game') {
                 'name' => 'Host (AI)',
                 'msg' => $announcement,
                 'ts' => time(),
-                'type' => 'host_comment',
-                'ai_source' => $ai_source
+                'type' => 'host_comment'
+            ];
+        }
+    }
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'chat') {
+    $roomId = $_POST['room_id'] ?? '';
+    $msg = trim($_POST['message'] ?? '');
+    $room = loadRoom($roomId);
+    if ($room && $msg) {
+        $userName = $_SESSION['user_name'] ?? 'Spectator';
+        $userId = $_SESSION['user_id'] ?? '';
+
+        if (!isset($room['chat'])) $room['chat'] = [];
+        $room['chat'][] = [
+            'player_id' => $userId,
+            'name' => $userName,
+            'msg' => htmlspecialchars($msg),
+            'ts' => time()
+        ];
+
+        // Conversational AI Responders
+        $hasAiHost = $room['config']['use_ai_host'] ?? false;
+        $hasAiBots = $room['config']['use_ai_bots'] ?? false;
+
+        if ($hasAiHost || $hasAiBots) {
+            $msgLower = strtolower($msg);
+            $aiBots = [];
+            if ($hasAiBots) {
+                foreach ($room['players'] as $p) {
+                    if (($p['is_bot'] ?? false) && ($p['is_ai'] ?? false)) {
+                        $aiBots[] = $p;
+                    }
+                }
+            }
+
+            $mentionsHost = (strpos($msgLower, 'host') !== false) && $hasAiHost;
+            $mentionsBot = ((strpos($msgLower, 'bot') !== false) || (strpos($msgLower, 'ai') !== false)) && $hasAiBots;
+            $mentionsSpecificBot = false;
+            $targetBot = null;
+            if ($hasAiBots) {
+                foreach ($aiBots as $ab) {
+                    if (strpos($msgLower, strtolower($ab['name'])) !== false) {
+                        $mentionsSpecificBot = true;
+                        $targetBot = $ab;
+                        break;
+                    }
+                }
+            }
+
+            $shouldRespond = false;
+            $responderName = 'Host';
+            $responderRole = 'Host';
+            $responderId = 'host';
+            $type = 'host_comment';
+
+            if ($mentionsHost) {
+                $shouldRespond = true;
+            } elseif ($mentionsSpecificBot && $targetBot) {
+                $shouldRespond = true;
+                $responderName = $targetBot['name'];
+                $responderRole = 'Player';
+                $responderId = $targetBot['id'];
+                $type = 'chat';
+            } elseif ($mentionsBot && !empty($aiBots)) {
+                $shouldRespond = true;
+                $targetBot = $aiBots[array_rand($aiBots)];
+                $responderName = $targetBot['name'];
+                $responderRole = 'Player';
+                $responderId = $targetBot['id'];
+                $type = 'chat';
+            } elseif (rand(1, 100) <= 25) { // 25% chance of random response to general chat
+                if ($hasAiHost && (!$hasAiBots || rand(1, 2) === 1)) {
+                    $shouldRespond = true;
+                } elseif ($hasAiBots && !empty($aiBots)) {
+                    $shouldRespond = true;
+                    $targetBot = $aiBots[array_rand($aiBots)];
+                    $responderName = $targetBot['name'];
+                    $responderRole = 'Player';
+                    $responderId = $targetBot['id'];
+        if (empty($announcement)) {
+            $announcement = "Welcome to room: " . ($room['config']['room_name'] ?? 'Game Room') . ". Good luck, players!";
+        }
+        if ($announcement) {
+            if (!isset($room['chat'])) $room['chat'] = [];
+            $room['chat'][] = [
+                'player_id' => 'host',
+                'name' => 'Host (AI)',
+                'msg' => $announcement,
+                'ts' => time(),
+                'type' => 'host_comment'
             ];
         }
     }
@@ -2188,15 +2704,14 @@ if ($action === 'chat') {
             }
 
             if ($shouldRespond) {
-                $response = getAIChatResponse($responderName, $responderRole, $room['chat'], $room['config']['gemini_api_key'] ?? null);
+                $response = getAIChatResponse($responderName, $responderRole, $room['chat'], $room['config']['ai_api_key'] ?? ($room['config']['gemini_api_key'] ?? null));
                 if ($response) {
                     $room['chat'][] = [
                         'player_id' => $responderId,
                         'name' => ($responderRole === 'Host' ? 'Host (AI)' : $responderName),
                         'msg' => $response,
                         'ts' => time() + 1,
-                        'type' => $type,
-                        'ai_source' => 'gemini'
+                        'type' => $type
                     ];
                 }
             }
@@ -2207,106 +2722,6 @@ if ($action === 'chat') {
     } else {
         echo json_encode(['error' => 'Invalid room or message']);
     }
-    exit;
-}
-
-if ($action === 'download_zip') {
-    if (session_status() === PHP_SESSION_NONE) session_start();
-    if (!($_SESSION['is_admin'] ?? false)) {
-        header('HTTP/1.1 403 Forbidden');
-        echo json_encode(['error' => 'Unauthorized']);
-        exit;
-    }
-
-    $zip = new ZipArchive();
-    $zipName = 'against-game-release.zip';
-    $zipPath = sys_get_temp_dir() . '/' . $zipName;
-
-    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        header('HTTP/1.1 500 Internal Server Error');
-        echo json_encode(['error' => 'Could not create zip archive']);
-        exit;
-    }
-
-    $sourceDir = __DIR__;
-    $files = new RecursiveIteratorIterator(
-        new RecursiveCallbackFilterIterator(
-            new RecursiveDirectoryIterator($sourceDir, RecursiveDirectoryIterator::SKIP_DOTS),
-            function ($current, $key, $iterator) use ($sourceDir) {
-                // Exclude hidden folders and other development/runtime folders
-                if ($current->isDir()) {
-                    $dirName = $current->getFilename();
-                    if ($dirName[0] === '.' || in_array($dirName, ['.git', '.qodo', '.vscode', '.history', 'tts_cache', 'vendor'], true)) {
-                        return false;
-                    }
-                }
-
-                // Exclude files starting with a dot
-                $fileName = $current->getFilename();
-                if ($fileName[0] === '.') {
-                    return false;
-                }
-
-                // Exclude active rooms or backup files
-                if (preg_match('/^room_.*\.json$/i', $fileName)) {
-                    return false;
-                }
-                if (preg_match('/\.bak$/i', $fileName)) {
-                    return false;
-                }
-
-                return true;
-            }
-        )
-    );
-
-    foreach ($files as $file) {
-        if (!$file->isDir()) {
-            $filePath = $file->getPathname();
-            $relativePath = substr($filePath, strlen($sourceDir) + 1);
-            // Replace backslashes with forward slashes for zip compatibility
-            $relativePath = str_replace('\\', '/', $relativePath);
-            $zip->addFile($filePath, $relativePath);
-        }
-    }
-
-    $zip->close();
-
-    // Serve file download
-    if (file_exists($zipPath)) {
-        header('Content-Description: File Transfer');
-        header('Content-Type: application/zip');
-        header('Content-Disposition: attachment; filename="' . $zipName . '"');
-        header('Expires: 0');
-        header('Cache-Control: must-revalidate');
-        header('Pragma: public');
-        header('Content-Length: ' . filesize($zipPath));
-        readfile($zipPath);
-        unlink($zipPath);
-        exit;
-    } else {
-        header('HTTP/1.1 500 Internal Server Error');
-        echo json_encode(['error' => 'Zip file generation failed']);
-        exit;
-    }
-}
-
-if ($action === 'publish_wp') {
-    $roomId = $_POST['room_id'] ?? '';
-    $htmlContent = $_POST['html_content'] ?? '';
-    $room = loadRoom($roomId);
-    if (!$room) {
-        echo json_encode(['error' => 'Room not found']);
-        exit;
-    }
-
-    $globalConfigFile = __DIR__ . '/data/global_config.json';
-    $globalConfig = file_exists($globalConfigFile) ? json_decode(file_get_contents($globalConfigFile), true) : [];
-
-    $title = 'Cards Against Game Report - ' . ($room['config']['room_name'] ?? 'Game Room') . ' - ' . date('Y-m-d H:i');
-
-    $res = publishToWordPress($title, $htmlContent, $globalConfig);
-    echo json_encode($res);
     exit;
 }
 
@@ -2324,7 +2739,6 @@ if ($action === 'toggle_afk') {
     foreach ($room['players'] as &$p) {
         if (($p['id'] ?? '') === $uid) {
             $p['afk'] = $afk;
-            // Keep their status but mark visually
             if ($afk) {
                 $p['status'] = 'afk';
             } else {
@@ -2478,8 +2892,7 @@ if ($action === 'vote') {
                     'name' => 'Host (AI)',
                     'msg' => $roast,
                     'ts' => time(),
-                    'type' => 'host_comment',
-                    'ai_source' => 'fallback'
+                    'type' => 'host_comment'
                 ];
             }
             
@@ -2545,6 +2958,7 @@ if ($action === 'vote') {
             $room['table_cards'] = $newTable;
             $room['votes'] = [];
             $room['is_tie_breaker'] = true;
+            $room['round_start_time'] = time(); // Reset timer for tie breaker
         }
     }
     saveRoom($roomId, $room);
@@ -2635,66 +3049,16 @@ if ($action === 'toggle_pause') {
     exit;
 }
 
-/**
- * @param string $text
- * @param bool $isBlack
- */
-function cleanCardTextPHP(string $text, bool $isBlack): string {
-    $cleaned = trim($text);
-    if ($cleaned === '') return '';
-
-    if ($isBlack) {
-        $cleaned = preg_replace('/_{2,}/', '______', $cleaned);
-        $cleaned = preg_replace('/(\w)\s*______/', '$1 ______', $cleaned);
-        $cleaned = preg_replace('/______\s*(\w)/', '______ $1', $cleaned);
-        $cleaned = preg_replace('/______\s+([.,;:?!])/', '______$1', $cleaned);
-        $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
-    } else {
-        $cleaned = preg_replace('/_+/', '', $cleaned);
-        $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
-    }
-    return $cleaned;
-}
+// cleanCardTextPHP is provided by deck_parser.php
 
 /**
+ * Pre-recorded WAV audio generation has been retired.
+ * All voice is performed by the male or female existing voice in Chrome (Web Speech API).
+ *
  * @param string $text
  * @param string $type
  */
-function generateCardAudio(string $text, string $type): void {
-    $globalConfigFile = __DIR__ . '/data/global_config.json';
-    $globalConfig = file_exists($globalConfigFile) ? json_decode(file_get_contents($globalConfigFile), true) : [];
-    
-    if (empty($globalConfig['tts_enabled']) || empty($globalConfig['google_tts_api_key'])) {
-        return;
-    }
-
-    $apiKey = $globalConfig['google_tts_api_key'];
-    require_once __DIR__ . '/generate_audio.php';
-
-    $generator = new AudioGenerator(
-        $apiKey,
-        __DIR__ . '/audio',
-        [
-            'male' => 'Fenrir',
-            'female' => 'Aoede',
-            'british' => 'Puck'
-        ],
-        50, // batchSize
-        0,  // startIndex
-        0,  // stopIndex
-        'gemini', // provider
-        '', // ElevenLabs voice ID
-        1000 // dailyLimit
-    );
-
-    if ($type === 'black') {
-        $generator->generateSegmentsForBlackCard($text);
-    } else {
-        $generator->generateAudioForWhiteCard($text);
-    }
-    
-    $generator->close();
-}
+// generateCardAudio retired — Web Speech API handles TTS client-side
 
 // Add user cards to the Orange Deck (Bulk)
 if ($action === 'add_user_cards') {
@@ -2771,8 +3135,6 @@ if ($action === 'add_user_cards') {
                 'pick' => $pick,
                 'ts' => time()
             ];
-            // Trigger TTS audio generation
-            generateCardAudio($text, $type);
         }
     }
 
@@ -2966,45 +3328,7 @@ if ($action === 'edit_card') {
         exit;
     }
 
-/**
- * @param string $text
- * @param string $type
- */
-function generateCardAudioAPI(string $text, string $type): void {
-        $globalConfigFile = __DIR__ . '/data/global_config.json';
-        $globalConfig = file_exists($globalConfigFile) ? json_decode(file_get_contents($globalConfigFile), true) : [];
-        
-        if (empty($globalConfig['tts_enabled']) || empty($globalConfig['google_tts_api_key'])) {
-            return;
-        }
-
-        $apiKey = $globalConfig['google_tts_api_key'];
-        require_once __DIR__ . '/generate_audio.php';
-
-        $generator = new AudioGenerator(
-            $apiKey,
-            __DIR__ . '/audio',
-            [
-                'male' => 'Fenrir',
-                'female' => 'Aoede',
-                'british' => 'Puck'
-            ],
-            50, // batchSize
-            0,  // startIndex
-            0,  // stopIndex
-            'gemini', // provider
-            '', // ElevenLabs voice ID
-            1000 // dailyLimit
-        );
-
-        if ($type === 'black') {
-            $generator->generateSegmentsForBlackCard($text);
-        } else {
-            $generator->generateAudioForWhiteCard($text);
-        }
-        
-        $generator->close();
-    }
+// generateCardAudioAPI retired — Web Speech API handles TTS client-side
 
     if ($deck === 'orange_deck') {
         // Edit in user_additions.json
@@ -3017,10 +3341,6 @@ function generateCardAudioAPI(string $text, string $type): void {
                     $card['text'] = cleanCardTextPHP($new_text, ($type === 'black'));
                     $card['pick'] = ($type === 'black') ? max(1, substr_count($card['text'], '______')) : 0;
                     $found = true;
-                    // Try generating TTS audio for the edited card
-                    try {
-                        generateCardAudioAPI($card['text'], $type);
-                    } catch (\Exception $e) {}
                     break;
                 }
             }
@@ -3040,11 +3360,6 @@ function generateCardAudioAPI(string $text, string $type): void {
         
         if (!is_dir(dirname($EDITED_FILE))) mkdir(dirname($EDITED_FILE), 0777, true);
         file_put_contents($EDITED_FILE, json_encode($edited, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-        
-        // Try generating TTS audio for the edited card
-        try {
-            generateCardAudioAPI($edited[$key], $type);
-        } catch (\Exception $e) {}
         
         echo json_encode(['success' => true]);
         exit;
@@ -3113,6 +3428,16 @@ if ($action === 'add_bot') {
         'ts' => time(),
         'type' => 'join'
     ];
+
+    if ($isAi) {
+        $room['chat'][] = [
+            'player_id' => 'host',
+            'name' => 'Host (AI)',
+            'msg' => "The challenge level has increased because I'll be playing the game instead of just being a mindless host.",
+            'ts' => time() + 1,
+            'type' => 'host_comment'
+        ];
+    }
 
     saveRoom($roomId, $room);
     echo json_encode(['success' => true]);
@@ -3216,37 +3541,174 @@ if ($action === 'leave_room') {
     exit;
 }
 
-// Leave all rooms for current user (no bot replacement to reduce load)
-if ($action === 'leave_all_rooms') {
+// Add bot player to room
+if ($action === 'add_bot') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
+    if ($room['state'] !== 'lobby') {
+        echo json_encode(['error' => 'Can only add bots in lobby']);
+        exit;
+    }
+
+    $isAi = ($_POST['is_ai'] ?? 'false') === 'true' || ($_POST['is_ai'] ?? '') === '1';
+
+    // Count existing bots to generate name
+    $botCount = 0;
+    foreach ($room['players'] as $p) {
+        if ($p['is_bot'] ?? false) $botCount++;
+    }
+
+    // Use theme character name if available, otherwise fallback to preset list
+    $botName = nextThemeCharacterName($room);
+    if (!$botName) {
+        // Fallback list of 80 fake names (same as client-side presetNames)
+        $fallbackNames = getFallbackBotNames();
+        // Pick random name not currently in use
+        $usedNames = array_map(function($p) { return $p['name']; }, $room['players']);
+        $avail = array_diff($fallbackNames, $usedNames);
+        if (empty($avail)) $avail = $fallbackNames; // Recycle if full
+        $botName = $avail[array_rand($avail)];
+    }
+
+    // Generate unique bot ID
+    $botId = 'bot_' . uniqid();
+
+    // Create bot player
+    $botPlayer = [
+        'id' => $botId,
+        'name' => $botName,
+        'avatar_type' => 'dicebear',
+        'avatar_val' => 'bottts:seed' . $botCount,
+        'hand' => [],
+        'score' => 0,
+        'status' => 'ready',
+        'is_bot' => true,
+        'is_ai' => $isAi
+    ];
+
+    $room['players'][] = $botPlayer;
+
+    if (!isset($room['chat'])) $room['chat'] = [];
+    $room['chat'][] = [
+        'player_id' => 'system',
+        'name' => 'System',
+        'msg' => "$botName " . ($isAi ? "(AI Bot)" : "(Bot)") . " has joined the lobby.",
+        'ts' => time(),
+        'type' => 'join'
+    ];
+
+    if ($isAi) {
+        $room['chat'][] = [
+            'player_id' => 'host',
+            'name' => 'Host (AI)',
+            'msg' => "The challenge level has increased because I'll be playing the game instead of just being a mindless host.",
+            'ts' => time() + 1,
+            'type' => 'host_comment'
+        ];
+    }
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Player leaves room; optional bot replacement OR room deletion if host leaves
+if ($action === 'leave_room') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['error' => 'Room not found']);
+        exit;
+    }
     $uid = $_SESSION['user_id'] ?? '';
+
+    // Clear current_room_id from session
     unset($_SESSION['current_room_id']);
-    $files = glob($DATA_DIR . '/room_*.json');
-    if ($files) {
-        foreach ($files as $f) {
-            $room = json_decode(file_get_contents($f), true);
-            if (!$room) {
-                @unlink($f);
-                continue;
-            }
-            $before = count($room['players'] ?? []);
-            $room['players'] = array_values(array_filter($room['players'] ?? [], function ($p) use ($uid) {
-                return ($p['id'] ?? null) !== $uid;
-            }));
-            if ($before === count($room['players'])) continue; // user not here
 
-            // Clean votes/table entries
-            if (isset($room['votes'][$uid])) unset($room['votes'][$uid]);
-            $room['table_cards'] = array_values(array_filter($room['table_cards'] ?? [], function ($t) use ($uid) {
-                return ($t['player_id'] ?? null) !== $uid;
-            }));
+    // Check if leaving player is the host
+    $isHost = ($room['host_id'] ?? '') === $uid;
 
-            if (count($room['players']) === 0 || botsOnly($room)) {
-                @unlink($f);
-            } else {
-                saveRoom($room['id'], $room);
-            }
+    // Also check if player has is_host flag
+    foreach ($room['players'] as $p) {
+        if (($p['id'] ?? '') === $uid && !empty($p['is_host'])) {
+            $isHost = true;
+            break;
         }
     }
+
+    // If host leaves, delete the entire room
+    if ($isHost) {
+        @unlink(getRoomFile($roomId));
+        echo json_encode(['success' => true, 'room_deleted' => true]);
+        exit;
+    }
+
+    // Get player name before removing
+    $leavingPlayerName = 'Player';
+    foreach ($room['players'] as $p) {
+        if ($p['id'] === $uid) {
+            $leavingPlayerName = $p['name'] ?? 'Player';
+            break;
+        }
+    }
+
+    // Remove player
+    $room['players'] = array_values(array_filter($room['players'], function ($p) use ($uid) {
+        return $p['id'] !== $uid;
+    }));
+
+    // Add leave announcement to chat
+    if (!isset($room['chat'])) $room['chat'] = [];
+    $room['chat'][] = [
+        'player_id' => 'system',
+        'name' => 'System',
+        'msg' => "$leavingPlayerName has left the game",
+        'ts' => time(),
+        'type' => 'leave'
+    ];
+
+    // Clean votes and table entries
+    if (isset($room['votes'][$uid])) unset($room['votes'][$uid]);
+    $room['table_cards'] = array_values(array_filter($room['table_cards'], function ($t) use ($uid) {
+        return ($t['player_id'] ?? null) !== $uid;
+    }));
+
+    // If no human players left, delete the room
+    $hasHumans = false;
+    foreach ($room['players'] as $p) {
+        if (!($p['is_bot'] ?? false)) {
+            $hasHumans = true;
+            break;
+        }
+    }
+
+    if (!$hasHumans || count($room['players']) === 0) {
+        @unlink(getRoomFile($roomId));
+        echo json_encode(['success' => true, 'room_deleted' => true]);
+        exit;
+    }
+
+    // Replace with bot (slightly dumber 😉)
+    $botId = 'bot_leave_' . uniqid();
+    $hand = [];
+    $limit = $room['config']['hand_size'] ?? 7;
+    while (count($hand) < $limit && !empty($room['white_deck'])) {
+        $hand[] = array_shift($room['white_deck']);
+    }
+    $room['players'][] = [
+        'id' => $botId,
+        'name' => nextThemeCharacterName($room) ?: 'AutoBot',
+        'score' => 0,
+        'hand' => $hand,
+        'status' => 'thinking',
+        'is_bot' => true
+    ];
+
+    saveRoom($roomId, $room);
     echo json_encode(['success' => true]);
     exit;
 }
@@ -3344,180 +3806,10 @@ if ($action === 'update_settings') {
                     }))
                 ];
                 
-                if (empty($newDecks['black']) || empty($newDecks['white'])) {
-                    $newDecks['black'] = $newDecks['black'] ?: [['id' => uniqid('b_'), 'text' => '______.', 'pick' => 1, 'deck' => 'base_deck']];
-                    $newDecks['white'] = $newDecks['white'] ?: [['id' => uniqid('w_'), 'text' => 'A mystery.', 'deck' => 'base_deck']];
-                }
-                
-                $room['black_deck'] = distributedShuffle($newDecks['black']);
-                $room['white_deck'] = distributedShuffle($newDecks['white']);
-            }
-        }
-    }
-
-    saveRoom($roomId, $room);
-    echo json_encode(['success' => true, 'config' => $room['config']]);
+    $publicConfig = $room['config'];
+    unset($publicConfig['ai_api_key'], $publicConfig['gemini_api_key'], $publicConfig['openai_api_key']);
+    echo json_encode(['success' => true, 'config' => $publicConfig]);
     exit;
-}
-
-// Play again action: resets scores and decks, puts room back in lobby
-if ($action === 'play_again') {
-    $roomId = $_POST['room_id'] ?? '';
-    $room = loadRoom($roomId);
-    if (!$room) {
-        echo json_encode(['success' => false, 'error' => 'Room not found.']);
-        exit;
-    }
-
-    $parsed = parseDecksShared();
-    $selectedTags = $room['config']['decks'] ?? ($parsed['tags'] ?? ['base_deck']);
-    
-    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
-    if (in_array('orange_deck', $selectedTags)) {
-        if (file_exists($USER_ADDITIONS_FILE)) {
-            $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
-            foreach ($userAdditions as $card) {
-                if (($card['type'] ?? 'white') === 'black') {
-                    $parsed['black'][] = [
-                        'text' => $card['text'],
-                        'pick' => $card['pick'] ?? 1,
-                        'id' => uniqid('b_usr_'),
-                        'deck' => 'orange_deck'
-                    ];
-                } else {
-                    $parsed['white'][] = [
-                        'text' => $card['text'],
-                        'id' => uniqid('w_usr_'),
-                        'deck' => 'orange_deck'
-                    ];
-                }
-            }
-        }
-    }
-
-    $decks = [
-        'black' => array_values(array_filter($parsed['black'], function ($c) use ($selectedTags) {
-            return in_array($c['deck'], $selectedTags, true);
-        })),
-        'white' => array_values(array_filter($parsed['white'], function ($c) use ($selectedTags) {
-            return in_array($c['deck'], $selectedTags, true);
-        }))
-    ];
-
-    if (empty($decks['black']) || empty($decks['white'])) {
-        $decks['black'] = $decks['black'] ?: [['id' => uniqid('b_'), 'text' => '______.', 'pick' => 1, 'deck' => 'base_deck']];
-        $decks['white'] = $decks['white'] ?: [['id' => uniqid('w_'), 'text' => 'A mystery.', 'deck' => 'base_deck']];
-    }
-
-    // Keep original deck order - no shuffle for play_again with same players
-    $room['black_deck'] = array_values($decks['black']);
-    $room['white_deck'] = array_values($decks['white']);
-    
-    foreach ($room['players'] as &$p) {
-        $p['score'] = 0;
-        $p['hand'] = [];
-        $p['status'] = 'ready';
-    }
-    unset($p);
-
-    $room['state'] = 'lobby';
-    $room['is_tie_breaker'] = false;
-    $room['round'] = 1;
-    $room['votes'] = [];
-    $room['table_cards'] = [];
-    $room['current_black_card'] = null;
-    $room['updated_at'] = time();
-
-    saveRoom($roomId, $room);
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-// Dynamic pre-recorded host reply lookup
-if ($action === 'get_random_host_message') {
-    $voiceGender = $_POST['voice'] ?? 'female';
-    $categories = ['funny_moment', 'quiet_moment', 'loud_moment', 'easter_egg', 'special'];
-    $category = $categories[array_rand($categories)];
-    $dir = __DIR__ . "/audio/host_messages/{$voiceGender}/{$category}";
-    
-    $files = [];
-    if (is_dir($dir)) {
-        // Commented out WAV files fallback, only using mp3 for now
-        // $files = glob($dir . '/*.{wav,mp3}', GLOB_BRACE);
-        $files = glob($dir . '/*.mp3');
-    }
-    
-    if (!empty($files)) {
-        $randomFile = $files[array_rand($files)];
-        $filename = basename($randomFile);
-        $hash = pathinfo($filename, PATHINFO_FILENAME);
-        
-        $foundText = '';
-        $hostFile = __DIR__ . '/data/host_messages.json';
-        if (file_exists($hostFile)) {
-            $hostMessages = json_decode(file_get_contents($hostFile), true) ?: [];
-            foreach ($hostMessages as $tier) {
-                if (isset($tier['messages'])) {
-                    foreach ($tier['messages'] as $msg) {
-                        $msgText = $msg['text'] ?? '';
-                        if (md5($msgText) === $hash) {
-                            $foundText = $msgText;
-                            break 2;
-                        }
-                    }
-                }
-            }
-        }
-        
-        echo json_encode([
-            'found' => true,
-            'url' => "audio/host_messages/{$voiceGender}/{$category}/{$filename}",
-            'text' => $foundText
-        ]);
-    } else {
-        echo json_encode(['found' => false]);
-    }
-    exit;
-}
-
-// Auto-save completed game html to gallery folder
-if ($action === 'save_to_gallery') {
-    $roomId = $_POST['room_id'] ?? '';
-    $htmlContent = $_POST['html_content'] ?? '';
-    if (!$roomId || !$htmlContent) {
-        echo json_encode(['success' => false, 'error' => 'Missing room_id or html_content']);
-        exit;
-    }
-    
-    $galleryDir = __DIR__ . '/gallery';
-    if (!is_dir($galleryDir)) {
-        mkdir($galleryDir, 0777, true);
-    }
-    
-    $filename = $galleryDir . '/game_' . preg_replace('/[^a-zA-Z0-9_-]/', '', $roomId) . '.html';
-    if (file_put_contents($filename, $htmlContent) !== false) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'Failed to write gallery file']);
-    }
-    exit;
-}
-
-// Save a theme to themes.json
-if ($action === 'save_theme') {
-    $key = trim($_POST['key'] ?? '');
-    $label = trim($_POST['label'] ?? '');
-    $gameTitle = trim($_POST['game_title'] ?? 'Cards Against Everyone');
-    $roomNames = json_decode($_POST['room_names'] ?? '[]', true) ?: [];
-    $characterNames = json_decode($_POST['character_names'] ?? '[]', true) ?: [];
-    $banner = trim($_POST['banner_media'] ?? '');
-    $audio = trim($_POST['audio_url'] ?? '');
-
-    if ($key === '' || $label === '') {
-        echo json_encode(['error' => 'Missing key/label']);
-        exit;
-    }
-    $themes = loadThemes();
     $themes[$key] = [
         'label' => $label,
         'game_title' => $gameTitle,
@@ -3531,139 +3823,6 @@ if ($action === 'save_theme') {
     exit;
 }
 
-// Set lobby message (for redirects with reasons)
-if ($action === 'set_lobby_message') {
-    $message = $_POST['message'] ?? $_GET['message'] ?? '';
-    if ($message) {
-        $_SESSION['lobby_message'] = $message;
-    }
-    echo json_encode(['success' => true]);
-    exit;
-}
-
-/**
- * @param string $pcmData
- * @param int $sampleRate
- * @param int $channels
- * @param int $bitsPerSample
- */
-function addWavHeader(string $pcmData, int $sampleRate = 24000, int $channels = 1, int $bitsPerSample = 16): string {
-    $byteRate = $sampleRate * $channels * ($bitsPerSample / 8);
-    $blockAlign = $channels * ($bitsPerSample / 8);
-    $dataSize = strlen($pcmData);
-    $chunkSize = 36 + $dataSize;
-
-    $header = '';
-    $header .= 'RIFF';
-    $header .= pack('V', $chunkSize);
-    $header .= 'WAVE';
-    $header .= 'fmt ';
-    $header .= pack('V', 16);
-    $header .= pack('v', 1);
-    $header .= pack('v', $channels);
-    $header .= pack('V', $sampleRate);
-    $header .= pack('V', $byteRate);
-    $header .= pack('v', $blockAlign);
-    $header .= pack('v', $bitsPerSample);
-    $header .= 'data';
-    $header .= pack('V', $dataSize);
-
-    return $header . $pcmData;
-}
-
-/**
- * @param string $text
- * @param string $apiKey
- * @param string $voiceName
- */
-function synthGeminiTTS(string $text, string $apiKey, string $voiceName = 'Aoede'): array {
-    // Use known-good key if none provided (matches HomeBound setup)
-    if (empty($apiKey)) {
-        $apiKey = 'AIzaSyC9c59Zb9yBSUcxjMdy8GcgvmpyjzUuwhw';
-    }
-
-    $models = [
-        ['name' => 'gemini-2.0-flash-exp', 'api' => 'v1alpha'],
-        ['name' => 'gemini-2.5-flash-preview-tts', 'api' => 'v1beta']
-    ];
-
-    $lastError = 'Gemini TTS unavailable';
-
-    foreach ($models as $modelInfo) {
-        $model = $modelInfo['name'];
-        $api = $modelInfo['api'];
-        $url = "https://generativelanguage.googleapis.com/{$api}/models/{$model}:generateContent?key={$apiKey}";
-
-        $promptText = $text;
-        if ($model === 'gemini-2.5-flash-preview-tts') {
-            $promptText = "Please read the following text transcript out loud:\n" . $text;
-        }
-
-        $payload = [
-            'contents' => [['parts' => [['text' => $promptText]]]],
-            'generationConfig' => [
-                'responseModalities' => ['AUDIO'],
-                'speechConfig' => [
-                    'voiceConfig' => [
-                        // Allow specifying a voice name/code if provided (per-game or test input)
-                        'prebuiltVoiceConfig' => ['voiceName' => $voiceName ?: 'Aoede']
-                    ]
-                ]
-            ]
-        ];
-
-        // Use PHP stream (file_get_contents) instead of cURL to avoid curl_close deprecation warnings
-        $opts = [
-            'http' => [
-                'header'  => "Content-Type: application/json\r\n",
-                'method'  => 'POST',
-                'content' => json_encode($payload),
-                'timeout' => 90,
-            ]
-        ];
-        $context = stream_context_create($opts);
-        $response = @file_get_contents($url, false, $context);
-        $httpCode = 0;
-        if (!empty($http_response_header) && is_array($http_response_header)) {
-            // Parse HTTP status code from response headers
-            foreach ($http_response_header as $hdr) {
-                if (preg_match('#HTTP/\d+\.\d+\s+(\d+)#', $hdr, $m)) {
-                    $httpCode = intval($m[1]);
-                    break;
-                }
-            }
-        }
-
-        if ($httpCode === 200 && $response !== false) {
-            $result = json_decode($response, true);
-            $inline = $result['candidates'][0]['content']['parts'][0]['inlineData']['data'] ?? null;
-            if ($inline) {
-                $pcm = base64_decode($inline, true);
-                if ($pcm !== false) {
-                    $wav = addWavHeader($pcm, 24000, 1, 16);
-                    return ['ok' => true, 'audio' => base64_encode($wav), 'mime' => 'audio/wav', 'model' => $model];
-                }
-            }
-            $lastError = "$model response missing audio data";
-        } else {
-            $errMsg = '';
-            if ($response) {
-                $decoded = json_decode($response, true);
-                $errMsg = $decoded['error']['message'] ?? '';
-            }
-            $errSuffix = '';
-            $errSuffix .= $errMsg ? " $errMsg" : '';
-            $lastError = "$model failed (HTTP $httpCode)$errSuffix";
-        }
-    }
-
-    return ['ok' => false, 'error' => $lastError];
-}
-
-// Check for Pre-Recorded Audio (Version 1.0 - Try loading pre-generated audio files before API calls)
-if ($action === 'check_prerecorded_audio') {
-    error_reporting(0);
-    ini_set('display_errors', 0);
 
     $text = $_POST['text'] ?? '';
     if (!$text) {
@@ -3758,223 +3917,146 @@ if ($action === 'check_prerecorded_audio') {
     exit;
 }
 
-// Get TTS Audio (using server-stored keys with caching)
-if ($action === 'get_tts') {
-    // Suppress warnings
-    error_reporting(0);
-    ini_set('display_errors', 0);
+// Update profile for the current user (name/avatar, and optional mic preference)
+if ($action === 'update_profile') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = $roomId ? loadRoom($roomId) : null;
+    $uid = $_SESSION['user_id'] ?? '';
+
+    // Accept explicit player_id as fallback when session user_id doesn't match room
+    $explicitId = $_POST['player_id'] ?? '';
+    if ($explicitId && $room) {
+        foreach ($room['players'] as $p) {
+            if ($p['id'] === $explicitId) { $uid = $explicitId; break; }
+        }
+    }
+
+    $name = trim($_POST['name'] ?? '');
+    $avatarType = $_POST['avatar_type'] ?? null;
+    $avatarVal = $_POST['avatar_val'] ?? null;
+    $micId = $_POST['mic_device_id'] ?? null;
+
+    if ($name !== '') $_SESSION['user_name'] = htmlspecialchars($name);
+    if ($avatarType) $_SESSION['user_avatar_type'] = $avatarType;
+    if ($avatarVal) $_SESSION['user_avatar_val'] = $avatarVal;
+    if ($micId !== null) $_SESSION['preferred_mic'] = $micId;
+
+    if ($room) {
+        foreach ($room['players'] as &$p) {
+            if ($p['id'] === $uid) {
+                if ($name !== '') $p['name'] = $_SESSION['user_name'];
+                if ($avatarType) $p['avatar_type'] = $avatarType;
+                if ($avatarVal) $p['avatar_val'] = $avatarVal;
+                break;
+            }
+        }
+        saveRoom($roomId, $room);
+    }
+
+    $themes[$key] = [
+        'label' => $label,
+        'game_title' => $gameTitle,
+        'room_names' => array_values(array_filter($roomNames, fn($v) => is_string($v) && trim($v) !== '')),
+        'character_names' => array_values(array_filter($characterNames, fn($v) => is_string($v) && trim($v) !== '')),
+        'banner_media' => $banner,
+        'audio_url' => $audio
+    ];
+    saveThemes($themes);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 
     $text = $_POST['text'] ?? '';
     if (!$text) {
-        echo json_encode(['error' => 'No text provided']);
+        echo json_encode(['found' => false, 'error' => 'No text provided']);
         exit;
     }
 
-    // Load room for per-game voice settings
-    $roomId = $_POST['room_id'] ?? '';
-    $room = $roomId ? loadRoom($roomId) : null;
-    $roomConfig = $room['config'] ?? [];
-
-    // Load global config for fallback keys
+    // Get voice preference or default to 'female'
     $globalConfigFile = __DIR__ . '/data/global_config.json';
     $config = [];
     if (file_exists($globalConfigFile)) {
         $config = json_decode(file_get_contents($globalConfigFile), true) ?: [];
     }
+    $voiceGender = $_POST['voice'] ?? $config['tts_voice'] ?? 'female';
 
-    // Determine provider and credentials (per-game takes priority)
-    $provider = $roomConfig['game_tts_provider'] ?? $config['tts_provider'] ?? 'browser';
-    $voiceType = $config['tts_voice'] ?? 'female';
+    // Generate MD5 hash of text for filename lookup
+    $hash = md5($text);
 
-    // Version 2.0 - Add TTS caching: check local cache before API calls
+    // Normalize underscores to check both formats
+    $textForWhite = trim($text);
+    $textForWhite = preg_replace('/_{3,}/', '', $textForWhite);  // Remove blank markers for white card check
+    $hashForWhite = md5($textForWhite);
+
+    // PRIORITY 1: Check host_messages directory FIRST (these are critical announcements)
+    // Dynamically scan all subdirectories instead of hardcoding categories
+    $hostBaseDir = __DIR__ . "/audio/host_messages/{$voiceGender}";
+    if (is_dir($hostBaseDir)) {
+        foreach (scandir($hostBaseDir) as $category) {
+            if ($category === '.' || $category === '..' || !is_dir("$hostBaseDir/$category")) continue;
+            foreach (['mp3'] as $ext) {
+                $hostPath = "$hostBaseDir/$category/{$hash}.{$ext}";
+                if (file_exists($hostPath)) {
+                    echo json_encode([
+                        'found' => true,
+                        'type' => 'host_message',
+                        'url' => "audio/host_messages/{$voiceGender}/{$category}/{$hash}.{$ext}"
+                    ]);
+                    exit;
+                }
+            }
+        }
+    }
+
+    // PRIORITY 2: Check segments directory (split by blanks in black cards)
+    foreach (['mp3'] as $ext) {
+        $segmentPath = __DIR__ . "/audio/segments/{$voiceGender}/{$hash}.{$ext}";
+        if (file_exists($segmentPath)) {
+            echo json_encode([
+                'found' => true,
+                'type' => 'segment',
+                'url' => "audio/segments/{$voiceGender}/{$hash}.{$ext}"
+            ]);
+            exit;
+        }
+    }
+
+    // PRIORITY 3: Check whites directory (whole white cards)
+    foreach (['mp3'] as $ext) {
+        $whitePath = __DIR__ . "/audio/whites/{$voiceGender}/{$hashForWhite}.{$ext}";
+        if (file_exists($whitePath)) {
+            echo json_encode([
+                'found' => true,
+                'type' => 'white',
+                'url' => "audio/whites/{$voiceGender}/{$hashForWhite}.{$ext}"
+            ]);
+            exit;
+        }
+    }
+
+    // PRIORITY 4: Check TTS cache BEFORE making API calls (Version 1.43)
+    // Cache is created by get_tts action and stored as base64 + metadata
     $cacheDir = __DIR__ . '/data/tts_cache';
-    if (!is_dir($cacheDir)) @mkdir($cacheDir, 0777, true);
-
-    // Create cache key from text + voice
-    $cacheKey = md5($text . '::' . $provider . '::' . $voiceType);
+    $cacheKey = md5($text . '::' . (($_POST['provider'] ?? 'elevenlabs')) . '::' . $voiceGender);
     $cacheFile = $cacheDir . '/' . $cacheKey . '.cache';
 
-    // Return cached audio if available
     if (file_exists($cacheFile)) {
         $cached = json_decode(file_get_contents($cacheFile), true);
         if ($cached && isset($cached['audio'])) {
-            echo json_encode(['success' => true, 'audio' => $cached['audio'], 'mime' => $cached['mime'] ?? 'audio/mp3', 'cached' => true]);
-            exit;
-        }
-    }
-
-    if ($provider === 'google') {
-        // Use per-game API key if available, otherwise global (Gemini Aoede)
-        $apiKey = $roomConfig['game_google_api_key'] ?? $config['google_tts_api_key'] ?? '';
-        if (!$apiKey) {
-            echo json_encode(['error' => 'Missing Google API Key in settings']);
-            exit;
-        }
-
-        // Pass optional per-game voice name if configured (falls back to global)
-        $voiceName = $roomConfig['game_google_voice'] ?? ($config['google_tts_voice_name'] ?? 'Aoede');
-        $ttsResult = synthGeminiTTS($text, $apiKey, $voiceName);
-        if (!empty($ttsResult['ok'])) {
             echo json_encode([
-                'success' => true,
-                'audio' => $ttsResult['audio'] ?? '',
-                'mime' => $ttsResult['mime'] ?? 'audio/wav',
-                'model' => $ttsResult['model'] ?? 'gemini',
-                'voice' => $voiceName
+                'found' => true,
+                'type' => 'tts_cache',
+                'audio' => $cached['audio'],  // Base64 encoded
+                'mime' => $cached['mime'] ?? 'audio/mp3',
+                'cached' => true
             ]);
-        } else {
-            echo json_encode(['error' => $ttsResult['error'] ?? 'Google (Gemini) TTS failed']);
+            exit;
         }
-        exit;
     }
 
-    if ($provider === 'elevenlabs') {
-        // Use per-game credentials if available, otherwise global
-        $apiKey = $roomConfig['game_elevenlabs_api_key'] ?? $config['elevenlabs_api_key'] ?? '';
-        $voiceId = $roomConfig['game_elevenlabs_voice_id'] ?? $config['elevenlabs_voice_id'] ?? '';
-
-        if (!$apiKey || !$voiceId) {
-            echo json_encode(['error' => 'Missing Eleven Labs credentials in settings']);
-            exit;
-        }
-
-        // NOTE: ElevenLabs API provides subscription info and character usage
-        // Users can check credit levels at https://elevenlabs.io/app/usage
-        // API endpoint for quota: GET https://api.elevenlabs.io/v1/user/subscription (requires xi-api-key)
-
-        $url = "https://api.elevenlabs.io/v1/text-to-speech/$voiceId";
-        $data = [
-            'text' => $text,
-            'model_id' => 'eleven_monolingual_v1',
-            'voice_settings' => [
-                'stability' => 0.5,
-                'similarity_boost' => 0.5
-            ]
-        ];
-
-        $options = [
-            'http' => [
-                'header'  => "Content-type: application/json\r\n" .
-                             "xi-api-key: $apiKey\r\n",
-                'method'  => 'POST',
-                'content' => json_encode($data),
-                'ignore_errors' => true
-            ]
-        ];
-
-        $context  = stream_context_create($options);
-        $result = @file_get_contents($url, false, $context);
-
-        if ($result) {
-            $encoded = base64_encode($result);
-            // Save to cache for future use
-            @file_put_contents($cacheFile, json_encode(['audio' => $encoded, 'mime' => 'audio/mp3', 'timestamp' => time()]));
-            echo json_encode(['success' => true, 'audio' => $encoded]);
-        } else {
-            echo json_encode(['error' => 'Eleven Labs Request Failed']);
-        }
-        exit;
-    }
-
-    echo json_encode(['error' => 'Provider not supported or configured']);
-    exit;
-}
-
-// Test TTS (Google/ElevenLabs)
-if ($action === 'test_tts') {
-    // Suppress warnings to prevent JSON corruption
-    error_reporting(0);
-    ini_set('display_errors', 0);
-
-    if (!extension_loaded('openssl')) {
-        echo json_encode(['error' => 'OpenSSL extension not loaded. HTTPS requests will fail.']);
-        exit;
-    }
-
-    $provider = $_POST['provider'] ?? '';
-    $text = $_POST['text'] ?? 'Test message';
-    $voiceName = $_POST['voice_name'] ?? '';
-    $apiKey = $_POST['api_key'] ?? '';
-
-    if ($provider === 'google') {
-        if (!$apiKey) {
-            echo json_encode(['error' => 'Missing Google API Key']);
-            exit;
-        }
-
-        // Use requested test voice name if provided (or default Aoede)
-        $ttsResult = synthGeminiTTS($text, $apiKey, $voiceName ?: 'Aoede');
-        if (!empty($ttsResult['ok'])) {
-            echo json_encode([
-                'success' => true,
-                'audio' => $ttsResult['audio'] ?? '',
-                'mime' => $ttsResult['mime'] ?? 'audio/wav',
-                'model' => $ttsResult['model'] ?? 'gemini',
-                'voice' => $voiceName ?: 'Aoede'
-            ]);
-        } else {
-            echo json_encode(['error' => $ttsResult['error'] ?? 'Google (Gemini) TTS failed']);
-        }
-        exit;
-    }
-
-    if ($provider === 'elevenlabs') {
-        $voiceId = $_POST['voice_id'] ?? '';
-        if (!$apiKey) {
-            echo json_encode(['error' => 'Missing Eleven Labs API Key']);
-            exit;
-        }
-        if (!$voiceId) {
-            echo json_encode(['error' => 'Missing Eleven Labs Voice ID']);
-            exit;
-        }
-
-        $url = "https://api.elevenlabs.io/v1/text-to-speech/$voiceId";
-        $data = [
-            'text' => $text,
-            'model_id' => 'eleven_monolingual_v1',
-            'voice_settings' => [
-                'stability' => 0.5,
-                'similarity_boost' => 0.5
-            ]
-        ];
-
-        $options = [
-            'http' => [
-                'header'  => "Content-type: application/json\r\n" .
-                             "xi-api-key: $apiKey\r\n",
-                'method'  => 'POST',
-                'content' => json_encode($data),
-                'ignore_errors' => true
-            ]
-        ];
-
-        $context  = stream_context_create($options);
-        $result = @file_get_contents($url, false, $context);
-
-        if ($result === false) {
-            $error = error_get_last();
-            echo json_encode(['error' => 'Eleven Labs Request Failed: ' . ($error['message'] ?? 'Unknown error')]);
-            exit;
-        }
-
-        // Check for HTTP errors
-        if (isset($http_response_header) && strpos($http_response_header[0], '200') === false) {
-            $err = json_decode($result, true);
-            $msg = $err['detail']['message'] ?? $err['detail'] ?? 'Unknown Eleven Labs error';
-            echo json_encode(['error' => "Eleven Labs API Error: $msg"]);
-            exit;
-        }
-
-        if ($result) {
-            echo json_encode(['success' => true, 'audio' => base64_encode($result)]);
-        } else {
-            echo json_encode(['error' => 'No audio content received from Eleven Labs']);
-        }
-        exit;
-    }
-
-    echo json_encode(['error' => 'Provider not supported for testing']);
+    // No pre-recorded file found
+    echo json_encode(['found' => false, 'error' => 'No pre-recorded audio available']);
     exit;
 }
 
@@ -4024,6 +4106,116 @@ if ($action === 'update_profile') {
         setcookie('against_profile', $payload, time() + (30 * 86400), '/', '', false, true);
     }
 
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Play again action: resets scores, deals hands, and starts game immediately with same players & deck order
+if ($action === 'play_again') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['success' => false, 'error' => 'Room not found.']);
+        exit;
+    }
+
+    $parsed = parseDecksShared();
+    $selectedTags = $room['config']['decks'] ?? ($parsed['tags'] ?? ['base_deck']);
+    
+    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+    if (in_array('orange_deck', $selectedTags)) {
+        if (file_exists($USER_ADDITIONS_FILE)) {
+            $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+            foreach ($userAdditions as $card) {
+                if (($card['type'] ?? 'white') === 'black') {
+                    $parsed['black'][] = [
+                        'text' => $card['text'],
+                        'pick' => $card['pick'] ?? 1,
+                        'id' => uniqid('b_usr_'),
+                        'deck' => 'orange_deck'
+                    ];
+                } else {
+                    $parsed['white'][] = [
+                        'text' => $card['text'],
+                        'id' => uniqid('w_usr_'),
+                        'deck' => 'orange_deck'
+                    ];
+                }
+            }
+        }
+    }
+
+    $decks = [
+        'black' => array_values(array_filter($parsed['black'], function ($c) use ($selectedTags) {
+            return in_array($c['deck'], $selectedTags, true);
+        })),
+        'white' => array_values(array_filter($parsed['white'], function ($c) use ($selectedTags) {
+            return in_array($c['deck'], $selectedTags, true);
+        }))
+    ];
+
+    if (empty($decks['black']) || empty($decks['white'])) {
+        $decks['black'] = $decks['black'] ?: [['id' => uniqid('b_'), 'text' => '______.', 'pick' => 1, 'deck' => 'base_deck']];
+        $decks['white'] = $decks['white'] ?: [['id' => uniqid('w_'), 'text' => 'A mystery.', 'deck' => 'base_deck']];
+    }
+
+    // Keep original deck order - no shuffle for play_again with same players
+    $room['black_deck'] = array_values($decks['black']);
+    $room['white_deck'] = array_values($decks['white']);
+    
+    $limit = $room['config']['hand_size'] ?? 7;
+
+    // Reset scores & deal hands directly
+    foreach ($room['players'] as &$p) {
+        $p['score'] = 0;
+        $p['hand'] = [];
+        while (count($p['hand']) < $limit && !empty($room['white_deck'])) {
+            $p['hand'][] = array_shift($room['white_deck']);
+        }
+        $p['status'] = 'thinking';
+        $p['is_waiting'] = false;
+    }
+    unset($p);
+
+    $room['current_black_card'] = array_shift($room['black_deck']);
+    $room['state'] = 'playing';
+    $room['is_tie_breaker'] = false;
+    $room['round'] = 1;
+    $room['round_start_time'] = time();
+    $room['votes'] = [];
+    $room['table_cards'] = [];
+    $room['updated_at'] = time();
+
+    saveRoom($roomId, $room);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Return everyone to waiting room (lobby)
+if ($action === 'return_to_lobby') {
+    $roomId = $_POST['room_id'] ?? '';
+    $room = loadRoom($roomId);
+    if (!$room) {
+        echo json_encode(['success' => false, 'error' => 'Room not found.']);
+        exit;
+    }
+
+    $room['state'] = 'lobby';
+    $room['is_tie_breaker'] = false;
+    $room['round'] = 1;
+    $room['votes'] = [];
+    $room['table_cards'] = [];
+    $room['current_black_card'] = null;
+    $room['updated_at'] = time();
+
+    foreach ($room['players'] as &$p) {
+        $p['score'] = 0;
+        $p['hand'] = [];
+        $p['status'] = 'ready';
+    }
+    unset($p);
+
+    saveRoom($roomId, $room);
     echo json_encode(['success' => true]);
     exit;
 }

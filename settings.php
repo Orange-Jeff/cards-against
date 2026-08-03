@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Version: 4.10 - Fix Card Edit text visibility and styling
+ * Version: 4.10.1 - Fix Gemini model name typo
  * Changes:
  *   - Upgraded version number to 4.10.
  *   - Added explicit inline styling to card edit inputs (avoiding white-on-white text input visibility issues).
@@ -37,6 +37,10 @@ function load_global_config()
         'banned_ips' => [],
         'blocked_users' => [],
         'admin_password' => 'orange',
+        'ai_provider' => 'gemini',
+        'openai_api_key' => '',
+        'openai_model' => 'gpt-5.6-luna',
+        'openai_voice' => 'ash',
         'wp_publish_url' => 'https://netbound.ca',
         'wp_publish_username' => '',
         'wp_publish_password' => '',
@@ -57,27 +61,7 @@ function save_global_config(array $config): void
     file_put_contents($globalConfigFile, json_encode($config, JSON_PRETTY_PRINT));
 }
 
-/**
- * @param string $text
- * @param bool $isBlack
- * @return string
- */
-function cleanCardTextPHP(string $text, bool $isBlack): string {
-    $cleaned = trim($text);
-    if ($cleaned === '') return '';
-
-    if ($isBlack) {
-        $cleaned = preg_replace('/_{2,}/', '______', $cleaned);
-        $cleaned = preg_replace('/(\w)\s*______/', '$1 ______', $cleaned);
-        $cleaned = preg_replace('/______\s*(\w)/', '______ $1', $cleaned);
-        $cleaned = preg_replace('/______\s+([.,;:?!])/', '______$1', $cleaned);
-        $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
-    } else {
-        $cleaned = preg_replace('/_+/', '', $cleaned);
-        $cleaned = preg_replace('/ {2,}/', ' ', $cleaned);
-    }
-    return $cleaned;
-}
+// cleanCardTextPHP is provided by deck_parser.php
 
 /**
  * @param string $content
@@ -100,21 +84,9 @@ function validateDeckImport(string $content): array {
         if ($trimmed === '') continue;
 
         // Check for headers
-        if (preg_match('/^(?:The\s+)?(.+?)\s+(Black|White)\s+Cards(?: List)?\s*$/i', $trimmed, $m)) {
-            $headerType = strtolower(trim($m[2]));
-            if ($headerType === 'black') {
-                $hasBlackHeader = true;
-                $currentType = 'black';
-            } else {
-                $hasWhiteHeader = true;
-                $currentType = 'white';
-            }
-            continue;
-        }
-
-        // Standalone header check
-        if (preg_match('/^\s*(Black|White)\s+Cards\s*$/i', $trimmed, $m)) {
-            $headerType = strtolower(trim($m[1]));
+        $hdr = parseDeckHeaderLine($trimmed);
+        if ($hdr !== null) {
+            $headerType = $hdr['type'];
             if ($headerType === 'black') {
                 $hasBlackHeader = true;
                 $currentType = 'black';
@@ -191,12 +163,9 @@ function sanitizeDeckImport(string $content): string {
 
         $trimmed = str_replace('\\', '', $trimmed);
 
-        if (preg_match('/^(?:The\s+)?(.+?)\s+(Black|White)\s+Cards(?: List)?\s*$/i', $trimmed, $m)) {
-            $currentType = strtolower(trim($m[2]));
-            continue;
-        }
-        if (preg_match('/^\s*(Black|White)\s+Cards\s*$/i', $trimmed, $m)) {
-            $currentType = strtolower(trim($m[1]));
+        $hdr = parseDeckHeaderLine($trimmed);
+        if ($hdr !== null) {
+            $currentType = $hdr['type'];
             continue;
         }
         if (stripos($trimmed, 'Cards List') !== false) continue;
@@ -243,44 +212,7 @@ function sanitizeDeckImport(string $content): string {
     return trim($out);
 }
 
-/**
- * @param string $text
- * @param string $type
- */
-function generateCardAudio(string $text, string $type): void {
-    global $globalConfig;
-    
-    if (empty($globalConfig['tts_enabled']) || empty($globalConfig['google_tts_api_key'])) {
-        return;
-    }
-
-    $apiKey = $globalConfig['google_tts_api_key'];
-    require_once __DIR__ . '/generate_audio.php';
-
-    $generator = new AudioGenerator(
-        $apiKey,
-        __DIR__ . '/audio',
-        [
-            'male' => 'Fenrir',
-            'female' => 'Aoede',
-            'british' => 'Puck'
-        ],
-        50, // batchSize
-        0,  // startIndex
-        0,  // stopIndex
-        'gemini', // provider
-        '', // ElevenLabs voice ID
-        1000 // dailyLimit
-    );
-
-    if ($type === 'black') {
-        $generator->generateSegmentsForBlackCard($text);
-    } else {
-        $generator->generateAudioForWhiteCard($text);
-    }
-    
-    $generator->close();
-}
+// generateCardAudio is provided by api.php (retired — Web Speech API handles TTS client-side)
 
 $globalConfig = load_global_config();
 
@@ -356,30 +288,318 @@ foreach ($themes as $key => $data) {
     }
 }
 
+// EXPORT DECK FILE FOR SHARING
+if (isset($_GET['action']) && $_GET['action'] === 'export_deck') {
+    if (!$isAdmin) {
+        die("Admin access required.");
+    }
+    $tag = trim($_GET['deck_tag'] ?? 'all');
+    $parsed = parseDecksShared(false); // exclude deleted/banned
+
+    $blackCards = [];
+    $whiteCards = [];
+
+    if ($tag === 'all' || $tag === '') {
+        $filename = "cards_against_all_decks.md";
+        $blackCards = $parsed['black'];
+        $whiteCards = $parsed['white'];
+    } elseif ($tag === 'orange_deck') {
+        $filename = "cards_against_orange_deck.md";
+        $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+        if (file_exists($USER_ADDITIONS_FILE)) {
+            $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+            foreach ($userAdditions as $card) {
+                if (($card['type'] ?? 'white') === 'black') {
+                    $blackCards[] = ['text' => $card['text']];
+                } else {
+                    $whiteCards[] = ['text' => $card['text']];
+                }
+            }
+        }
+    } else {
+        $filename = "cards_against_" . strtolower(str_replace(' ', '_', $tag)) . ".md";
+        foreach ($parsed['black'] as $c) {
+            if (strcasecmp($c['deck'], $tag) === 0) {
+                $blackCards[] = $c;
+            }
+        }
+        foreach ($parsed['white'] as $c) {
+            if (strcasecmp($c['deck'], $tag) === 0) {
+                $whiteCards[] = $c;
+            }
+        }
+    }
+
+    $out = "";
+    if (!empty($blackCards)) {
+        $out .= "Black Cards\n\n";
+        foreach ($blackCards as $c) {
+            $out .= cleanCardTextPHP($c['text'], true) . "\n";
+        }
+        $out .= "\n";
+    }
+    if (!empty($whiteCards)) {
+        $out .= "White Cards\n\n";
+        foreach ($whiteCards as $c) {
+            $out .= cleanCardTextPHP($c['text'], false) . "\n";
+        }
+    }
+
+    header('Content-Type: text/markdown; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . strlen($out));
+    echo $out;
+    exit;
+}
+
 // --- DECK MANAGEMENT ---
 $deckFile = __DIR__ . '/decks.md';
 $deckAvailabilityFile = __DIR__ . '/data/decks_available.json';
 
-if ($isAdmin && isset($_POST['action'])) {
+if (isset($_POST['action'])) {
     $ajax = isset($_POST['ajax']);
     $msg = "";
 
+    if (!$isAdmin) {
+        if ($ajax) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Admin authentication required. Please enter admin password.', 'msg' => 'Admin authentication required.']);
+            exit;
+        }
+    }
+
+    // VALIDATE MASTER DECK PREVIEW
+    if ($_POST['action'] === 'validate_master_preview') {
+        if (empty($_FILES['master_deck_file']['tmp_name'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'No file uploaded.']);
+            exit;
+        }
+
+        $tmpFile = $_FILES['master_deck_file']['tmp_name'];
+        $content = file_get_contents($tmpFile);
+
+        if ($content === false || trim($content) === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Uploaded file is empty.']);
+            exit;
+        }
+
+        // Always sanitize first
+        $content = sanitizeDeckContent($content);
+        $validation = validateDeckImport($content);
+
+        if (!$validation['valid']) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => "Validation failed:\n" . implode("\n", $validation['errors'])]);
+            exit;
+        }
+
+        // Parse the uploaded content to get deck stats
+        $newDecks = [];
+        $lines = preg_split('/\R/', $content);
+        $currentSlug = 'base_deck';
+        $currentLabel = 'Base Deck';
+        $type = 'black';
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') continue;
+
+            $hdr = parseDeckHeaderLine($trimmed);
+            if ($hdr !== null) {
+                $currentSlug = $hdr['pack_slug'];
+                $currentLabel = $hdr['raw_pack'];
+                $type = $hdr['type'];
+                continue;
+            }
+            if (stripos($trimmed, 'Cards List') !== false) continue;
+
+            // Resolve inline tag
+            $deckLabel = $currentLabel;
+            $deckSlug = $currentSlug;
+            if (preg_match('/\(([^)]+)\)\s*$/', $trimmed, $m)) {
+                $deckLabel = trim($m[1]);
+                $deckSlug = slug_deck_label($deckLabel);
+            }
+
+            if (!isset($newDecks[$deckSlug])) {
+                $newDecks[$deckSlug] = ['slug' => $deckSlug, 'label' => $deckLabel, 'black' => 0, 'white' => 0];
+            }
+            if ($type === 'black') {
+                $newDecks[$deckSlug]['black']++;
+            } else {
+                $newDecks[$deckSlug]['white']++;
+            }
+        }
+
+        // Get current decks stats for comparison
+        $currentParsed = parseDecksShared(false);
+        $currentDecks = [];
+        // Extract tags and build current stats
+        foreach ($currentParsed['tags'] as $tag) {
+            $currentDecks[$tag] = [
+                'slug' => $tag,
+                'label' => get_deck_label($tag),
+                'black' => 0,
+                'white' => 0
+            ];
+        }
+        foreach ($currentParsed['black'] as $c) {
+            if (isset($currentDecks[$c['deck']])) {
+                $currentDecks[$c['deck']]['black']++;
+            }
+        }
+        foreach ($currentParsed['white'] as $c) {
+            if (isset($currentDecks[$c['deck']])) {
+                $currentDecks[$c['deck']]['white']++;
+            }
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'new_decks' => array_values($newDecks),
+            'current_decks' => array_values($currentDecks)
+        ]);
+        exit;
+    }
+
+    // BACKUP MASTER DECK
+    if ($_POST['action'] === 'backup_master_deck' || ($_GET['action'] ?? '') === 'backup_master_deck') {
+        $masterFile = __DIR__ . '/decks.md';
+        if (!file_exists($masterFile)) {
+            if ($ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'decks.md does not exist.']);
+                exit;
+            }
+            die('decks.md does not exist.');
+        }
+        $backupDir = __DIR__ . '/data/backups';
+        if (!is_dir($backupDir)) mkdir($backupDir, 0775, true);
+        $filename = 'decks_backup_' . date('Y-m-d_H-i-s') . '.md';
+        $backupPath = $backupDir . '/' . $filename;
+        copy($masterFile, $backupPath);
+
+        if (isset($_GET['download']) || !empty($_POST['download'])) {
+            header('Content-Type: text/markdown');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            readfile($masterFile);
+            exit;
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'msg' => 'Backup successfully saved to data/backups/' . $filename, 'file' => $filename]);
+        exit;
+    }
+
+    // UPLOAD MASTER DECK FILE
+    if ($_POST['action'] === 'upload_master_deck') {
+        if (empty($_FILES['master_deck_file']['tmp_name'])) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'No file uploaded or file too large.']);
+            exit;
+        }
+
+        $tmpFile = $_FILES['master_deck_file']['tmp_name'];
+        $content = file_get_contents($tmpFile);
+
+        if ($content === false || trim($content) === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Uploaded file is empty.']);
+            exit;
+        }
+
+        // Always sanitize first
+        $content = sanitizeDeckContent($content);
+        $validation = validateDeckImport($content);
+
+        if (!$validation['valid']) {
+            $msg = "Error: Master deck validation failed:\n\n" . implode("\n", $validation['errors']);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => $msg]);
+            exit;
+        }
+
+        // Save auto-backup before overwrite
+        $masterFile = __DIR__ . '/decks.md';
+        if (file_exists($masterFile)) {
+            $backupDir = __DIR__ . '/data/backups';
+            if (!is_dir($backupDir)) mkdir($backupDir, 0775, true);
+            $backupPath = $backupDir . '/decks_auto_backup_' . date('Y-m-d_H-i-s') . '.md';
+            @copy($masterFile, $backupPath);
+        }
+
+        // Save it as decks.md
+        $success = file_put_contents($masterFile, $content) !== false;
+
+        if ($success) {
+            // Clear imported decks, bans, and edits to ensure a completely clean master state
+            $importedFile = __DIR__ . '/data/imported_decks.md';
+            if (file_exists($importedFile)) @unlink($importedFile);
+            
+            $bannedFile = __DIR__ . '/data/banned_cards.json';
+            if (file_exists($bannedFile)) @unlink($bannedFile);
+            
+            $editedFile = __DIR__ . '/data/edited_cards.json';
+            if (file_exists($editedFile)) @unlink($editedFile);
+
+            // Re-read available decks list to automatically include any new tags
+            $availFile = __DIR__ . '/data/decks_available.json';
+            $availDecks = [];
+            $parsed = parseDecksShared(false);
+            foreach ($parsed['tags'] as $tag) {
+                $availDecks[$tag] = true;
+            }
+            if (!is_dir(dirname($availFile))) mkdir(dirname($availFile), 0775, true);
+            file_put_contents($availFile, json_encode($availDecks, JSON_PRETTY_PRINT));
+
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => true,
+                'msg' => 'Master decks.md successfully uploaded and registered! Cleared old imports, bans, and edits. Found ' . $validation['blackCardCount'] . ' black cards and ' . $validation['whiteCardCount'] . ' white cards.',
+                'reload' => true
+            ]);
+            exit;
+        } else {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Failed to write content to decks.md. Check directory permissions.']);
+            exit;
+        }
+    }
+
+    // SANITIZE ALL DECKS IN PLACE
+    if ($_POST['action'] === 'sanitize_all_decks') {
+        $r1 = sanitizeDeckFile(__DIR__ . '/decks.md');
+        $r2 = true;
+        if (file_exists(__DIR__ . '/data/imported_decks.md')) {
+            $r2 = sanitizeDeckFile(__DIR__ . '/data/imported_decks.md');
+        }
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => $r1 && $r2,
+            'msg' => ($r1 && $r2) ? 'All deck files successfully scanned and sanitized! (Blanks set to ______, trailing periods removed).' : 'Failed to sanitize one or more deck files.'
+        ]);
+        exit;
+    }
+
     // CHECK DUPLICATE CHECK
     if ($_POST['action'] === 'check_duplicates') {
-        $parsed = parseDecksShared(true); // include deleted
+        $parsed = parseDecksShared(false); // exclude deleted/banned cards
         $blackSeen = [];
         $whiteSeen = [];
 
         // Group cards by normalized text
         foreach ($parsed['black'] as $card) {
-            $normalized = trim(strtolower($card['text']));
+            $normalized = trim(strtolower(cleanCardTextPHP($card['text'], true)));
             if (!isset($blackSeen[$normalized])) {
                 $blackSeen[$normalized] = ['text' => $card['text'], 'locations' => []];
             }
             $blackSeen[$normalized]['locations'][] = ['deck' => $card['deck']];
         }
         foreach ($parsed['white'] as $card) {
-            $normalized = trim(strtolower($card['text']));
+            $normalized = trim(strtolower(cleanCardTextPHP($card['text'], false)));
             if (!isset($whiteSeen[$normalized])) {
                 $whiteSeen[$normalized] = ['text' => $card['text'], 'locations' => []];
             }
@@ -398,6 +618,7 @@ if ($isAdmin && isset($_POST['action'])) {
         ]);
         exit;
     }
+
 
     // AUTO REMOVE DUPLICATES FROM decks.md
     if ($_POST['action'] === 'remove_duplicates') {
@@ -418,13 +639,9 @@ if ($isAdmin && isset($_POST['action'])) {
         foreach ($lines as $line) {
             $trimmed = trim($line);
             
-            if (preg_match('/^(?:The\s+)?(.+?)\s+(Black|White)\s+Cards(?:s)?(?: List)?\s*$/i', $trimmed, $m)) {
-                $type = strtolower(trim($m[2]));
-                $cleanedLines[] = $line;
-                continue;
-            }
-            if (preg_match('/^\s*(Black|White)\s+Cards\s*(?:List)?\s*$/i', $trimmed, $m)) {
-                $type = strtolower(trim($m[1]));
+            $hdr = parseDeckHeaderLine($trimmed);
+            if ($hdr !== null) {
+                $type = $hdr['type'];
                 $cleanedLines[] = $line;
                 continue;
             }
@@ -460,6 +677,27 @@ if ($isAdmin && isset($_POST['action'])) {
         echo json_encode(['success' => true]);
         exit;
     }
+
+    // SAVE ELEVENLABS PRESET
+    if (isset($_POST['action']) && $_POST['action'] === 'save_elevenlabs_preset') {
+        $presetName = trim($_POST['preset_name'] ?? '');
+        $voiceId = trim($_POST['voice_id'] ?? '');
+        if ($presetName === '' || $voiceId === '') {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => 'Preset name and Voice ID are required.']);
+            exit;
+        }
+        $globalConfig = getGlobalConfig();
+        if (!isset($globalConfig['elevenlabs_voice_presets']) || !is_array($globalConfig['elevenlabs_voice_presets'])) {
+            $globalConfig['elevenlabs_voice_presets'] = [];
+        }
+        $globalConfig['elevenlabs_voice_presets'][$voiceId] = $presetName;
+        $globalConfig['elevenlabs_voice_id'] = $voiceId;
+        saveGlobalConfig($globalConfig);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => true, 'presets' => $globalConfig['elevenlabs_voice_presets']]);
+        exit;
+    }
     // TEST GEMINI API CONNECTION
     if ($_POST['action'] === 'test_gemini') {
         $apiKey = $_POST['gemini_api_key'] ?? '';
@@ -469,7 +707,7 @@ if ($isAdmin && isset($_POST['action'])) {
             exit;
         }
 
-        $url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=" . $apiKey;
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . $apiKey;
         $payload = [
             "contents" => [
                 ["role" => "user", "parts" => [["text" => "Test connection. Respond with only the word: 'OK'."]]]
@@ -507,7 +745,7 @@ if ($isAdmin && isset($_POST['action'])) {
             $errorMsg = $data['error']['message'] ?? ('HTTP Error ' . $httpCode);
             
             // Diagnostics: List models to see what is available for this API Key
-            $listUrl = "https://generativelanguage.googleapis.com/v1/models?key=" . $apiKey;
+            $listUrl = "https://generativelanguage.googleapis.com/v1beta/models?key=" . $apiKey;
             $ch2 = curl_init($listUrl);
             curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch2, CURLOPT_TIMEOUT, 6);
@@ -621,8 +859,10 @@ if ($isAdmin && isset($_POST['action'])) {
             'tts_voice',
             'google_tts_api_key',
             'google_tts_voice_name',
+            'google_tts_voice',
             'elevenlabs_api_key',
             'elevenlabs_voice_id',
+            'elevenlabs_voice_presets',
             'enable_vdo',
             'vdo_room_id',
             'vdo_api_key',
@@ -631,6 +871,10 @@ if ($isAdmin && isset($_POST['action'])) {
             'wp_publish_username',
             'wp_publish_password',
             'gemini_api_key',
+            'ai_provider',
+            'openai_api_key',
+            'openai_model',
+            'openai_voice',
             'reserved_users'
         ];
         foreach ($allowed as $k) {
@@ -728,37 +972,6 @@ if ($isAdmin && isset($_POST['action'])) {
         }
     }
 
-    // DELETE DECK
-    if ($_POST['action'] === 'delete_deck' && !empty($_POST['deck_slug'])) {
-        $deckSlug = $_POST['deck_slug'];
-        $deletedFile = __DIR__ . '/data/deleted_decks.json';
-        $deletedDecks = file_exists($deletedFile) ? (json_decode(file_get_contents($deletedFile), true) ?: []) : [];
-        if (!in_array($deckSlug, $deletedDecks, true)) {
-            $deletedDecks[] = $deckSlug;
-            file_put_contents($deletedFile, json_encode($deletedDecks, JSON_PRETTY_PRINT));
-        }
-        $msg = "Deck deleted successfully.";
-        if ($ajax) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'msg' => $msg]);
-            exit;
-        }
-    }
-
-    // RESTORE DECK
-    if ($_POST['action'] === 'restore_deck' && !empty($_POST['deck_slug'])) {
-        $deckSlug = $_POST['deck_slug'];
-        $deletedFile = __DIR__ . '/data/deleted_decks.json';
-        $deletedDecks = file_exists($deletedFile) ? (json_decode(file_get_contents($deletedFile), true) ?: []) : [];
-        $deletedDecks = array_values(array_filter($deletedDecks, function($d) use ($deckSlug) { return $d !== $deckSlug; }));
-        file_put_contents($deletedFile, json_encode($deletedDecks, JSON_PRETTY_PRINT));
-        $msg = "Deck restored successfully.";
-        if ($ajax) {
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true, 'msg' => $msg]);
-            exit;
-        }
-    }
 
     // SAVE THEME (create or update)
     if ($_POST['action'] === 'save_theme') {
@@ -893,18 +1106,31 @@ if ($isAdmin && isset($_POST['action'])) {
         }
     }
 
-    // IMPORT DECK
     if ($_POST['action'] === 'import_deck') {
         $content = $_POST['deck_content'] ?? '';
-        $sanitize = isset($_POST['sanitize_import']) && $_POST['sanitize_import'] === '1';
-        if (trim($content) !== '') {
-            // Validate deck syntax first
-            $validation = validateDeckImport($content);
-
-            if (!$validation['valid'] && $sanitize) {
-                $content = sanitizeDeckImport($content);
-                $validation = validateDeckImport($content);
+        $deckNameInput = trim($_POST['deck_name'] ?? '');
+        
+        if (trim($content) === '') {
+            $msg = "Error: Please paste card content to import.";
+            if ($ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'msg' => $msg, 'error' => $msg]);
+                exit;
             }
+        }
+        if ($deckNameInput === '') {
+            $msg = "Error: Deck Name / Title is mandatory for imports.";
+            if ($ajax) {
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'msg' => $msg, 'error' => $msg]);
+                exit;
+            }
+        }
+
+        if (trim($content) !== '') {
+            // Always sanitize first
+            $content = sanitizeDeckImport($content);
+            $validation = validateDeckImport($content);
 
             if (!$validation['valid']) {
                 $msg = "Error: Deck import validation failed:\n\n" . implode("\n", $validation['errors']);
@@ -915,12 +1141,67 @@ if ($isAdmin && isset($_POST['action'])) {
                 }
             } else {
                 // Proceed with import - parse and clean the content
+                $deckNameInput = trim($_POST['deck_name'] ?? '');
+                $cardTypeForce = trim($_POST['card_type_force'] ?? 'detect');
+                $importThemes = $_POST['import_themes'] ?? [];
+
                 $lines = preg_split('/\R/', $content);
                 $cleanedLines = [];
-                $type = 'black'; // default assumption
 
-                $hasHeader = false;
-                $hasCards = false;
+                // Load existing cards to prevent duplicates
+                $existingParsed = parseDecksShared(true);
+                $existingBlacks = [];
+                $existingWhites = [];
+                foreach ($existingParsed['black'] as $c) {
+                    $existingBlacks[trim(strtolower(cleanCardTextPHP($c['text'], true)))] = true;
+                }
+                foreach ($existingParsed['white'] as $c) {
+                    $existingWhites[trim(strtolower(cleanCardTextPHP($c['text'], false)))] = true;
+                }
+                $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+                if (file_exists($USER_ADDITIONS_FILE)) {
+                    $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+                    foreach ($userAdditions as $c) {
+                        $txt = trim(strtolower(cleanCardTextPHP($c['text'], (($c['type'] ?? 'white') === 'black'))));
+                        if (($c['type'] ?? 'white') === 'black') {
+                            $existingBlacks[$txt] = true;
+                        } else {
+                            $existingWhites[$txt] = true;
+                        }
+                    }
+                }
+
+                $skippedBlack = 0;
+                $skippedWhite = 0;
+                $importedBlack = 0;
+                $importedWhite = 0;
+
+                // First pass: detect if the file contains any explicit headers
+                $hasFileHeaders = false;
+                foreach ($lines as $line) {
+                    $trimmed = trim($line);
+                    if ($trimmed !== '' && parseDeckHeaderLine($trimmed) !== null) {
+                        $hasFileHeaders = true;
+                        break;
+                    }
+                }
+
+                // Determine active type
+                $type = 'black'; // default assumption
+                $wroteBlackHeader = false;
+                $wroteWhiteHeader = false;
+
+                // If forcing card type and we have a deck name, write the initial header
+                if (!$hasFileHeaders && $deckNameInput !== '') {
+                    if ($cardTypeForce === 'black') {
+                        $cleanedLines[] = "# {$deckNameInput} Black Cards";
+                        $wroteBlackHeader = true;
+                    } elseif ($cardTypeForce === 'white') {
+                        $cleanedLines[] = "# {$deckNameInput} White Cards";
+                        $type = 'white';
+                        $wroteWhiteHeader = true;
+                    }
+                }
 
                 foreach ($lines as $line) {
                     $trimmed = trim($line);
@@ -929,23 +1210,15 @@ if ($isAdmin && isset($_POST['action'])) {
                         continue;
                     }
 
-                    // More flexible header detection (matches parseDecks)
-                    if (preg_match('/^(?:The\s+)?(.+?)\s+(Black|White)\s+Cards(?: List)?\s*$/i', $trimmed, $m)) {
-                        $type = strtolower(trim($m[2]));
-                        $cleanedLines[] = $trimmed;
-                        $hasHeader = true;
-                        continue;
-                    }
-                    if (preg_match('/^\s*Black Cards\s*$/i', $trimmed)) {
-                        $type = 'black';
-                        $cleanedLines[] = $trimmed;
-                        $hasHeader = true;
-                        continue;
-                    }
-                    if (preg_match('/^\s*White Cards\s*$/i', $trimmed)) {
-                        $type = 'white';
-                        $cleanedLines[] = $trimmed;
-                        $hasHeader = true;
+                    // Header detection
+                    $hdr = parseDeckHeaderLine($trimmed);
+                    if ($hdr !== null) {
+                        $type = $hdr['type'];
+                        $packName = $deckNameInput !== '' ? $deckNameInput : $hdr['raw_pack'];
+                        // Standardize the header output
+                        $cleanedLines[] = ($packName === 'Base Deck' ? '' : $packName . ' ') . ucfirst($type) . ' Cards';
+                        if ($type === 'black') $wroteBlackHeader = true;
+                        else $wroteWhiteHeader = true;
                         continue;
                     }
                     if (stripos($trimmed, 'Cards List') !== false) {
@@ -955,27 +1228,120 @@ if ($isAdmin && isset($_POST['action'])) {
 
                     // It's a card line. Clean it!
                     $isBlack = ($type === 'black');
+                    if (!$hasFileHeaders && $deckNameInput !== '' && $cardTypeForce === 'detect') {
+                        $checkLine = str_replace('\\', '', $trimmed);
+                        $isBlack = (preg_match('/[._\/]{4,}/', $checkLine) === 1 || preg_match('/_{2,}/', $checkLine) === 1 || substr(trim($trimmed), -1) === '?');
+                    }
+
                     $cleanedCard = cleanCardTextPHP($trimmed, $isBlack);
                     if ($cleanedCard !== '') {
+                        $norm = trim(strtolower($cleanedCard));
+                        if ($isBlack) {
+                            if (isset($existingBlacks[$norm])) {
+                                $skippedBlack++;
+                                continue;
+                            }
+                            $existingBlacks[$norm] = true;
+                            $importedBlack++;
+                            
+                            if (!$hasFileHeaders && $deckNameInput !== '' && $cardTypeForce === 'detect') {
+                                if (!$wroteBlackHeader) {
+                                    $cleanedLines[] = "# {$deckNameInput} Black Cards";
+                                    $wroteBlackHeader = true;
+                                }
+                            }
+                        } else {
+                            if (isset($existingWhites[$norm])) {
+                                $skippedWhite++;
+                                continue;
+                            }
+                            $existingWhites[$norm] = true;
+                            $importedWhite++;
+
+                            if (!$hasFileHeaders && $deckNameInput !== '' && $cardTypeForce === 'detect') {
+                                if (!$wroteWhiteHeader) {
+                                    $cleanedLines[] = "# {$deckNameInput} White Cards";
+                                    $wroteWhiteHeader = true;
+                                }
+                            }
+                        }
                         $cleanedLines[] = $cleanedCard;
-                        $hasCards = true;
                     }
                 }
 
-                $cleanedContent = implode("\n", $cleanedLines);
-                $importedFile = __DIR__ . '/data/imported_decks.md';
+                $tagsBefore = $existingParsed['tags'];
 
-                if (!is_dir(dirname($importedFile))) {
-                    mkdir(dirname($importedFile), 0777, true);
+                if ($importedBlack > 0 || $importedWhite > 0) {
+                    $cleanedContent = implode("\n", $cleanedLines);
+                    $importedFile = __DIR__ . '/data/imported_decks.md';
+
+                    if (!is_dir(dirname($importedFile))) {
+                        mkdir(dirname($importedFile), 0777, true);
+                    }
+
+                    $current = file_exists($importedFile) ? file_get_contents($importedFile) : "Black Cards\n\nWhite Cards\n";
+                    file_put_contents($importedFile, trim($current) . "\n\n" . trim($cleanedContent));
                 }
 
-                $current = file_exists($importedFile) ? file_get_contents($importedFile) : "Black Cards\n\nWhite Cards\n";
-                file_put_contents($importedFile, $current . "\n\n" . $cleanedContent);
-                $msg = "✓ Deck imported successfully! (" . $validation['blackCardCount'] . " black, " . $validation['whiteCardCount'] . " white cards)";
+                // Auto-enable new imported deck tags in decks_available.json
+                $availFile = __DIR__ . '/data/decks_available.json';
+                $availDecks = file_exists($availFile) ? (json_decode(file_get_contents($availFile), true) ?: []) : [];
+                $parsed = parseDecksShared(false);
+                foreach ($parsed['tags'] as $tag) {
+                    if (!isset($availDecks[$tag])) {
+                        $availDecks[$tag] = true;
+                    }
+                }
+                if (!is_dir(dirname($availFile))) mkdir(dirname($availFile), 0777, true);
+                file_put_contents($availFile, json_encode($availDecks, JSON_PRETTY_PRINT));
+
+                // Add newly imported tags to selected themes if requested
+                $newTags = array_diff($parsed['tags'], $tagsBefore);
+                if (!empty($newTags) && !empty($importThemes)) {
+                    $themesFile = __DIR__ . '/data/themes.json';
+                    $themes = file_exists($themesFile) ? (json_decode(file_get_contents($themesFile), true) ?: []) : [];
+                    $themeUpdated = false;
+                    foreach ($importThemes as $tSlug) {
+                        if (isset($themes[$tSlug])) {
+                            if (!isset($themes[$tSlug]['default_decks']) || !is_array($themes[$tSlug]['default_decks'])) {
+                                $themes[$tSlug]['default_decks'] = ['base_deck'];
+                            }
+                            foreach ($newTags as $newTag) {
+                                if (!in_array($newTag, $themes[$tSlug]['default_decks'], true)) {
+                                    $themes[$tSlug]['default_decks'][] = $newTag;
+                                    $themeUpdated = true;
+                                }
+                            }
+                        }
+                    }
+                    if ($themeUpdated) {
+                        file_put_contents($themesFile, json_encode($themes, JSON_PRETTY_PRINT));
+                    }
+                }
+
+                $msg = "✓ Deck scanned, sanitized & imported successfully!";
+                $msgParts = [];
+                if ($importedBlack > 0 || $importedWhite > 0) {
+                    $msgParts[] = "Imported " . ($importedBlack + $importedWhite) . " new card(s) (" . $importedBlack . " black, " . $importedWhite . " white)";
+                }
+                if (($skippedBlack + $skippedWhite) > 0) {
+                    $msgParts[] = "Skipped " . ($skippedBlack + $skippedWhite) . " duplicate card(s) (" . $skippedBlack . " black, " . $skippedWhite . " white)";
+                }
+                if (!empty($msgParts)) {
+                    $msg .= " (" . implode(", ", $msgParts) . ")";
+                } else {
+                    $msg .= " (No new unique cards found)";
+                }
 
                 if ($ajax) {
                     header('Content-Type: application/json');
-                    echo json_encode(['success' => true, 'msg' => $msg, 'blackCount' => $validation['blackCardCount'], 'whiteCount' => $validation['whiteCardCount']]);
+                    echo json_encode([
+                        'success' => true,
+                        'msg' => $msg,
+                        'blackCount' => $importedBlack,
+                        'whiteCount' => $importedWhite,
+                        'reload' => true
+                    ]);
                     exit;
                 }
             }
@@ -984,14 +1350,14 @@ if ($isAdmin && isset($_POST['action'])) {
 
     // ADD CARD (force into Orange Deck via user_additions.json)
     if ($_POST['action'] === 'add_card') {
-        $type = ($_POST['card_type'] === 'Black') ? 'black' : 'white';
-        $text = trim($_POST['card_text']);
+        $type = (($_POST['card_type'] ?? '') === 'Black') ? 'black' : 'white';
+        $text = trim($_POST['card_text'] ?? '');
+
+        $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+        $additions = file_exists($USER_ADDITIONS_FILE) ? (json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: []) : [];
 
         if ($text) {
             $text = cleanCardTextPHP($text, ($type === 'black'));
-
-            $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
-            $additions = file_exists($USER_ADDITIONS_FILE) ? (json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: []) : [];
 
             // Check duplicates
             $exists = false;
@@ -1014,13 +1380,24 @@ if ($isAdmin && isset($_POST['action'])) {
                 if (!is_dir(dirname($USER_ADDITIONS_FILE))) mkdir(dirname($USER_ADDITIONS_FILE), 0777, true);
                 file_put_contents($USER_ADDITIONS_FILE, json_encode($additions, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 
-                // Generate TTS audio for the new card!
-                generateCardAudio($text, $type);
-
-                $msg = "Card added to Orange Deck (Audio Generated).";
+                $msg = "Card added to Orange Deck.";
             } else {
                 $msg = "Card already exists in Orange Deck.";
             }
+        } else {
+            $exists = true;
+            $msg = "Card text cannot be empty.";
+        }
+
+        if ($ajax) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'success' => !$exists && !empty($text),
+                'msg' => $msg,
+                'exists' => $exists,
+                'total_orange_cards' => count($additions)
+            ]);
+            exit;
         }
     }
 
@@ -1076,6 +1453,23 @@ function get_deck_stats()
     foreach ($parsed['white'] as $c) {
         if (isset($stats[$c['deck']])) $stats[$c['deck']]['white']++;
     }
+
+    // Include Orange Deck (User Additions)
+    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+    $orangeBlack = 0;
+    $orangeWhite = 0;
+    if (file_exists($USER_ADDITIONS_FILE)) {
+        $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+        foreach ($userAdditions as $card) {
+            if (($card['type'] ?? 'white') === 'black') {
+                $orangeBlack++;
+            } else {
+                $orangeWhite++;
+            }
+        }
+    }
+    $stats['orange_deck'] = ['black' => $orangeBlack, 'white' => $orangeWhite];
+
     return $stats;
 }
 
@@ -1112,25 +1506,11 @@ function parse_deck_cards_for_admin()
     foreach ($lines as $l) {
         $line = trim($l);
         if ($line === '') continue;
-        if (preg_match('/^\s*Black Cards\s*$/i', $line)) {
-            $type = 'black';
-            $currentLabel = 'Base Deck';
-            $currentSlug = 'base_deck';
-            $ensureDeck($currentSlug, $currentLabel);
-            continue;
-        }
-        if (preg_match('/^\s*White Cards\s*$/i', $line)) {
-            $type = 'white';
-            $currentLabel = 'Base Deck';
-            $currentSlug = 'base_deck';
-            $ensureDeck($currentSlug, $currentLabel);
-            continue;
-        }
-
-        if (preg_match('/^(The\s+)?(.+?)\s+(Black|White)\s+Cards\s+List\s*$/i', $line, $m)) {
-            $currentLabel = trim($m[2]);
-            $currentSlug = slug_deck_label($currentLabel);
-            $type = strtolower(trim($m[3])) === 'black' ? 'black' : 'white';
+        $hdr = parseDeckHeaderLine($line);
+        if ($hdr !== null) {
+            $type = $hdr['type'];
+            $currentLabel = $hdr['raw_pack'] ?: 'Base Deck';
+            $currentSlug = $hdr['pack_slug'] ?: 'base_deck';
             $ensureDeck($currentSlug, $currentLabel);
             continue;
         }
@@ -1149,6 +1529,22 @@ function parse_deck_cards_for_admin()
         $ensureDeck($deckSlug, $deckLabel);
         if ($type === 'black') $decks[$deckSlug]['black'][] = $line;
         elseif ($type === 'white') $decks[$deckSlug]['white'][] = $line;
+    }
+
+    // Include Orange Deck (User Additions)
+    $USER_ADDITIONS_FILE = __DIR__ . '/data/user_additions.json';
+    if (file_exists($USER_ADDITIONS_FILE)) {
+        $userAdditions = json_decode(file_get_contents($USER_ADDITIONS_FILE), true) ?: [];
+        if (!empty($userAdditions)) {
+            $ensureDeck('orange_deck', 'Orange Deck (User Additions)');
+            foreach ($userAdditions as $c) {
+                if (($c['type'] ?? 'white') === 'black') {
+                    $decks['orange_deck']['black'][] = $c['text'];
+                } else {
+                    $decks['orange_deck']['white'][] = $c['text'];
+                }
+            }
+        }
     }
 
     return $decks;
@@ -1205,8 +1601,9 @@ function rebuild_deck_file(array $deckMap): bool
 $deckStats = get_deck_stats();
 $availDecks = [];
 if (file_exists($deckAvailabilityFile)) {
-    $availDecks = json_decode(file_get_contents($deckAvailabilityFile), true);
-} else {
+    $availDecks = json_decode(file_get_contents($deckAvailabilityFile), true) ?: [];
+}
+if (empty($availDecks)) {
     $availDecks = array_fill_keys(array_keys($deckStats), true);
 }
 $deckCards = parse_deck_cards_for_admin();
@@ -1524,7 +1921,7 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                                 <?php
                                 foreach ($allDeckSlugs as $slug):
                                     if ($slug === 'base' || ($slug === 'base_deck' && ($deckStats[$slug]['black'] === 0 && $deckStats[$slug]['white'] === 0))) continue;
-                                    $displayLabel = ucwords(str_replace('_', ' ', $slug));
+                                    $displayLabel = ucwords(str_replace('-', ' ', $slug));
                                     $stat = $deckStats[$slug];
                                 ?>
                                 <label class="flex items-center space-x-3 cursor-pointer p-1.5 rounded hover:bg-gray-700/50">
@@ -1759,16 +2156,17 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                             container.innerHTML = '';
 
                             const ext = t.banner_media.split('.').pop().toLowerCase();
+                            const cacheBuster = '?t=' + Date.now();
                             if (['mp4', 'webm', 'mov'].includes(ext)) {
                                 const video = document.createElement('video');
-                                video.src = t.banner_media;
+                                video.src = t.banner_media + cacheBuster;
                                 video.controls = true;
                                 video.muted = true;
                                 video.className = 'w-full rounded';
                                 container.appendChild(video);
                             } else {
                                 const img = document.createElement('img');
-                                img.src = t.banner_media;
+                                img.src = t.banner_media + cacheBuster;
                                 img.className = 'w-full rounded border border-gray-700';
                                 container.appendChild(img);
                             }
@@ -1785,7 +2183,7 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                             const nameEl = document.getElementById('theme_intro_name');
                             const player = document.getElementById('theme_intro_player');
                             nameEl.textContent = t.intro_audio_url.split('/').pop();
-                            player.src = t.intro_audio_url;
+                            player.src = t.intro_audio_url + '?t=' + Date.now();
                             preview.classList.remove('hidden');
                             document.getElementById('theme_intro_clear').classList.remove('hidden');
                         } else {
@@ -1799,7 +2197,7 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                             const nameEl = document.getElementById('theme_win_name');
                             const player = document.getElementById('theme_win_player');
                             nameEl.textContent = t.win_audio_url.split('/').pop();
-                            player.src = t.win_audio_url;
+                            player.src = t.win_audio_url + '?t=' + Date.now();
                             preview.classList.remove('hidden');
                             document.getElementById('theme_win_clear').classList.remove('hidden');
                         } else {
@@ -1934,34 +2332,91 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 </script>
             <?php }); ?>
 
-            <!-- 4. ADMIN SECURITY -->
-            <?php renderAccordion('security', 'Admin Security', 'shield-alt', function () use ($globalConfig) { ?>
-                <form method="POST" class="space-y-4" onsubmit="saveForm(event)">
+            <!-- 4. AI MODELS & ADMIN SECURITY -->
+            <?php renderAccordion('security', 'AI Models & Security', 'robot', function () use ($globalConfig) { ?>
+                <form method="POST" class="space-y-5" onsubmit="saveForm(event)">
                     <input type="hidden" name="action" value="save_global">
                     <input type="hidden" name="ajax" value="1">
+                    <input type="hidden" name="tts_enabled" value="<?php echo !empty($globalConfig['tts_enabled']) ? '1' : '0'; ?>">
+                    <input type="hidden" name="enable_vdo" value="<?php echo !empty($globalConfig['enable_vdo']) ? '1' : '0'; ?>">
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Notice Banner -->
+                    <div class="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3 text-xs text-blue-200 flex items-start gap-2.5">
+                        <i class="fas fa-info-circle text-blue-400 text-sm mt-0.5"></i>
                         <div>
-                            <label class="block text-xs font-bold text-gray-200 uppercase mb-2">Admin Password</label>
-                            <input type="password" name="admin_password" value="<?php echo htmlspecialchars($globalConfig['admin_password'] ?? 'orange'); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white">
-                            <p class="text-[10px] text-gray-300 mt-1">Change the password required to access this Settings panel.</p>
+                            <strong>AI Text Models vs Voice Synthesis:</strong>
+                            <p class="text-[11px] text-blue-300/90 mt-0.5">
+                                This section configures <strong>AI Text Models</strong> (Gemini & OpenAI) which handle smart bot plays, game host commentary, and room chat responses. 
+                                <em>Voice synthesis APIs (Google Cloud TTS, ElevenLabs, OpenAI Voice) are set separately below in the <a href="#accordion-voice_options" class="text-orange-400 underline font-semibold">Voice Options</a> section.</em>
+                            </p>
                         </div>
+                    </div>
+
+                    <!-- AI Provider Choice -->
+                    <div class="bg-gray-900/50 border border-gray-700/70 rounded-lg p-4 space-y-3">
+                        <h4 class="text-xs font-bold text-orange-400 uppercase tracking-wider"><i class="fas fa-brain mr-1"></i> Active AI Text Provider</h4>
                         <div>
-                            <label class="block text-xs font-bold text-gray-200 uppercase mb-2">Gemini API Key</label>
-                            <input type="password" name="gemini_api_key" value="<?php echo htmlspecialchars($globalConfig['gemini_api_key'] ?? ''); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white" placeholder="AIzaSy...">
-                            <p class="text-[10px] text-gray-300 mt-1">API key for Gemini AI roasts, smart bot players, and chat responsiveness.</p>
+                            <label class="block text-xs font-bold text-gray-200 uppercase mb-1">Selected AI Provider</label>
+                            <select name="ai_provider" id="ai-provider" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                                <option value="gemini" <?php echo (($globalConfig['ai_provider'] ?? 'gemini') === 'gemini') ? 'selected' : ''; ?>>Google Gemini (gemini-2.5-flash)</option>
+                                <option value="openai" <?php echo (($globalConfig['ai_provider'] ?? 'gemini') === 'openai') ? 'selected' : ''; ?>>OpenAI (gpt-5.6-luna / GPT-4o)</option>
+                            </select>
+                            <p class="text-[10px] text-gray-400 mt-1">Controls which provider generates host commentary, bot card choices, and chat reactions.</p>
+                        </div>
+                    </div>
+
+                    <!-- Model API Keys Box -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Google Gemini Section -->
+                        <div class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-2">
+                            <h4 class="text-xs font-bold text-green-400 uppercase tracking-wider flex items-center justify-between">
+                                <span><i class="fab fa-google mr-1"></i> Google Gemini API</span>
+                                <span class="text-[9px] bg-green-900/50 text-green-300 px-1.5 py-0.5 rounded">AI Studio</span>
+                            </h4>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">Gemini API Key</label>
+                                <input type="password" name="gemini_api_key" value="<?php echo htmlspecialchars($globalConfig['gemini_api_key'] ?? ''); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="AQ.Ab... / AIzaSy...">
+                                <p class="text-[10px] text-gray-400 mt-1">Get your free API key at <a href="https://aistudio.google.com/" target="_blank" class="text-orange-400 underline">Google AI Studio</a>.</p>
+                            </div>
+                        </div>
+
+                        <!-- OpenAI Section -->
+                        <div class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-2">
+                            <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center justify-between">
+                                <span><i class="fas fa-robot mr-1"></i> OpenAI API</span>
+                                <span class="text-[9px] bg-purple-900/50 text-purple-300 px-1.5 py-0.5 rounded">Platform API</span>
+                            </h4>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">OpenAI API Key</label>
+                                <input type="password" name="openai_api_key" value="<?php echo htmlspecialchars($globalConfig['openai_api_key'] ?? ''); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="sk-...">
+                                <p class="text-[10px] text-gray-400 mt-1">Requires an OpenAI Platform API key.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">OpenAI Model ID</label>
+                                <input type="text" name="openai_model" value="<?php echo htmlspecialchars($globalConfig['openai_model'] ?? 'gpt-5.6-luna'); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="gpt-5.6-luna">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Admin Security Credentials -->
+                    <div class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-2">
+                        <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider"><i class="fas fa-shield-alt mr-1"></i> Admin Panel Security</h4>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-200 uppercase mb-1">Admin Password</label>
+                            <input type="password" name="admin_password" value="<?php echo htmlspecialchars($globalConfig['admin_password'] ?? 'orange'); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                            <p class="text-[10px] text-gray-400 mt-1">Change the master password required to access this Settings panel.</p>
                         </div>
                     </div>
 
                     <div class="flex gap-2">
                         <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 px-4 rounded">
-                            Save Security Settings
+                            Save AI & Security Settings
                         </button>
-                        <button type="button" onclick="testGeminiConnection()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded">
-                            Test Gemini API
+                        <button type="button" onclick="testAIConnection()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded">
+                            Test Selected AI Text Model
                         </button>
                     </div>
-                    <div id="gemini-test-result" class="text-xs mt-2 hidden" style="white-space: pre-wrap;"></div>
+                    <div id="ai-test-result" class="text-xs mt-2 hidden" style="white-space: pre-wrap;"></div>
                 </form>
             <?php }); ?>
 
@@ -2003,82 +2458,293 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
             <?php }); ?>
 
             <!-- Voice Scripts -->
-            <?php renderAccordion('voice_scripts_sec', 'Voice Scripts', 'comment-dots', function () use ($voiceScripts) { ?>
-                <form method="POST" class="space-y-6" onsubmit="saveForm(event)">
-                    <input type="hidden" name="action" value="save_voice_scripts">
+            <?php renderAccordion('voice_options', 'Voice Options', 'volume-up', function () use ($voiceScripts, $globalConfig) { ?>
+
+                <!-- ── VOICE SELECTION ─────────────────────────────────────────── -->
+                <form method="POST" class="space-y-5 mb-8" onsubmit="saveForm(event)">
+                    <input type="hidden" name="action" value="save_global">
                     <input type="hidden" name="ajax" value="1">
 
-                    <p class="text-xs text-gray-400 mb-4">
-                        Customise dynamic voice comments announced by the host during various stages of the game. Use placeholders like <code>[name]</code>, <code>[winner]</code>, <code>[sentence]</code>, <code>[round]</code>, <code>[text]</code>, <code>[GAME_TITLE]</code>, or <code>[champ]</code> where applicable.
+                    <p class="text-xs text-gray-400">
+                        Choose the host voice engine and pick a specific voice. Browser TTS is always the free fallback.
                     </p>
 
-                    <div class="space-y-4">
-                        <?php
-                        $categories = [
-                            'welcome' => ['label' => 'Start of Game', 'desc' => 'Announced when a new game starts. Placeholders: [GAME_TITLE]'],
-                            'voting' => ['label' => 'Time to Vote', 'desc' => 'Announced when cards are revealed and players begin voting.'],
-                            'afk_warning' => ['label' => 'Waiting On... (AFK Warning)', 'desc' => 'Played when waiting for a slow player. Placeholders: [name]'],
-                            'afk_sub' => ['label' => 'Players AFK (Bot Substituted)', 'desc' => 'Announced when a bot replaces an AFK player. Placeholders: [name], [subbingFor]'],
-                            'paused' => ['label' => 'Pause', 'desc' => 'Announced when a player pauses the game. Placeholders: [pauser]'],
-                            'unpaused' => ['label' => 'Unpause', 'desc' => 'Announced when the game is resumed.'],
-                            'join' => ['label' => 'Player Joined', 'desc' => 'Announced when a new player joins the lobby. Placeholders: [name]'],
-                            'leave' => ['label' => 'Player Left', 'desc' => 'Announced when a player leaves the lobby or game. Placeholders: [name]'],
-                            'new_round' => ['label' => 'New Round Started', 'desc' => 'Announced at the beginning of each round. Placeholders: [round], [text]'],
-                            'winner' => ['label' => 'Round Winner Announced', 'desc' => 'Announced when a round is won. Placeholders: [winner], [sentence]'],
-                            'tie' => ['label' => 'Round Tied', 'desc' => 'Announced when a voting result is tied.'],
-                            'bot_leading' => ['label' => 'Bot Nearing Win', 'desc' => 'Announced when a bot is match point away from winning.'],
-                            'timer_low' => ['label' => 'Turn Timer Low', 'desc' => 'Announced when only 15 seconds remain in the turn.'],
-                            'game_over' => ['label' => 'Game Over', 'desc' => 'Announced when the game concludes. Placeholders: [champ]'],
-                        ];
-
-                        foreach ($categories as $catKey => $catInfo):
-                            $phrases = $voiceScripts[$catKey] ?? [];
-                        ?>
-                            <div class="bg-gray-900/60 p-4 rounded-lg border border-gray-700/80 space-y-3">
-                                <div class="flex justify-between items-start">
-                                    <div>
-                                        <h4 class="text-xs font-black text-orange-400 uppercase tracking-widest"><?php echo htmlspecialchars($catInfo['label']); ?></h4>
-                                        <p class="text-[10px] text-gray-400 mt-1"><?php echo htmlspecialchars($catInfo['desc']); ?></p>
-                                    </div>
-                                    <button type="button" onclick="addVoicePhraseRow('<?php echo htmlspecialchars($catKey); ?>')" class="text-xs bg-gray-800 hover:bg-gray-750 text-orange-400 font-bold px-2 py-1 rounded inline-flex items-center gap-1 border border-gray-700">
-                                        <i class="fas fa-plus"></i> Add
-                                    </button>
+                    <!-- TTS Provider Toggle Cards -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-200 uppercase mb-2">Host Voice Engine</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <?php
+                            $currentTTSProvider = $globalConfig['tts_provider'] ?? 'browser';
+                            $hasGoogleKey = !empty($globalConfig['google_tts_api_key']);
+                            $hasElevenLabsKey = !empty($globalConfig['elevenlabs_api_key']);
+                            $hasOpenAIKey = !empty($globalConfig['openai_api_key']);
+                            $providers = [
+                                'browser'    => ['label' => '🌐 Browser', 'desc' => 'Free, built-in'],
+                                'google'     => ['label' => '🎙️ Google Neural2', 'desc' => 'Free tier (~380 games/mo)'],
+                                'elevenlabs' => ['label' => '🗣️ ElevenLabs', 'desc' => 'Hyper-realistic AI voice'],
+                                'openai'     => ['label' => '🤖 OpenAI TTS', 'desc' => 'AI-generated voices'],
+                            ];
+                            foreach ($providers as $pKey => $pInfo):
+                                $active = ($currentTTSProvider === $pKey);
+                                $disabled = ($pKey === 'google' && !$hasGoogleKey) || ($pKey === 'elevenlabs' && !$hasElevenLabsKey) || ($pKey === 'openai' && !$hasOpenAIKey);
+                            ?>
+                            <label onclick="selectTTSEngine('<?php echo $pKey; ?>')" class="cursor-pointer <?php echo $disabled ? 'opacity-40 cursor-not-allowed' : ''; ?>">
+                                <input type="radio" name="tts_provider" value="<?php echo $pKey; ?>" <?php echo $active ? 'checked' : ''; ?> <?php echo $disabled ? 'disabled' : ''; ?> class="sr-only peer">
+                                <div id="tts-card-<?php echo $pKey; ?>" class="border-2 rounded-lg p-3 text-center transition-all peer-checked:border-orange-500 peer-checked:bg-orange-500/10 border-gray-700 bg-gray-900/50 hover:border-gray-500">
+                                    <div class="text-sm font-bold text-gray-200"><?php echo $pInfo['label']; ?></div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5"><?php echo $pInfo['desc']; ?></div>
+                                    <?php if ($disabled): ?><div class="text-[9px] text-yellow-500 mt-1">⚠ No API key</div><?php endif; ?>
                                 </div>
-
-                                <div id="phrases-container-<?php echo htmlspecialchars($catKey); ?>" class="space-y-2">
-                                    <?php if (empty($phrases)): ?>
-                                        <div class="no-phrases-notice text-[10px] text-gray-500 italic py-1">No custom scripts added. Add one or the game will default to system phrases.</div>
-                                    <?php else: ?>
-                                        <?php foreach ($phrases as $i => $phrase): ?>
-                                            <div class="flex items-center gap-2 phrase-row-item">
-                                                <textarea name="vs[<?php echo htmlspecialchars($catKey); ?>][]" class="flex-1 bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white resize-none" rows="2" placeholder="Announce phrase..."><?php echo htmlspecialchars($phrase); ?></textarea>
-                                                <button type="button" onclick="this.closest('.phrase-row-item').remove()" class="text-red-500 hover:text-red-400 hover:bg-red-950/20 p-2 rounded" title="Delete phrase"><i class="fas fa-trash"></i></button>
-                                            </div>
-                                        <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
+                            </label>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
 
-                    <div class="mt-6 pt-4 border-t border-gray-800 flex justify-end">
-                        <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2.5 px-6 rounded shadow-md transform hover:scale-[1.01] transition-transform">
-                            <i class="fas fa-save mr-1"></i> Save Voice Library
+                    <!-- ── PROVIDER ACCORDION PANELS (ONLY ONE OPEN AT A TIME) ── -->
+
+                    <!-- 1. Chrome Browser Voice Panel -->
+                    <div id="tts-panel-browser" class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-3 <?php echo ($currentTTSProvider === 'browser') ? '' : 'hidden'; ?>">
+                        <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider"><i class="fab fa-chrome mr-1 text-orange-400"></i> Chrome Browser Voice Settings</h4>
+                        <div class="flex items-end gap-3">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-gray-300 mb-1">Browser Installed Voices</label>
+                                <select id="admin-chrome-voice" onchange="localStorage.setItem('game_tts_voice_name', this.value)" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                                    <option value="">Loading installed browser voices...</option>
+                                </select>
+                                <p class="text-[10px] text-gray-400 mt-1">Free, local voice built into your browser or OS. Displays full voice names with language codes.</p>
+                            </div>
+                            <div class="flex flex-col gap-1 pb-5">
+                                <button type="button" onclick="testChromeVoice()" id="test-chrome-btn" class="text-[11px] bg-gray-700 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                                    <i class="fas fa-play text-orange-400 text-[10px]"></i> Test Browser Voice
+                                </button>
+                            </div>
+                        </div>
+                        <div id="test-chrome-result" class="hidden text-[10px] p-2 bg-gray-900 rounded border border-gray-700"></div>
+                    </div>
+
+                    <!-- 2. Google Neural2 Voice Panel -->
+                    <div id="tts-panel-google" class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-3 <?php echo ($currentTTSProvider === 'google') ? '' : 'hidden'; ?>">
+                        <h4 class="text-xs font-bold text-orange-400 uppercase tracking-wider"><i class="fab fa-google mr-1"></i> Google Neural2 Voice Settings</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">Google Cloud TTS API Key</label>
+                                <input type="password" name="google_tts_api_key" value="<?php echo htmlspecialchars($globalConfig['google_tts_api_key'] ?? ''); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="AIzaSy...">
+                                <p class="text-[10px] text-gray-400 mt-1"><strong class="text-green-400">Free tier: 1M chars/month</strong> (~380 games free). Get one at <a href="https://console.cloud.google.com/" target="_blank" class="text-orange-400 underline">Google Cloud Console</a> → Cloud Text-to-Speech.</p>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">Neural2 Voice</label>
+                                <select id="admin-google-voice" name="google_tts_voice" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                                    <?php
+                                    $googleVoices = [
+                                        'en-US-Neural2-F' => '🇺🇸 US Female F – Warm, natural',
+                                        'en-US-Neural2-C' => '🇺🇸 US Female C – Clear, confident',
+                                        'en-US-Neural2-H' => '🇺🇸 US Female H – Friendly, bright',
+                                        'en-US-Neural2-A' => '🇺🇸 US Male A – Deep, authoritative',
+                                        'en-US-Neural2-D' => '🇺🇸 US Male D – Strong, engaging',
+                                        'en-US-Neural2-I' => '🇺🇸 US Male I – Casual, relaxed',
+                                        'en-US-Neural2-J' => '🇺🇸 US Male J – Energetic, clear',
+                                        'en-GB-Neural2-A' => '🇬🇧 UK Female A – Elegant British',
+                                        'en-GB-Neural2-B' => '🇬🇧 UK Male B – Crisp British',
+                                        'en-GB-Neural2-C' => '🇬🇧 UK Female C – Warm British',
+                                        'en-GB-Neural2-D' => '🇬🇧 UK Male D – Confident British',
+                                        'en-AU-Neural2-A' => '🇦🇺 AU Female A – Australian',
+                                        'en-AU-Neural2-B' => '🇦🇺 AU Male B – Australian',
+                                        'en-US-Wavenet-F' => '🇺🇸 US Female F (Wavenet)',
+                                        'en-US-Wavenet-D' => '🇺🇸 US Male D (Wavenet)',
+                                    ];
+                                    $savedGoogleVoice = $globalConfig['google_tts_voice'] ?? 'en-US-Neural2-F';
+                                    foreach ($googleVoices as $val => $label):
+                                    ?>
+                                        <option value="<?php echo $val; ?>" <?php echo $savedGoogleVoice === $val ? 'selected' : ''; ?>><?php echo htmlspecialchars($label); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="text-[10px] text-gray-400 mt-1">Neural2 sounds dramatically more natural than Wavenet.</p>
+                                <button type="button" onclick="testGoogleVoice()" id="test-google-btn" class="mt-2 text-[11px] bg-gray-700 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded transition-colors flex items-center gap-1.5">
+                                    <i class="fas fa-play text-orange-400 text-[10px]"></i> Test Google Neural2 Voice
+                                </button>
+                                <div id="test-google-result" class="hidden mt-2 text-[10px] p-2 bg-gray-900 rounded border border-gray-700"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. ElevenLabs Voice Panel -->
+                    <div id="tts-panel-elevenlabs" class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-3 <?php echo ($currentTTSProvider === 'elevenlabs') ? '' : 'hidden'; ?>">
+                        <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider"><i class="fas fa-microphone-alt mr-1"></i> ElevenLabs Voice Settings</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-300 mb-1">ElevenLabs API Key</label>
+                                <input type="password" name="elevenlabs_api_key" value="<?php echo htmlspecialchars($globalConfig['elevenlabs_api_key'] ?? ''); ?>" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="xi-api-key...">
+                                <p class="text-[10px] text-gray-400 mt-1">Get your key at <a href="https://elevenlabs.io/" target="_blank" class="text-orange-400 underline">ElevenLabs.io</a> under Profile Settings.</p>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-300 mb-1">Voice Presets</label>
+                                    <select id="elevenlabs-preset-select" onchange="applyElevenLabsPreset(this.value)" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                                        <option value="">-- Choose a Saved Preset --</option>
+                                        <?php
+                                        $defaultPresets = [
+                                            '21m00Tcm4TlvDq8ikWAM' => 'Rachel (Calm & Clear Female)',
+                                            'AZnzlk1XvdvUeBnXmlld' => 'Domi (Energetic & Bold Female)',
+                                            'EXAVITQu4vr4xnSDxMaL' => 'Bella (Narrative & Expressive Female)',
+                                            'ErXwobaYiN019PkySvjV' => 'Antoni (Modulated Male)',
+                                            'TxGEqnHWrfWFTfGW9XjX' => 'Josh (Young & Casual Male)',
+                                            'VR6AewLTigWG4xSOukaG' => 'Arnold (Crisp & Strong Male)',
+                                            'pNInz6obpgDQGcFmaJgB' => 'Adam (Deep & Authoritative Male)',
+                                            'yoZ06aMxZJJ28mfd3POQ' => 'Sam (Raspy & Playful Male)'
+                                        ];
+                                        $savedPresets = $globalConfig['elevenlabs_voice_presets'] ?? [];
+                                        $allPresets = array_merge($defaultPresets, is_array($savedPresets) ? $savedPresets : []);
+                                        $currentVoiceId = $globalConfig['elevenlabs_voice_id'] ?? '21m00Tcm4TlvDq8ikWAM';
+                                        foreach ($allPresets as $vId => $vName):
+                                        ?>
+                                            <option value="<?php echo htmlspecialchars($vId); ?>" <?php echo ($currentVoiceId === $vId) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($vName); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-300 mb-1">Active Voice ID</label>
+                                    <div class="flex gap-2">
+                                        <input type="text" id="admin-elevenlabs-voice" name="elevenlabs_voice_id" value="<?php echo htmlspecialchars($currentVoiceId); ?>" class="flex-1 bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs" placeholder="Voice ID...">
+                                        <button type="button" onclick="saveCustomElevenLabsPreset()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-1.5 rounded flex items-center gap-1.5 whitespace-nowrap" title="Save this Voice ID as a custom preset">
+                                            <i class="fas fa-bookmark text-emerald-400"></i> Save Preset
+                                        </button>
+                                    </div>
+                                    <p class="text-[10px] text-gray-400 mt-1">Select a preset above or enter any custom ElevenLabs Voice ID.</p>
+                                </div>
+                                <div class="pt-1">
+                                    <button type="button" onclick="testElevenLabsVoice()" id="test-elevenlabs-btn" class="text-[11px] bg-gray-700 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded transition-colors flex items-center gap-1.5">
+                                        <i class="fas fa-play text-emerald-400 text-[10px]"></i> Test ElevenLabs Voice
+                                    </button>
+                                    <div id="test-elevenlabs-result" class="hidden mt-2 text-[10px] p-2 bg-gray-900 rounded border border-gray-700"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. OpenAI Voice Panel -->
+                    <div id="tts-panel-openai" class="bg-gray-900/40 border border-gray-700/50 rounded-lg p-4 space-y-3 <?php echo ($currentTTSProvider === 'openai') ? '' : 'hidden'; ?>">
+                        <h4 class="text-xs font-bold text-purple-400 uppercase tracking-wider"><i class="fas fa-robot mr-1"></i> OpenAI Host Voice Settings</h4>
+                        <div class="flex items-end gap-3">
+                            <div class="flex-1">
+                                <label class="block text-xs font-bold text-gray-300 mb-1">Voice Character</label>
+                                <select id="admin-openai-voice" name="openai_voice" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white text-xs">
+                                    <?php foreach (['ash', 'coral', 'echo', 'fable', 'onyx', 'nova', 'sage', 'shimmer'] as $voice): ?>
+                                        <option value="<?php echo $voice; ?>" <?php echo (($globalConfig['openai_voice'] ?? 'ash') === $voice) ? 'selected' : ''; ?>><?php echo ucfirst($voice); ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <p class="text-[10px] text-gray-400 mt-1">Used for AI host comments, card readings, and game announcements when OpenAI TTS is selected.</p>
+                            </div>
+                            <div class="flex flex-col gap-1 pb-5">
+                                <button type="button" onclick="testOpenAIVoice()" id="test-openai-btn" class="text-[11px] bg-gray-700 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                                    <i class="fas fa-play text-purple-400 text-[10px]"></i> Test OpenAI Voice
+                                </button>
+                            </div>
+                        </div>
+                        <div id="test-openai-result" class="hidden text-[10px] p-2 bg-gray-900 rounded border border-gray-700"></div>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 px-4 rounded">
+                            <i class="fas fa-save mr-1"></i> Save Voice Settings
                         </button>
                     </div>
                 </form>
+
+                <!-- ── VOICE SCRIPTS SUB-ACCORDION ───────────────────────────── -->
+                <div class="border-t border-gray-700/50 pt-5">
+                    <button type="button" onclick="toggleVoiceScripts()" id="vs-toggle-btn" class="w-full flex items-center justify-between text-left bg-gray-900/40 hover:bg-gray-900/60 border border-gray-700/50 rounded-lg px-4 py-3 transition-colors">
+                        <span class="text-sm font-bold text-gray-200">
+                            <i class="fas fa-comment-dots mr-2 text-orange-400"></i> Voice Scripts
+                            <span class="text-[10px] font-normal text-gray-400 ml-2">Customise what the host says at each game event</span>
+                        </span>
+                        <i class="fas fa-chevron-down text-gray-400 transition-transform" id="vs-chevron"></i>
+                    </button>
+
+                    <div id="vs-scripts-body" class="hidden mt-4">
+                        <form method="POST" class="space-y-6" onsubmit="saveForm(event)">
+                            <input type="hidden" name="action" value="save_voice_scripts">
+                            <input type="hidden" name="ajax" value="1">
+
+                            <p class="text-xs text-gray-400 mb-4">
+                                Customise dynamic voice comments announced by the host. Use placeholders like <code>[name]</code>, <code>[winner]</code>, <code>[sentence]</code>, <code>[round]</code>, <code>[text]</code>, <code>[GAME_TITLE]</code>, or <code>[champ]</code> where applicable.
+                            </p>
+
+                            <div class="space-y-4">
+                                <?php
+                                $categories = [
+                                    'welcome'     => ['label' => 'Start of Game',            'desc' => 'Announced when a new game starts. Placeholders: [GAME_TITLE]'],
+                                    'voting'      => ['label' => 'Time to Vote',              'desc' => 'Announced when cards are revealed and players begin voting.'],
+                                    'afk_warning' => ['label' => 'Waiting On… (AFK Warning)', 'desc' => 'Played when waiting for a slow player. Placeholders: [name]'],
+                                    'afk_sub'     => ['label' => 'Players AFK (Bot Sub)',     'desc' => 'Announced when a bot replaces an AFK player. Placeholders: [name], [subbingFor]'],
+                                    'paused'      => ['label' => 'Pause',                     'desc' => 'Announced when a player pauses the game. Placeholders: [pauser]'],
+                                    'unpaused'    => ['label' => 'Unpause',                   'desc' => 'Announced when the game is resumed.'],
+                                    'join'        => ['label' => 'Player Joined',             'desc' => 'Announced when a new player joins the lobby. Placeholders: [name]'],
+                                    'leave'       => ['label' => 'Player Left',              'desc' => 'Announced when a player leaves. Placeholders: [name]'],
+                                    'new_round'   => ['label' => 'New Round Started',         'desc' => 'Announced at the beginning of each round. Placeholders: [round], [text]'],
+                                    'winner'      => ['label' => 'Round Winner Announced',    'desc' => 'Announced when a round is won. Placeholders: [winner], [sentence]'],
+                                    'tie'         => ['label' => 'Round Tied',               'desc' => 'Announced when a voting result is tied.'],
+                                    'bot_leading' => ['label' => 'Bot Nearing Win',          'desc' => 'Announced when a bot is one point away from winning.'],
+                                    'timer_low'   => ['label' => 'Turn Timer Low',           'desc' => 'Announced when only 15 seconds remain in the turn.'],
+                                    'game_over'   => ['label' => 'Game Over',                'desc' => 'Announced when the game concludes. Placeholders: [champ]'],
+                                ];
+
+                                foreach ($categories as $catKey => $catInfo):
+                                    $phrases = $voiceScripts[$catKey] ?? [];
+                                ?>
+                                    <div class="bg-gray-900/60 p-4 rounded-lg border border-gray-700/80 space-y-3">
+                                        <div class="flex justify-between items-start">
+                                            <div>
+                                                <h4 class="text-xs font-black text-orange-400 uppercase tracking-widest"><?php echo htmlspecialchars($catInfo['label']); ?></h4>
+                                                <p class="text-[10px] text-gray-400 mt-1"><?php echo htmlspecialchars($catInfo['desc']); ?></p>
+                                            </div>
+                                            <button type="button" onclick="addVoicePhraseRow('<?php echo htmlspecialchars($catKey); ?>')" class="text-xs bg-gray-800 hover:bg-gray-750 text-orange-400 font-bold px-2 py-1 rounded inline-flex items-center gap-1 border border-gray-700">
+                                                <i class="fas fa-plus"></i> Add
+                                            </button>
+                                        </div>
+                                        <div id="phrases-container-<?php echo htmlspecialchars($catKey); ?>" class="space-y-2">
+                                            <?php if (empty($phrases)): ?>
+                                                <div class="no-phrases-notice text-[10px] text-gray-500 italic py-1">No custom scripts. The game will use built-in default phrases.</div>
+                                            <?php else: ?>
+                                                <?php foreach ($phrases as $phrase): ?>
+                                                    <div class="flex items-center gap-2 phrase-row-item">
+                                                        <textarea name="vs[<?php echo htmlspecialchars($catKey); ?>][]" class="flex-1 bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white resize-none" rows="2" placeholder="Announce phrase..."><?php echo htmlspecialchars($phrase); ?></textarea>
+                                                        <button type="button" onclick="this.closest('.phrase-row-item').remove(); checkEmptyCategoryNotice('<?php echo htmlspecialchars($catKey); ?>')" class="text-red-500 hover:text-red-400 hover:bg-red-950/20 p-2 rounded" title="Delete phrase"><i class="fas fa-trash"></i></button>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div class="mt-4 flex justify-end">
+                                <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2.5 px-6 rounded shadow-md">
+                                    <i class="fas fa-save mr-1"></i> Save Voice Scripts
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
                 <script>
+                    function toggleVoiceScripts() {
+                        const body = document.getElementById('vs-scripts-body');
+                        const chev = document.getElementById('vs-chevron');
+                        body.classList.toggle('hidden');
+                        chev.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+                    }
+
                     function addVoicePhraseRow(category) {
                         const container = document.getElementById('phrases-container-' + category);
                         const notice = container.querySelector('.no-phrases-notice');
-                        if (notice) {
-                            notice.remove();
-                        }
+                        if (notice) notice.remove();
                         const div = document.createElement('div');
                         div.className = 'flex items-center gap-2 phrase-row-item';
                         div.innerHTML = `
-                            <textarea name="vs[\${category}][]" class="flex-1 bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white resize-none" rows="2" placeholder="Announce phrase..." required></textarea>
-                            <button type="button" onclick="this.closest('.phrase-row-item').remove(); checkEmptyCategoryNotice('\${category}')" class="text-red-500 hover:text-red-400 hover:bg-red-950/20 p-2 rounded" title="Delete phrase"><i class="fas fa-trash"></i></button>
+                            <textarea name="vs[${category}][]" class="flex-1 bg-gray-800 border border-gray-700 rounded p-1.5 text-xs text-white resize-none" rows="2" placeholder="Announce phrase..." required></textarea>
+                            <button type="button" onclick="this.closest('.phrase-row-item').remove(); checkEmptyCategoryNotice('${category}')" class="text-red-500 hover:text-red-400 hover:bg-red-950/20 p-2 rounded" title="Delete phrase"><i class="fas fa-trash"></i></button>
                         `;
                         container.appendChild(div);
                         div.querySelector('textarea').focus();
@@ -2087,177 +2753,273 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                     function checkEmptyCategoryNotice(category) {
                         const container = document.getElementById('phrases-container-' + category);
                         if (container.children.length === 0) {
-                            container.innerHTML = `<div class="no-phrases-notice text-[10px] text-gray-500 italic py-1">No custom scripts added. Add one or the game will default to system phrases.</div>`;
+                            container.innerHTML = '<div class="no-phrases-notice text-[10px] text-gray-500 italic py-1">No custom scripts. The game will use built-in default phrases.</div>';
                         }
                     }
                 </script>
-            <?php }); ?>
+            <?php });
+?>
 
             <!-- 6. DECK MANAGEMENT -->
             <?php renderAccordion('decks', 'Deck Management', 'layer-group', function () use ($deckStats, $availDecks, $globalConfig) { ?>
 
-                <!-- Deck List & Availability -->
-                <div class="mb-6">
-                    <!-- Deck Integrity Section -->
-                    <div class="mb-6 border-b border-gray-700 pb-4">
-                        <h3 class="text-xs font-bold text-gray-200 uppercase mb-3 flex items-center">
-                            <i class="fas fa-check-double mr-2 text-orange-400"></i> Deck Integrity
-                        </h3>
-                        <p class="text-xs text-gray-400 mb-3">Scan all deck files for duplicate cards. This helps clean up your collection and reduce redundancy.</p>
-                        <div class="flex gap-2">
-                            <button type="button" onclick="checkDecksForDuplicates()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded transition-colors">
-                                <i class="fas fa-search mr-1"></i> Scan For Duplicates
-                            </button>
-                            <button type="button" onclick="autoRemoveDuplicates()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-2 px-4 rounded transition-colors">
-                                <i class="fas fa-magic mr-1"></i> Auto-Deduplicate decks.md
-                            </button>
-                        </div>
-                        <div id="duplicate-check-results" class="hidden mt-3 p-3 bg-gray-950/80 rounded border border-purple-500/30 text-xs text-gray-300 max-h-96 overflow-y-auto space-y-2"></div>
-                    </div>
-
-                    <h3 class="text-xs font-bold text-gray-200 uppercase mb-3 flex justify-between items-center">
-                        <span>Available Decks</span>
-                        <span class="text-[10px] font-normal normal-case text-gray-300">Check to enable in game</span>
-                    </h3>
-
-                    <form method="POST" class="space-y-2">
-                        <input type="hidden" name="action" value="save_decks">
-
-                        <div class="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                            <?php foreach ($deckStats as $tag => $stat):
-                                if ($tag === 'base' || $tag === 'base_deck' && ($stat['black'] === 0 && $stat['white'] === 0)) continue;
-                                $checked = ($availDecks[$tag] ?? true) ? 'checked' : '';
-                                $displayLabel = ucwords(str_replace('-', ' ', $tag));
-                            ?>
-                                <div class="bg-gray-800 rounded border border-gray-700 flex items-center p-2 hover:bg-gray-750 transition-colors">
-                                    <label class="flex items-center space-x-3 cursor-pointer flex-1 min-w-0">
-                                        <input type="checkbox" name="available_decks[]" value="<?php echo $tag; ?>" <?php echo $checked; ?> class="accent-orange-500 w-4 h-4 flex-shrink-0">
-                                        <div class="flex flex-col min-w-0">
-                                            <span class="text-sm font-bold text-gray-200 truncate"><?php echo $displayLabel; ?></span>
-                                            <span class="text-[10px] text-gray-300"><?php echo $stat['black']; ?> Black / <?php echo $stat['white']; ?> White</span>
-                                        </div>
-                                    </label>
-
-                                    <div class="flex items-center space-x-1 ml-2">
-                                        <button type="button" onclick="inspectDeck('<?php echo $tag; ?>')" class="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 rounded" title="View/Edit Cards">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <?php if ($tag !== 'base_deck' && $tag !== 'orange_deck'): ?>
-                                            <button type="button" onclick="deleteDeck('<?php echo $tag; ?>')" class="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded" title="Delete Deck">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-
-                        <button type="submit" class="mt-3 w-full bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 px-4 rounded">
-                            <i class="fas fa-save mr-1"></i> Save Deck Availability
-                        </button>
-
-                        <?php
-                        $deletedDecksFile = __DIR__ . '/data/deleted_decks.json';
-                        $deletedDecks = file_exists($deletedDecksFile) ? (json_decode(file_get_contents($deletedDecksFile), true) ?: []) : [];
-                        if (!empty($deletedDecks)):
-                        ?>
-                            <div class="mt-4 border-t border-gray-700 pt-3">
-                                <h4 class="text-[10px] font-bold text-red-400 uppercase mb-2">Deleted Decks</h4>
-                                <div class="space-y-1">
-                                    <?php foreach ($deletedDecks as $delSlug): 
-                                        $displayLabel = ucwords(str_replace('_', ' ', $delSlug));
-                                    ?>
-                                        <div class="bg-gray-800 rounded border border-red-950 flex items-center justify-between p-2 text-xs">
-                                            <span class="font-bold text-gray-200"><?php echo $displayLabel; ?></span>
-                                            <button type="button" onclick="restoreDeck('<?php echo $delSlug; ?>')" class="text-xs text-green-400 hover:text-green-300 uppercase font-bold">
-                                                Restore
-                                            </button>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
-                            </div>
-                        <?php endif; ?>
-                    </form>
-                </div>
-
-                <!-- Global Card Search -->
-                <div class="mt-6 border-t border-gray-700 pt-4">
-                    <h3 class="text-xs font-bold text-gray-200 uppercase mb-3 flex items-center">
-                        <i class="fas fa-search mr-2 text-orange-400"></i> Search Cards Across All Decks
-                    </h3>
-                    <div class="flex gap-2 mb-3">
-                        <input type="text" id="global-card-search-input" placeholder="Enter keywords (e.g. horse)..." class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-white" onkeydown="if(event.key==='Enter') performGlobalCardSearch()">
-                        <button type="button" onclick="performGlobalCardSearch()" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded">
-                            Search
-                        </button>
-                        <button type="button" onclick="clearGlobalCardSearch()" class="bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold px-4 py-2 rounded">
-                            Clear
-                        </button>
-                    </div>
-                    <div id="global-search-results" class="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
-                        <div class="text-[10px] text-gray-400 italic text-center py-2">Enter keyword above and click Search.</div>
-                    </div>
-                </div>
-
-                <!-- Add Card Inline Form -->
-                <div class="bg-gray-850 p-4 rounded-lg border border-gray-700 mb-6">
-                    <h4 class="text-xs font-bold text-orange-400 uppercase mb-3 flex items-center">
-                        <i class="fas fa-plus-circle mr-2"></i> Add Single Custom Card
-                    </h4>
-                    <form method="POST" class="space-y-3" onsubmit="saveForm(event)">
-                        <input type="hidden" name="action" value="add_card">
-                        <input type="hidden" name="ajax" value="1">
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Card Text</label>
-                            <input type="text" id="single_card_text_input" name="card_text" placeholder="e.g. A tiny horse ______." required class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-white mb-2">
-                            <button type="button" onclick="insertBlank('single_card_text_input')" class="bg-gray-700 hover:bg-gray-600 text-white text-[9px] font-bold py-1 px-2.5 rounded">
-                                <i class="fas fa-underscore mr-1"></i> Insert Blank (______)
-                            </button>
-                        </div>
-                        <div class="flex items-center justify-between gap-4">
-                            <div>
-                                <label class="inline-flex items-center mr-3 text-xs text-gray-300 cursor-pointer">
-                                    <input type="radio" name="card_type" value="White" checked class="accent-orange-500 mr-1.5"> White Card
-                                </label>
-                                <label class="inline-flex items-center text-xs text-gray-300 cursor-pointer">
-                                    <input type="radio" name="card_type" value="Black" class="accent-orange-500 mr-1.5"> Black Card
-                                </label>
-                            </div>
-                            <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-1.5 px-4 rounded">
-                                Add Card
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- Import Deck Block -->
-                <div class="bg-gray-850 p-4 rounded-lg border border-gray-700">
-                    <button type="button" onclick="document.getElementById('import-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase">
-                        <i class="fas fa-file-import mr-2"></i> Import Full Deck
+                <!-- 1. SEARCH -->
+                <div class="mb-6 bg-gray-850 p-4 rounded-lg border border-gray-700">
+                    <button type="button" onclick="onclick="document.getElementById('deck-search-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase mb-3">
+                        <span class="flex items-center"><i class="fas fa-search mr-2 text-orange-400"></i> Search Cards Across All Decks</span>
                         <i class="fas fa-chevron-down ml-auto"></i>
                     </button>
-
-                    <div id="import-area" class="hidden mt-3">
-                        <div class="text-[10px] text-gray-300 mb-2">
-                            Format: "The [Name] Black Cards List" followed by cards, then "The [Name] White Cards List" followed by cards.
+                    <div id="deck-search-area" class="hidden mb-6 bg-gray-850 p-4 rounded-lg border border-gray-700">
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="global-card-search-input" placeholder="Enter keywords (e.g. horse)..." class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-white" onkeydown="if(event.key==='Enter') performGlobalCardSearch()">
+                            <button type="button" onclick="performGlobalCardSearch()" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold px-4 py-2 rounded">
+                                Search
+                            </button>
+                            <button type="button" onclick="clearGlobalCardSearch()" class="bg-gray-600 hover:bg-gray-500 text-white text-xs font-bold px-4 py-2 rounded">
+                                Clear
+                            </button>
                         </div>
-                        <form method="POST" class="space-y-3" onsubmit="saveForm(event, 'deck_content_textarea')">
-                            <input type="hidden" name="action" value="import_deck">
+                        <div id="global-search-results" class="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+                            <div class="text-[10px] text-gray-400 italic text-center py-2">Enter keyword above and click Search.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. DECKS -->
+                <div class="mb-6 bg-gray-850 p-4 rounded-lg border border-gray-700">
+                    <button type="button" onclick="document.getElementById('deck-list-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase mb-3">
+                        <span class="flex items-center"><i class="fas fa-layer-group mr-2 text-orange-400"></i> Available Decks</span>
+                        <i class="fas fa-chevron-down ml-auto"></i>
+                    </button>
+                    <div id="deck-list-area" class="hidden mb-6">
+                        <div class="text-[10px] font-normal normal-case text-gray-300 mb-3">Check to enable in game</div>
+                        <form method="POST" class="space-y-2">
+                            <input type="hidden" name="action" value="save_decks">
+                            <div class="max-h-60 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                                <?php foreach ($deckStats as $tag => $stat):
+                                    if ($tag === 'base' || $tag === 'base_deck' && ($stat['black'] === 0 && $stat['white'] === 0)) continue;
+                                    $checked = ($availDecks[$tag] ?? true) ? 'checked' : '';
+                                    $displayLabel = ucwords(str_replace('-', ' ', $tag));
+                                ?>
+                                    <div class="bg-gray-800 rounded border border-gray-700 flex items-center p-2 hover:bg-gray-750 transition-colors">
+                                        <label class="flex items-center space-x-3 cursor-pointer flex-1 min-w-0">
+                                            <input type="checkbox" name="available_decks[]" value="<?php echo $tag; ?>" <?php echo $checked; ?> class="accent-orange-500 w-4 h-4 flex-shrink-0">
+                                            <div class="flex flex-col min-w-0">
+                                                <span class="text-sm font-bold text-gray-200 truncate"><?php echo $displayLabel; ?></span>
+                                                <span class="text-[10px] text-gray-300"><?php echo $stat['black']; ?> Black / <?php echo $stat['white']; ?> White</span>
+                                            </div>
+                                        </label>
+
+                                        <div class="flex items-center space-x-1 ml-2">
+                                            <button type="button" onclick="inspectDeck('<?php echo $tag; ?>')" class="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 rounded" title="Open / Edit Cards">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" onclick="downloadFileSilently('settings.php?action=export_deck&deck_tag=<?php echo urlencode($tag); ?>', 'cards_against_<?php echo urlencode($tag); ?>.md')" class="p-2 text-green-400 hover:text-green-300 hover:bg-green-900/30 rounded" title="Download / Export Deck for Sharing">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <button type="submit" class="mt-3 w-full bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 px-4 rounded">
+                                <i class="fas fa-save mr-1"></i> Save Deck Availability
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 3. ADD SINGLE CARD -->
+                <div class="mb-6 bg-gray-850 p-4 rounded-lg border border-gray-700">
+                    <button type="button" onclick="document.getElementById('add-card-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase mb-3">
+                        <span class="flex items-center"><i class="fas fa-plus-circle mr-2 text-orange-400"></i> Add Single Custom Card</span>
+                        <i class="fas fa-chevron-down ml-auto"></i>
+                    </button>
+                    <div id="add-card-area" class="hidden mb-6">
+                        <p class="text-[11px] text-gray-400 mb-3 italic">Note: Single cards added here are saved to the <strong class="text-orange-400">Orange Deck</strong> (<code class="text-gray-300">data/user_additions.json</code>).</p>
+                        <div id="add-card-status-banner" class="hidden mb-3"></div>
+                        <form method="POST" class="space-y-3" onsubmit="saveForm(event)">
+                            <input type="hidden" name="action" value="add_card">
                             <input type="hidden" name="ajax" value="1">
-                            <textarea id="deck_content_textarea" name="deck_content" class="w-full bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white h-32 font-mono" placeholder="Paste deck content here..."></textarea>
-                            <label class="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer mb-2">
-                                <input type="checkbox" name="sanitize_import" value="1" checked class="accent-orange-500 rounded">
-                                <span>Auto-Sanitize/Correct Import Syntax (add missing blanks, separate cards, strip invalid blanks)</span>
-                            </label>
-                            <div class="flex gap-2">
-                                <button type="button" onclick="insertBlank('deck_content_textarea')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-4 rounded">
-                                    <i class="fas fa-underscore mr-1"></i> Insert Blank
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Card Text</label>
+                                <input type="text" id="single_card_text_input" name="card_text" placeholder="e.g. A tiny horse ______" required class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-white mb-2">
+                                <button type="button" onclick="insertBlank('single_card_text_input')" class="bg-gray-700 hover:bg-gray-600 text-white text-[9px] font-bold py-1 px-2.5 rounded">
+                                    <i class="fas fa-underscore mr-1"></i> Insert Blank (______)
                                 </button>
-                                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded flex-1">
-                                    Import Deck
+                            </div>
+                            <div class="flex items-center justify-between gap-4">
+                                <div>
+                                    <label class="inline-flex items-center mr-3 text-xs text-gray-300 cursor-pointer">
+                                        <input type="radio" name="card_type" value="White" checked class="accent-orange-500 mr-1.5"> White Card
+                                    </label>
+                                    <label class="inline-flex items-center text-xs text-gray-300 cursor-pointer">
+                                        <input type="radio" name="card_type" value="Black" class="accent-orange-500 mr-1.5"> Black Card
+                                    </label>
+                                </div>
+                                <button type="submit" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-1.5 px-4 rounded">
+                                    Add Card
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- 4. IMPORT DECK -->
+                <div class="mb-6 bg-gray-850 p-4 rounded-lg border border-gray-700">
+                    <button type="button" onclick="document.getElementById('import-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase mb-3">
+                        <span class="flex items-center"><i class="fas fa-file-import mr-2 text-orange-400"></i> Import Full Deck</span>
+                        <i class="fas fa-chevron-down ml-auto"></i>
+                    </button>
+                    <div id="import-area" class="hidden mt-3">
+                        <div id="import-status-banner" class="hidden mb-3"></div>
+                        <p class="text-[11px] text-gray-400 mb-3">Paste a markdown formatted deck below (with <code>### Pack Name</code> or <code># Pack Name</code>, <code>Cards List</code>, and <code>Black Cards</code>/<code>White Cards</code> headers).</p>
+
+                        <form method="POST" class="space-y-3" onsubmit="saveForm(event, 'deck_content_textarea')">
+                            <input type="hidden" name="action" value="import_deck">
+                            <input type="hidden" name="ajax" value="1">
+
+                            <!-- Paste Box First -->
+                            <div>
+                                <label class="block text-[10px] font-bold text-gray-300 uppercase mb-1">Paste Card Text Content:</label>
+                                <textarea id="deck_content_textarea" name="deck_content" class="w-full bg-gray-900 border border-gray-700 rounded p-2 text-xs text-white h-36 font-mono" placeholder="Paste card lines here..."></textarea>
+                                <div class="mt-1 flex justify-between items-center">
+                                    <button type="button" onclick="insertBlank('deck_content_textarea')" class="bg-gray-700 hover:bg-gray-600 text-white text-[9px] font-bold py-1 px-2.5 rounded">
+                                        <i class="fas fa-underscore mr-1"></i> Insert Blank (______)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Mandatory Deck Name & Card Type -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-gray-800/40 p-3 rounded border border-gray-700/60">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-300 uppercase mb-1">Deck Name / Title <span class="text-orange-400 font-bold">*Mandatory</span>:</label>
+                                    <input type="text" name="deck_name" required placeholder="e.g. Harry Potter" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white placeholder-gray-500 focus:border-orange-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-gray-300 uppercase mb-1">Card Type Option:</label>
+                                    <select name="card_type_force" class="w-full bg-gray-900 border border-gray-700 rounded p-1.5 text-xs text-white focus:border-orange-500 outline-none">
+                                        <option value="detect">Auto (Looks for # Black Cards / # White Cards headers)</option>
+                                        <option value="black">Force all as Black Cards</option>
+                                        <option value="white">Force all as White Cards</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <?php if (!empty($themes)): ?>
+                            <div class="bg-gray-800/40 p-3 rounded border border-gray-700/60 mt-2">
+                                <label class="block text-[10px] font-bold text-gray-300 uppercase mb-1.5"><i class="fas fa-palette mr-1 text-orange-400"></i> Add to Theme Default Decks:</label>
+                                <div class="grid grid-cols-2 gap-2 max-h-24 overflow-y-auto custom-scrollbar">
+                                    <?php foreach ($themes as $slug => $t): ?>
+                                        <label class="flex items-center space-x-2 text-xs text-gray-300 cursor-pointer hover:text-white">
+                                            <input type="checkbox" name="import_themes[]" value="<?php echo htmlspecialchars($slug); ?>" class="accent-orange-500 rounded w-3.5 h-3.5">
+                                            <span><?php echo htmlspecialchars($t['label'] ?? $slug); ?></span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded w-full">
+                                <i class="fas fa-file-import mr-1"></i> Import Deck
+                            </button>
+                        </form>
+
+                        <!-- Upload Option Last -->
+                        <div class="mt-4 border-t border-gray-750 pt-3">
+                            <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1.5">Or Upload Deck File (.txt / .md):</label>
+                            <div class="flex items-center gap-2">
+                                <button type="button" onclick="document.getElementById('deck_file_input').click()" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded flex-1">
+                                    <i class="fas fa-file-upload mr-1"></i> Choose File to Load into Paste Box
+                                </button>
+                                <span id="file-name-display" class="text-[10px] text-gray-400 italic">No file selected</span>
+                            </div>
+                            <input type="file" id="deck_file_input" accept=".txt,.md" class="hidden" onchange="handleDeckFileUpload(event)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. DECKS.MD INTEGRITY -->
+                <div class="bg-gray-850 p-4 rounded-lg border border-gray-700">
+                    <button type="button" onclick="document.getElementById('integrity-area').classList.toggle('hidden')" class="w-full flex items-center justify-between text-xs font-bold text-gray-200 uppercase">
+                        <span class="flex items-center"><i class="fas fa-shield-alt mr-2 text-orange-400"></i> decks.md Integrity</span>
+                        <i class="fas fa-chevron-down ml-auto"></i>
+                    </button>
+
+                    <div id="integrity-area" class="hidden mt-3 space-y-4">
+                        <p class="text-xs text-gray-400">Maintain, backup, scan for duplicates, sanitize, or replace your master <code>decks.md</code> list.</p>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button type="button" onclick="performBackupMasterDeck()" class="bg-green-700 hover:bg-green-600 text-white text-xs font-bold py-2 px-3 rounded text-center flex items-center justify-center transition-colors">
+                                <i class="fas fa-download mr-1.5"></i> Backup
+                            </button>
+                            <button type="button" onclick="checkDecksForDuplicates()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-3 rounded text-center transition-colors">
+                                <i class="fas fa-search mr-1.5"></i> Scan Duplicates
+                            </button>
+                            <button type="button" onclick="sanitizeAllDecks()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold py-2 px-3 rounded text-center transition-colors">
+                                <i class="fas fa-broom mr-1.5"></i> Sanitize
+                            </button>
+                            <button type="button" onclick="downloadFileSilently('settings.php?action=export_deck&deck_tag=all', 'decks.md')" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2 px-3 rounded text-center flex items-center justify-center transition-colors">
+                                <i class="fas fa-save mr-1.5"></i> Save decks.md
+                            </button>
+                        </div>
+
+                        <div id="duplicate-check-results" class="hidden p-3 bg-gray-950/80 rounded border border-purple-500/30 text-xs text-gray-300 max-h-96 overflow-y-auto space-y-2"></div>
+
+                        <!-- Import decks.md / Master Upload Block -->
+                        <div class="bg-gray-800/80 border border-gray-700/60 p-3.5 rounded">
+                            <h4 class="text-xs font-bold text-orange-400 uppercase mb-2 flex items-center">
+                                <i class="fas fa-file-upload mr-1.5"></i> Import / Replace Master decks.md
+                            </h4>
+                            <p class="text-[11px] text-gray-300 mb-3">Uploading a master deck file will automatically create a timestamped backup in <code>data/backups/</code> before setting the new file as master.</p>
+
+                            <div id="upload-master-status-banner" class="hidden mb-3"></div>
+
+                            <!-- Step 1: Choose File -->
+                            <div id="master-upload-step-1">
+                                <div class="mb-3">
+                                    <div class="flex items-center gap-2 mb-2">
+                                        <button type="button" onclick="document.getElementById('master_deck_file_input').click()" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded flex-1">
+                                            <i class="fas fa-file-upload mr-1"></i> Choose decks.md File
+                                        </button>
+                                        <span id="master-file-name-display" class="text-[10px] text-gray-400 italic">No file selected</span>
+                                    </div>
+                                    <input type="file" id="master_deck_file_input" accept=".txt,.md" class="hidden" onchange="handleMasterDeckFileUpload(event)">
+                                </div>
+                                <button type="button" onclick="generateUploadPreview()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded w-full">
+                                    Scan File & Generate Preview Report
+                                </button>
+                            </div>
+
+                            <!-- Step 2: Preview Report -->
+                            <div id="master-upload-step-2" class="hidden space-y-4 border-t border-gray-750 pt-4 mt-4 animate-fade-in">
+                                <h4 class="text-xs font-bold text-orange-400 uppercase"><i class="fas fa-file-contract mr-1"></i> Master Deck Overwrite Preview Report:</h4>
+                                
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left text-xs border-collapse">
+                                        <thead>
+                                            <tr class="bg-gray-800 text-gray-300 font-bold border-b border-gray-750">
+                                                <th class="p-2.5">Deck Name</th>
+                                                <th class="p-2.5 text-center">Current Cards</th>
+                                                <th class="p-2.5 text-center">New Cards</th>
+                                                <th class="p-2.5 text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="preview-report-table-body" class="divide-y divide-gray-800 text-gray-200">
+                                            <!-- Report rows inserted by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="flex flex-col sm:flex-row gap-2 mt-4">
+                                    <button type="button" onclick="resetUploadSteps()" class="bg-gray-700 hover:bg-gray-600 border border-gray-600 text-white text-xs font-bold py-2 px-4 rounded flex-1">
+                                        <i class="fas fa-arrow-left mr-1"></i> Choose Another File
+                                    </button>
+                                    <button type="button" onclick="commitMasterOverwrite()" id="commit-overwrite-btn" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-2 px-4 rounded flex-1 shadow-lg hover:shadow-orange-500/20 transition-all">
+                                        <i class="fas fa-exclamation-triangle mr-1"></i> Commit Overwrite & Apply
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -2265,7 +3027,12 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 <div id="deck-inspector-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4">
                     <div class="bg-gray-900 rounded-xl border border-gray-700 w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
                         <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-800 rounded-t-xl">
-                            <h3 class="font-bold text-orange-500" id="inspector-title">Deck Inspector</h3>
+                            <div class="flex items-center gap-3">
+                                <h3 class="font-bold text-orange-500" id="inspector-title">Deck Inspector</h3>
+                                <button type="button" onclick="exportCurrentInspectedDeck()" class="text-xs bg-green-600 hover:bg-green-500 text-white font-bold py-1 px-3 rounded shadow transition-colors">
+                                    <i class="fas fa-download mr-1"></i> Download Deck (.md)
+                                </button>
+                            </div>
                             <button type="button" onclick="closeInspector()" class="text-gray-200 hover:text-white">
                                 <i class="fas fa-times"></i>
                             </button>
@@ -2430,11 +3197,16 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                     <!-- System Export & Integrity Check Section -->
                     <div class="border-t border-gray-800 pt-4 flex flex-col sm:flex-row gap-4">
                         <div class="flex-1">
-                            <h4 class="text-[10px] font-bold text-gray-200 uppercase mb-2">System Export</h4>
-                            <a href="api.php?action=download_zip" class="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded transition-colors">
-                                <i class="fas fa-file-archive mr-1"></i> Download Game as ZIP
-                            </a>
-                            <p class="text-[9px] text-gray-400 mt-1">Download a clean copy of the game files for redistribution.</p>
+                            <h4 class="text-[10px] font-bold text-gray-200 uppercase mb-2">System Export & Voice Cache</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <a href="api.php?action=download_zip" class="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded transition-colors">
+                                    <i class="fas fa-file-archive mr-1"></i> Download Release ZIP
+                                </a>
+                                <a href="api.php?action=download_voice_cache_zip" class="inline-block bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold py-2 px-4 rounded transition-colors">
+                                    <i class="fas fa-microphone-alt mr-1"></i> Download Voice Cache ZIP
+                                </a>
+                            </div>
+                            <p class="text-[9px] text-gray-400 mt-1">Download clean game release files (code, decks, themes) or secondary voice cache MP3 library.</p>
                         </div>
                     </div>
                 </div>
@@ -2445,6 +3217,38 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
         </main>
 
         <script>
+            function handleDeckFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                document.getElementById('file-name-display').textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('deck_content_textarea').value = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+
+            function toggleDuplicateSelections(type) {
+                const groups = document.querySelectorAll('#resolve-duplicates-form .p-3.bg-gray-900');
+                groups.forEach(group => {
+                    const checkboxes = group.querySelectorAll('input[name="delete_cards[]"]');
+                    checkboxes.forEach((cb, idx) => {
+                        const deck = cb.value.split('::')[0];
+                        if (type === 'all') {
+                            cb.checked = true;
+                        } else if (type === 'none') {
+                            cb.checked = false;
+                        } else if (type === 'first') {
+                            cb.checked = (idx === 0);
+                        } else if (type === 'second') {
+                            cb.checked = (idx === 1);
+                        } else if (type === 'non-base') {
+                            cb.checked = (deck !== 'base_deck');
+                        }
+                    });
+                });
+            }
+
             function insertBlank(elementId) {
                 const el = document.getElementById(elementId);
                 if (!el) return;
@@ -2615,14 +3419,14 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
             async function deleteCardGlobalSearch(btn) {
                 const cardDiv = btn.closest('.inspector-card');
                 const text = cardDiv.dataset.currentText;
-                const deckTag = cardDiv.dataset.deck;
+                const deck = cardDiv.dataset.deck;
 
                 if (!confirm('Delete this card?\n\n' + text)) return;
 
                 const formData = new FormData();
                 formData.append('action', 'delete_card');
                 formData.append('text', text);
-                formData.append('deck', deckTag);
+                formData.append('deck', deck);
 
                 try {
                     const res = await fetch('api.php', { method: 'POST', body: formData });
@@ -2641,15 +3445,26 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 let cleaned = text.trim();
                 if (!cleaned) return "";
 
+                // Strip backslashes
+                cleaned = cleaned.replace(/\\/g, '');
+                // Strip <i> and </i> tags
+                cleaned = cleaned.replace(/<\/?i\b[^>]*>/gi, '');
+                // Strip parenthesis characters ( and )
+                cleaned = cleaned.replace(/[\(\)]/g, '');
+
                 if (isBlack) {
-                    cleaned = cleaned.replace(/_{3,}/g, '______');
+                    cleaned = cleaned.replace(/[._\/]{4,}/g, '______');
+                    cleaned = cleaned.replace(/_{2,}/g, '______');
+                    cleaned = cleaned.replace(/\./g, '');
                     cleaned = cleaned.replace(/(\w)\s*______/g, '$1 ______');
                     cleaned = cleaned.replace(/______\s*(\w)/g, '______ $1');
-                    cleaned = cleaned.replace(/______\s+([.,;:?!])/g, '______$1');
+                    cleaned = cleaned.replace(/______\s+([,;:?!])/g, '______$1');
                     cleaned = cleaned.replace(/ {2,}/g, ' ');
                 } else {
                     cleaned = cleaned.replace(/_+/g, '');
+                    cleaned = cleaned.replace(/\./g, '');
                     cleaned = cleaned.replace(/ {2,}/g, ' ');
+                    cleaned = cleaned.trim();
                 }
                 return cleaned;
             }
@@ -2671,17 +3486,20 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 }
             }
 
-            function testGeminiConnection() {
-                const resDiv = document.getElementById('gemini-test-result');
+            function testAIConnection() {
+                const resDiv = document.getElementById('ai-test-result');
                 resDiv.classList.remove('hidden', 'text-green-400', 'text-red-400');
                 resDiv.className = 'text-xs mt-2 text-orange-400';
                 resDiv.textContent = 'Testing connection...';
 
                 const form = document.querySelector('#content-security form');
                 const fd = new FormData(form);
-                fd.set('action', 'test_gemini');
+                const provider = fd.get('ai_provider');
+                const apiKey = provider === 'openai' ? fd.get('openai_api_key') : fd.get('gemini_api_key');
+                fd.set('action', 'test_ai');
+                fd.set('api_key', apiKey || '');
 
-                fetch('settings.php', {
+                fetch('api.php', {
                     method: 'POST',
                     body: fd
                 })
@@ -2689,13 +3507,10 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 .then(data => {
                     if (data.success) {
                         resDiv.className = 'text-xs mt-2 text-green-400';
-                        resDiv.textContent = 'Success! Gemini API connection verified successfully.';
+                        resDiv.textContent = 'Success! ' + provider + ' replied: ' + (data.greeting || 'OK');
                     } else {
                         resDiv.className = 'text-xs mt-2 text-red-400';
                         let msg = 'Failed: ' + (data.error || 'Unknown error');
-                        if (data.available_models && data.available_models.length > 0) {
-                            msg += '\n\nAvailable models for your API key:\n- ' + data.available_models.join('\n- ');
-                        }
                         resDiv.textContent = msg;
                     }
                 })
@@ -2746,6 +3561,15 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
 
                 const formData = new FormData(e.target);
                 formData.append('ajax', '1');
+                const actionVal = formData.get('action');
+
+                if (actionVal === 'add_card') {
+                    const banner = document.getElementById('add-card-status-banner');
+                    if (banner) {
+                        banner.classList.remove('hidden');
+                        banner.innerHTML = `<div class="p-2.5 bg-blue-950/80 border border-blue-500/60 rounded text-xs text-blue-200 font-bold shadow flex items-center gap-2"><i class="fas fa-spinner fa-spin text-orange-400"></i> Adding card to Orange Deck...</div>`;
+                    }
+                }
 
                 try {
                     const res = await fetch('settings.php', {
@@ -2759,30 +3583,141 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         btn.classList.remove('bg-orange-600', 'bg-green-600', 'bg-red-600', 'bg-blue-600');
                         btn.classList.add('bg-green-600');
 
-                        // Automatically trigger a duplicate sanity scan when importing/adding cards
-                        const actionVal = formData.get('action');
-                        if (actionVal === 'import_deck' || actionVal === 'add_card') {
+                        if (actionVal === 'import_deck') {
+                            const banner = document.getElementById('import-status-banner');
+                            if (banner) {
+                                banner.classList.remove('hidden');
+                                banner.innerHTML = `<div class="p-3 bg-green-900/80 border border-green-500 rounded text-xs text-green-100 font-bold mb-2 shadow"><i class="fas fa-check-circle mr-1"></i> ${data.msg || 'Deck successfully imported!'}</div>`;
+                            }
+                            if (clearTextareaId) {
+                                const el = document.getElementById(clearTextareaId);
+                                if (el) el.value = '';
+                            }
                             setTimeout(() => {
-                                checkDecksForDuplicates();
-                            }, 500);
+                                window.location.reload();
+                            }, 1200);
+                            return;
+                        }
+
+                        if (actionVal === 'add_card') {
+                            const banner = document.getElementById('add-card-status-banner');
+                            if (banner) {
+                                banner.classList.remove('hidden');
+                                const totalText = data.total_orange_cards ? ` (${data.total_orange_cards} cards total in Orange Deck)` : '';
+                                banner.innerHTML = `<div class="p-2.5 bg-green-950/80 border border-green-500/60 rounded text-xs text-green-200 font-bold shadow flex items-center gap-2"><i class="fas fa-check-circle text-green-400"></i> ${data.msg || 'Card added to Orange Deck.'}${totalText}</div>`;
+                            }
+                            const cardInput = document.getElementById('single_card_text_input');
+                            if (cardInput) cardInput.value = '';
+
+                            setTimeout(() => {
+                                btn.innerHTML = originalText;
+                                btn.disabled = false;
+                                btn.classList.remove('bg-green-600');
+                                btn.classList.add('bg-orange-600');
+                            }, 1500);
+
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1200);
+                            return;
                         }
 
                         setTimeout(() => {
                             if (clearTextareaId) {
-                                document.getElementById(clearTextareaId).value = '';
+                                const el = document.getElementById(clearTextareaId);
+                                if (el) el.value = '';
                             }
                             btn.innerHTML = originalText;
                             btn.disabled = false;
                         }, 2000);
                     } else {
-                        alert('Error: ' + (data.msg || 'Unknown error'));
+                        if (actionVal === 'import_deck') {
+                            const banner = document.getElementById('import-status-banner');
+                            if (banner) {
+                                banner.classList.remove('hidden');
+                                banner.innerHTML = `<div class="p-3 bg-red-900/80 border border-red-500 rounded text-xs text-red-100 font-bold mb-2 shadow"><i class="fas fa-times-circle mr-1"></i> ${data.msg || data.error || 'Import failed'}</div>`;
+                            }
+                        } else if (actionVal === 'add_card') {
+                            const banner = document.getElementById('add-card-status-banner');
+                            if (banner) {
+                                banner.classList.remove('hidden');
+                                banner.innerHTML = `<div class="p-2.5 bg-yellow-950/80 border border-yellow-500/60 rounded text-xs text-yellow-200 font-bold shadow flex items-center gap-2"><i class="fas fa-exclamation-triangle text-yellow-400"></i> ${data.msg || data.error || 'Failed to add card.'}</div>`;
+                            }
+                        } else {
+                            alert('Error: ' + (data.msg || data.error || 'Unknown error'));
+                        }
                         btn.innerHTML = originalText;
                         btn.disabled = false;
                     }
                 } catch (err) {
                     console.error(err);
+                    if (actionVal === 'add_card') {
+                        const banner = document.getElementById('add-card-status-banner');
+                        if (banner) {
+                            banner.classList.remove('hidden');
+                            banner.innerHTML = `<div class="p-2.5 bg-red-950/80 border border-red-500/60 rounded text-xs text-red-200 font-bold shadow flex items-center gap-2"><i class="fas fa-times-circle text-red-400"></i> Network or server error adding card.</div>`;
+                        }
+                    }
                     btn.innerHTML = originalText;
                     btn.disabled = false;
+                }
+            }
+
+            async function downloadFileSilently(url, defaultFilename = 'download.md') {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error('Download request failed (' + res.status + ')');
+                    const blob = await res.blob();
+                    const disposition = res.headers.get('Content-Disposition');
+                    let filename = defaultFilename;
+                    if (disposition && disposition.includes('filename=')) {
+                        const match = disposition.match(/filename="?([^";]+)"?/);
+                        if (match && match[1]) filename = match[1];
+                    }
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+                } catch (err) {
+                    console.error('Silent download failed, falling back to direct iframe:', err);
+                    triggerSilentFrameDownload(url);
+                }
+            }
+
+            function triggerSilentFrameDownload(url) {
+                let frame = document.getElementById('silent-download-frame');
+                if (!frame) {
+                    frame = document.createElement('iframe');
+                    frame.id = 'silent-download-frame';
+                    frame.style.display = 'none';
+                    document.body.appendChild(frame);
+                }
+                frame.src = url;
+            }
+
+            async function performBackupMasterDeck() {
+                const banner = document.getElementById('upload-master-status-banner');
+                if (banner) {
+                    banner.classList.remove('hidden');
+                    banner.innerHTML = `<div class="p-3 bg-blue-950/80 border border-blue-500/60 rounded text-xs text-blue-200 font-bold mb-2 shadow flex items-center gap-2"><i class="fas fa-spinner fa-spin text-orange-400"></i> Backing up master deck...</div>`;
+                }
+
+                try {
+                    const url = 'settings.php?action=backup_master_deck&download=1';
+                    await downloadFileSilently(url, 'decks_backup.md');
+                    if (banner) {
+                        banner.innerHTML = `<div class="p-3 bg-green-950/80 border border-green-500/60 rounded text-xs text-green-200 font-bold mb-2 shadow flex items-center gap-2"><i class="fas fa-check-circle text-green-400"></i> Backup successfully created and downloading! Saved to data/backups/</div>`;
+                        setTimeout(() => banner.classList.add('hidden'), 5000);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    if (banner) {
+                        banner.innerHTML = `<div class="p-3 bg-red-950/80 border border-red-500/60 rounded text-xs text-red-200 font-bold mb-2 shadow flex items-center gap-2"><i class="fas fa-times-circle text-red-400"></i> Backup failed: ${err.message}</div>`;
+                    }
                 }
             }
 
@@ -2820,28 +3755,11 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                 }
             }
 
-            let currentAudioObject = null;
-            function playCardAudio(urls) {
-                if (currentAudioObject) {
-                    try { currentAudioObject.pause(); } catch(e) {}
-                    currentAudioObject = null;
-                }
-                if (!urls || urls.length === 0) return;
-                let index = 0;
-                function playNext() {
-                    if (index >= urls.length) return;
-                    currentAudioObject = new Audio(urls[index]);
-                    currentAudioObject.onended = () => {
-                        index++;
-                        playNext();
-                    };
-                    currentAudioObject.onerror = () => {
-                        index++;
-                        playNext();
-                    };
-                    currentAudioObject.play().catch(e => console.error("Playback failed", e));
-                }
-                playNext();
+
+            function exportCurrentInspectedDeck() {
+                const modal = document.getElementById('deck-inspector-modal');
+                const tag = modal.dataset.currentDeck || 'all';
+                window.location.href = `settings.php?action=export_deck&deck_tag=${encodeURIComponent(tag)}`;
             }
 
             function renderCards(cards, container, deckTag) {
@@ -2859,17 +3777,8 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                     div.dataset.deck = deckTag;
                     div.dataset.type = c.type;
                     
-                    let audioIcon = '';
-                    if (c.has_audio && c.audio_urls && c.audio_urls.length > 0) {
-                        const urlsJson = JSON.stringify(c.audio_urls).replace(/"/g, '&quot;');
-                        audioIcon = `<button onclick="playCardAudio(${urlsJson})" class="text-green-500 hover:text-green-400 mr-2 flex-shrink-0" title="Click to test audio"><i class="fas fa-volume-up"></i></button>`;
-                    } else {
-                        audioIcon = `<i class="fas fa-volume-mute text-gray-500 mr-2 flex-shrink-0" title="No audio generated yet"></i>`;
-                    }
-                    
                     div.innerHTML = `
                         <div class="flex items-center flex-1 mr-2 min-w-0 break-words">
-                            ${audioIcon}
                             <span class="text-xs text-gray-300 break-all">${c.text}</span>
                         </div>
                         <div class="flex items-center space-x-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3085,10 +3994,37 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                     resultsEl.innerHTML = `<div class="text-red-400 font-bold"><i class="fas fa-times-circle mr-1"></i>Request failed.</div>`;
                 }
             }
+            async function sanitizeAllDecks() {
+                const resultsEl = document.getElementById('duplicate-check-results');
+                resultsEl.classList.remove('hidden');
+                resultsEl.innerHTML = `<span class="text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i>Scanning & sanitizing deck files (blanks -> ______, removing trailing periods)...</span>`;
+                
+                const fd = new FormData();
+                fd.append('action', 'sanitize_all_decks');
+                fd.append('ajax', '1');
+                
+                try {
+                    const res = await fetch('settings.php', {
+                        method: 'POST',
+                        body: fd
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        resultsEl.innerHTML = `<div class="text-green-400 font-bold"><i class="fas fa-check-circle mr-1"></i>${data.msg}</div>`;
+                        setTimeout(() => checkDecksForDuplicates(), 1200);
+                    } else {
+                        resultsEl.innerHTML = `<div class="text-red-400 font-bold"><i class="fas fa-times-circle mr-1"></i>${data.msg || "Sanitization failed"}</div>`;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    resultsEl.innerHTML = `<div class="text-red-400 font-bold"><i class="fas fa-times-circle mr-1"></i>Connection error.</div>`;
+                }
+            }
+
             async function checkDecksForDuplicates() {
                 const resultsEl = document.getElementById('duplicate-check-results');
                 resultsEl.classList.remove('hidden');
-                resultsEl.innerHTML = `<span class="text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i>Scanning decks.md for duplicate cards...</span>`;
+                resultsEl.innerHTML = `<span class="text-gray-400"><i class="fas fa-spinner fa-spin mr-1"></i>Scanning deck files for duplicate cards...</span>`;
                 
                 const fd = new FormData();
                 fd.append('action', 'check_duplicates');
@@ -3110,23 +4046,47 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         }
                         
                         let html = `<form id="resolve-duplicates-form" onsubmit="resolveDuplicates(event)">`;
-                        html += `<div class="flex justify-between items-center mb-2">
-                                    <div class="text-orange-400 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i>Found ${bDups.length + wDups.length} duplicates:</div>
-                                    <button type="submit" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold py-1 px-3 rounded">Delete Selected</button>
+                        html += `<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-2 border-b border-gray-700">
+                                    <div class="text-orange-400 font-bold text-xs"><i class="fas fa-exclamation-triangle mr-1"></i>Found ${bDups.length + wDups.length} duplicate card group(s):</div>
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <button type="button" onclick="toggleDuplicateSelections('first')" class="bg-gray-800 hover:bg-gray-750 text-gray-300 text-[10px] font-bold py-1 px-2.5 rounded border border-gray-700">
+                                            Select First
+                                        </button>
+                                        <button type="button" onclick="toggleDuplicateSelections('second')" class="bg-gray-800 hover:bg-gray-750 text-gray-300 text-[10px] font-bold py-1 px-2.5 rounded border border-gray-700">
+                                            Select Second
+                                        </button>
+                                        <button type="button" onclick="toggleDuplicateSelections('non-base')" class="bg-gray-800 hover:bg-gray-750 text-gray-300 text-[10px] font-bold py-1 px-2.5 rounded border border-gray-700">
+                                            Select Non-Base
+                                        </button>
+                                        <button type="button" onclick="toggleDuplicateSelections('all')" class="bg-gray-800 hover:bg-gray-750 text-gray-300 text-[10px] font-bold py-1 px-2.5 rounded border border-gray-700">
+                                            Select All
+                                        </button>
+                                        <button type="button" onclick="toggleDuplicateSelections('none')" class="bg-gray-800 hover:bg-gray-750 text-gray-300 text-[10px] font-bold py-1 px-2.5 rounded border border-gray-700">
+                                            Clear All
+                                        </button>
+                                        <button type="submit" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold py-1.5 px-3 rounded shadow transition-colors ml-1">
+                                            <i class="fas fa-trash-alt mr-1"></i> Delete Selected
+                                        </button>
+                                    </div>
                                  </div>`;
                         
                         if (bDups.length > 0) {
-                            html += `<div class="font-bold text-white mb-1">Black Cards (${bDups.length}):</div><div class="space-y-1 mb-2">`;
-                            bDups.forEach((dup, dupIdx) => {
+                            html += `<div class="font-bold text-white mb-2 uppercase text-[11px] tracking-wider text-purple-300">Black Cards (${bDups.length} duplicates):</div><div class="space-y-2 mb-3">`;
+                            bDups.forEach((dup, cardIdx) => {
                                 const text = dup.text.replace(/"/g, '&quot;');
-                                html += `<div class="p-2 bg-gray-800 rounded border border-gray-700">
-                                    <div class="text-gray-300 mb-1">"${text}"</div>
-                                    <div class="flex gap-4 text-xs">`;
-                                dup.locations.forEach((loc, i) => {
-                                    const id = `dup-black-${dupIdx}-${i}`;
-                                    html += `<label for="${id}" class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="${id}" name="delete_cards[]" value="${loc.deck}::${text}" class="accent-orange-500 mr-1.5">
-                                        <span class="text-purple-400">from ${loc.deck}</span>
+                                const hasBaseDeck = dup.locations.some(l => l.deck === 'base_deck');
+                                html += `<div class="p-3 bg-gray-900 rounded border border-gray-700">
+                                    <div class="text-gray-200 font-medium text-xs mb-2 bg-black/40 p-2 rounded border border-gray-800">"${text}"</div>
+                                    <div class="text-[11px] text-gray-400 mb-1">Appears in ${dup.locations.length} deck locations — select which one(s) to remove:</div>
+                                    <div class="flex flex-wrap gap-3 text-xs pl-1">`;
+                                dup.locations.forEach((loc, locIdx) => {
+                                    const id = `dup-b-${cardIdx}-${locIdx}`;
+                                    const deckLabel = loc.deck.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                    const isChecked = hasBaseDeck ? (loc.deck !== 'base_deck') : (locIdx > 0);
+                                    const checkedAttr = isChecked ? 'checked' : '';
+                                    html += `<label for="${id}" class="flex items-center cursor-pointer bg-gray-800 px-2 py-1 rounded border border-gray-700 hover:border-orange-500 transition-colors">
+                                        <input type="checkbox" id="${id}" name="delete_cards[]" value="${loc.deck}::${text}" ${checkedAttr} class="accent-orange-500 mr-2 w-3.5 h-3.5">
+                                        <span class="text-orange-300 font-semibold">${deckLabel}</span>
                                     </label>`;
                                 });
                                 html += `</div></div>`;
@@ -3135,17 +4095,22 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         }
                         
                         if (wDups.length > 0) {
-                            html += `<div class="font-bold text-white mb-1">White Cards (${wDups.length}):</div><div class="space-y-1">`;
-                            wDups.forEach((dup, dupIdx) => {
+                            html += `<div class="font-bold text-white mb-2 uppercase text-[11px] tracking-wider text-blue-300">White Cards (${wDups.length} duplicates):</div><div class="space-y-2">`;
+                            wDups.forEach((dup, cardIdx) => {
                                 const text = dup.text.replace(/"/g, '&quot;');
-                                html += `<div class="p-2 bg-gray-800 rounded border border-gray-700">
-                                    <div class="text-gray-300 mb-1">"${text}"</div>
-                                    <div class="flex gap-4 text-xs">`;
-                                dup.locations.forEach((loc, i) => {
-                                    const id = `dup-white-${dupIdx}-${i}`;
-                                    html += `<label for="${id}" class="flex items-center cursor-pointer">
-                                        <input type="checkbox" id="${id}" name="delete_cards[]" value="${loc.deck}::${text}" class="accent-orange-500 mr-1.5">
-                                        <span class="text-purple-400">from ${loc.deck}</span>
+                                const hasBaseDeck = dup.locations.some(l => l.deck === 'base_deck');
+                                html += `<div class="p-3 bg-gray-900 rounded border border-gray-700">
+                                    <div class="text-gray-200 font-medium text-xs mb-2 bg-black/40 p-2 rounded border border-gray-800">"${text}"</div>
+                                    <div class="text-[11px] text-gray-400 mb-1">Appears in ${dup.locations.length} deck locations — select which one(s) to remove:</div>
+                                    <div class="flex flex-wrap gap-3 text-xs pl-1">`;
+                                dup.locations.forEach((loc, locIdx) => {
+                                    const id = `dup-w-${cardIdx}-${locIdx}`;
+                                    const deckLabel = loc.deck.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                    const isChecked = hasBaseDeck ? (loc.deck !== 'base_deck') : (locIdx > 0);
+                                    const checkedAttr = isChecked ? 'checked' : '';
+                                    html += `<label for="${id}" class="flex items-center cursor-pointer bg-gray-800 px-2 py-1 rounded border border-gray-700 hover:border-orange-500 transition-colors">
+                                        <input type="checkbox" id="${id}" name="delete_cards[]" value="${loc.deck}::${text}" ${checkedAttr} class="accent-orange-500 mr-2 w-3.5 h-3.5">
+                                        <span class="text-orange-300 font-semibold">${deckLabel}</span>
                                     </label>`;
                                 });
                                 html += `</div></div>`;
@@ -3156,11 +4121,11 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                         html += `</form>`;
                         resultsEl.innerHTML = html;
                     } else {
-                        resultsEl.innerHTML = `<div class="text-red-400"><i class="fas fa-times-circle mr-1"></i>Scan failed: ${data.msg || 'Unknown error'}</div>`;
+                        resultsEl.innerHTML = `<div class="text-red-400 font-bold"><i class="fas fa-times-circle mr-1"></i>Scan failed: ${data.msg || data.error || 'Unknown error'}</div>`;
                     }
                 } catch(e) {
                     console.error(e);
-                    resultsEl.innerHTML = `<div class="text-red-400"><i class="fas fa-times-circle mr-1"></i>Connection error.</div>`;
+                    resultsEl.innerHTML = `<div class="text-red-400 font-bold"><i class="fas fa-times-circle mr-1"></i>Error running duplicate scan. ${e.message || ''}</div>`;
                 }
             }
 
@@ -3206,6 +4171,526 @@ $defaultTheme = $themes[$defaultThemeKey] ?? $themes['default'];
                     alert('Connection error resolving duplicates.');
                 }
             }
+
+            function handleMasterDeckFileUpload(event) {
+                const input = event.target;
+                const file = input.files[0];
+                const display = document.getElementById('master-file-name-display');
+                if (file) {
+                    display.textContent = file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+                } else {
+                    display.textContent = 'No file selected';
+                }
+            }
+
+            async function generateUploadPreview() {
+                const fileInput = document.getElementById('master_deck_file_input');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Please select a file to scan first.');
+                    return;
+                }
+
+                const banner = document.getElementById('upload-master-status-banner');
+                banner.className = 'hidden';
+
+                const fd = new FormData();
+                fd.append('action', 'validate_master_preview');
+                fd.append('ajax', '1');
+                fd.append('master_deck_file', fileInput.files[0]);
+                fd.append('sanitize_master', '1');
+
+                const scanBtn = document.querySelector('button[onclick="generateUploadPreview()"]');
+                const origText = scanBtn.innerHTML;
+                scanBtn.disabled = true;
+                scanBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Scanning File...';
+
+                try {
+                    const res = await fetch('settings.php', {
+                        method: 'POST',
+                        body: fd
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        const tbody = document.getElementById('preview-report-table-body');
+                        
+                        const allSlugs = new Set();
+                        const currentMap = {};
+                        const newMap = {};
+
+                        data.current_decks.forEach(d => {
+                            allSlugs.add(d.slug);
+                            currentMap[d.slug] = d;
+                        });
+
+                        data.new_decks.forEach(d => {
+                            allSlugs.add(d.slug);
+                            newMap[d.slug] = d;
+                        });
+
+                        const sortedSlugs = Array.from(allSlugs).sort((a, b) => {
+                            if (a === 'base_deck') return -1;
+                            if (b === 'base_deck') return 1;
+                            return a.localeCompare(b);
+                        });
+
+                        let tableHtml = '';
+                        sortedSlugs.forEach(slug => {
+                            const curr = currentMap[slug];
+                            const newD = newMap[slug];
+
+                            const label = (newD ? newD.label : curr.label) || slug;
+                            const displayLabel = label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+                            let currentCell = '<div class="text-center text-gray-500 font-medium italic">—</div>';
+                            if (curr) {
+                                const total = curr.black + curr.white;
+                                currentCell = `<div class="text-center font-bold text-gray-300">${total} <span class="text-[10px] text-gray-500">(${curr.black}B / ${curr.white}W)</span></div>`;
+                            }
+
+                            let newCell = '<div class="text-center text-gray-500 font-medium italic">—</div>';
+                            if (newD) {
+                                const total = newD.black + newD.white;
+                                newCell = `<div class="text-center font-bold text-orange-400">${total} <span class="text-[10px] text-orange-500/70">(${newD.black}B / ${newD.white}W)</span></div>`;
+                            }
+
+                            let statusBadge = '';
+                            if (curr && !newD) {
+                                statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-red-950/40 text-red-400 border border-red-900/40">Deleted</span>';
+                            } else if (!curr && newD) {
+                                statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-green-950/40 text-green-400 border border-green-900/40">New Deck</span>';
+                            } else {
+                                const currTotal = curr.black + curr.white;
+                                const newTotal = newD.black + newD.white;
+                                if (currTotal !== newTotal || curr.black !== newD.black || curr.white !== newD.white) {
+                                    statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-blue-950/40 text-blue-400 border border-blue-900/40">Updated</span>';
+                                } else {
+                                    statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-gray-900 text-gray-500 border border-gray-800">Unchanged</span>';
+                                }
+                            }
+
+                            tableHtml += `<tr class="border-b border-gray-800 hover:bg-gray-800/20">
+                                <td class="p-2.5 font-bold text-gray-200">${displayLabel}</td>
+                                <td class="p-2.5">${currentCell}</td>
+                                <td class="p-2.5">${newCell}</td>
+                                <td class="p-2.5 text-center">${statusBadge}</td>
+                            </tr>`;
+                        });
+
+                        tbody.innerHTML = tableHtml;
+
+                        // Switch view steps
+                        document.getElementById('master-upload-step-1').classList.add('hidden');
+                        document.getElementById('master-upload-step-2').classList.remove('hidden');
+                    } else {
+                        banner.className = 'p-3 bg-red-900/60 border border-red-600 text-red-400 rounded text-xs font-bold whitespace-pre-wrap';
+                        banner.innerHTML = `<i class="fas fa-times-circle mr-1"></i> ${data.error || 'Scan failed'}`;
+                        banner.classList.remove('hidden');
+                    }
+                } catch(e) {
+                    console.error(e);
+                    banner.className = 'p-3 bg-red-900/60 border border-red-600 text-red-400 rounded text-xs font-bold';
+                    banner.innerHTML = `<i class="fas fa-times-circle mr-1"></i> Connection error occurred while scanning.`;
+                    banner.classList.remove('hidden');
+                } finally {
+                    scanBtn.innerHTML = origText;
+                    scanBtn.disabled = false;
+                }
+            }
+
+            function resetUploadSteps() {
+                document.getElementById('master-upload-step-2').classList.add('hidden');
+                document.getElementById('master-upload-step-1').classList.remove('hidden');
+            }
+
+            async function commitMasterOverwrite() {
+                const fileInput = document.getElementById('master_deck_file_input');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    alert('Please select a file first.');
+                    return;
+                }
+
+                if (!confirm('Are you absolutely sure? This will delete all custom imported decks, bans, edits, and set this file as the new master decks list.')) {
+                    return;
+                }
+
+                const commitBtn = document.getElementById('commit-overwrite-btn');
+                const origText = commitBtn.innerHTML;
+                commitBtn.disabled = true;
+                commitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Overwriting & Resetting State...';
+
+                const banner = document.getElementById('upload-master-status-banner');
+                banner.className = 'hidden';
+
+                const fd = new FormData();
+                fd.append('action', 'upload_master_deck');
+                fd.append('ajax', '1');
+                fd.append('master_deck_file', fileInput.files[0]);
+                fd.append('sanitize_master', '1');
+
+                try {
+                    const res = await fetch('settings.php', {
+                        method: 'POST',
+                        body: fd
+                    });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        banner.className = 'p-3 bg-green-900/60 border border-green-600 text-green-400 rounded text-xs font-bold shadow-lg';
+                        banner.innerHTML = `<i class="fas fa-check-circle mr-1"></i> ${data.msg}`;
+                        banner.classList.remove('hidden');
+                        
+                        document.getElementById('master-file-name-display').textContent = 'No file selected';
+                        fileInput.value = '';
+                        
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        banner.className = 'p-3 bg-red-900/60 border border-red-600 text-red-400 rounded text-xs font-bold whitespace-pre-wrap';
+                        banner.innerHTML = `<i class="fas fa-times-circle mr-1"></i> ${data.error || 'Upload failed'}`;
+                        banner.classList.remove('hidden');
+                        commitBtn.innerHTML = origText;
+                        commitBtn.disabled = false;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    banner.className = 'p-3 bg-red-900/60 border border-red-600 text-red-400 rounded text-xs font-bold';
+                    banner.innerHTML = `<i class="fas fa-times-circle mr-1"></i> Connection or write error occurred.`;
+                    banner.classList.remove('hidden');
+                    commitBtn.innerHTML = origText;
+                    commitBtn.disabled = false;
+                }
+            }
+        </script>
+        <script>
+            // Voice control & accordion functions
+            function selectTTSEngine(provider) {
+                const radio = document.querySelector(`input[name="tts_provider"][value="${provider}"]`);
+                if (radio && !radio.disabled) {
+                    radio.checked = true;
+                }
+                
+                ['browser', 'google', 'elevenlabs', 'openai'].forEach(p => {
+                    const panel = document.getElementById(`tts-panel-${p}`);
+                    if (panel) {
+                        if (p === provider) {
+                            panel.classList.remove('hidden');
+                        } else {
+                            panel.classList.add('hidden');
+                        }
+                    }
+                });
+            }
+
+            function applyElevenLabsPreset(voiceId) {
+                if (voiceId) {
+                    const input = document.getElementById('admin-elevenlabs-voice');
+                    if (input) input.value = voiceId;
+                }
+            }
+
+            function saveCustomElevenLabsPreset() {
+                const voiceId = document.getElementById('admin-elevenlabs-voice').value.trim();
+                if (!voiceId) {
+                    alert('Please enter an ElevenLabs Voice ID first.');
+                    return;
+                }
+                const presetName = prompt('Enter a name for this ElevenLabs Voice Preset:', 'My Custom Voice');
+                if (!presetName) return;
+
+                fetch('settings.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'save_elevenlabs_preset',
+                        preset_name: presetName,
+                        voice_id: voiceId,
+                        ajax: '1'
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Voice preset saved successfully!');
+                        const select = document.getElementById('elevenlabs-preset-select');
+                        if (select) {
+                            const opt = document.createElement('option');
+                            opt.value = voiceId;
+                            opt.textContent = `${presetName}`;
+                            opt.selected = true;
+                            select.appendChild(opt);
+                        }
+                    } else {
+                        alert('Failed to save preset: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('Network error while saving preset.');
+                });
+            }
+
+            function populateChromeVoices() {
+                const voiceSelect = document.getElementById('admin-chrome-voice');
+                if (!voiceSelect) return;
+                
+                const populateVoiceList = () => {
+                    const voices = window.speechSynthesis.getVoices();
+                    voiceSelect.innerHTML = '';
+                    
+                    if (voices.length === 0) {
+                        voiceSelect.innerHTML = '<option value="">No browser voices available</option>';
+                        return;
+                    }
+
+                    const savedVoice = localStorage.getItem('game_tts_voice_name') || '';
+
+                    // Sort English voices first, then other languages
+                    const english = voices.filter(v => v.lang && v.lang.startsWith('en')).sort((a, b) => a.name.localeCompare(b.name));
+                    const others = voices.filter(v => !v.lang || !v.lang.startsWith('en')).sort((a, b) => a.name.localeCompare(b.name));
+
+                    if (english.length > 0) {
+                        const grpEn = document.createElement('optgroup');
+                        grpEn.label = 'English Installed Voices';
+                        english.forEach(v => {
+                            const opt = document.createElement('option');
+                            opt.value = v.name;
+                            opt.textContent = `${v.name} (${v.lang})`;
+                            if (savedVoice && v.name === savedVoice) opt.selected = true;
+                            grpEn.appendChild(opt);
+                        });
+                        voiceSelect.appendChild(grpEn);
+                    }
+
+                    if (others.length > 0) {
+                        const grpOther = document.createElement('optgroup');
+                        grpOther.label = 'Other Languages';
+                        others.forEach(v => {
+                            const opt = document.createElement('option');
+                            opt.value = v.name;
+                            opt.textContent = `${v.name} (${v.lang})`;
+                            if (savedVoice && v.name === savedVoice) opt.selected = true;
+                            grpOther.appendChild(opt);
+                        });
+                        voiceSelect.appendChild(grpOther);
+                    }
+
+                    if (savedVoice) {
+                        voiceSelect.value = savedVoice;
+                    }
+                };
+                
+                if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                    window.speechSynthesis.onvoiceschanged = populateVoiceList;
+                }
+                
+                populateVoiceList();
+            }
+            
+            function testElevenLabsVoice() {
+                const apiKey = document.querySelector('input[name="elevenlabs_api_key"]').value;
+                const voiceId = document.getElementById('admin-elevenlabs-voice').value || '21m00Tcm4TlvDq8ikWAM';
+                
+                if (!apiKey) {
+                    showTestResult('test-elevenlabs-result', 'Please enter your ElevenLabs API key');
+                    return;
+                }
+                
+                showTestResult('test-elevenlabs-result', 'Testing ElevenLabs voice...');
+                
+                fetch('api.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'test_elevenlabs_voice',
+                        api_key: apiKey,
+                        voice_id: voiceId,
+                        ajax: '1'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showTestResult('test-elevenlabs-result', `Success! ${data.message || 'ElevenLabs connected!'}`);
+                        if (data.audio_data) {
+                            playAudioSample(data.audio_data);
+                        }
+                    } else {
+                        showTestResult('test-elevenlabs-result', `Failed: ${data.error || 'Unknown error'}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showTestResult('test-elevenlabs-result', 'Network error occurred');
+                });
+            }
+
+            function testGoogleVoice() {
+                const apiKey = document.querySelector('input[name="google_tts_api_key"]').value;
+                const voiceName = document.getElementById('admin-google-voice').value;
+                
+                if (!apiKey) {
+                    showTestResult('test-google-result', 'Please enter your Google Cloud TTS API key');
+                    return;
+                }
+                
+                if (!voiceName) {
+                    showTestResult('test-google-result', 'Please select a voice');
+                    return;
+                }
+                
+                showTestResult('test-google-result', 'Testing Google voice...');
+                
+                fetch('api.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'test_google_voice',
+                        api_key: apiKey,
+                        voice: voiceName,
+                        ajax: '1'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showTestResult('test-google-result', `Success! Voice tested: ${data.message || 'OK'}`);
+                        
+                        // Try to play a sample if audio data is provided
+                        if (data.audio_data) {
+                            playAudioSample(data.audio_data);
+                        }
+                    } else {
+                        showTestResult('test-google-result', `Failed: ${data.error || 'Unknown error'}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showTestResult('test-google-result', 'Network error occurred');
+                });
+            }
+            
+            function testOpenAIVoice() {
+                const apiKey = document.querySelector('input[name="openai_api_key"]').value;
+                const voiceName = document.getElementById('admin-openai-voice').value;
+                
+                if (!apiKey) {
+                    showTestResult('test-openai-result', 'Please enter your OpenAI API key');
+                    return;
+                }
+                
+                if (!voiceName) {
+                    showTestResult('test-openai-result', 'Please select a voice');
+                    return;
+                }
+                
+                showTestResult('test-openai-result', 'Testing OpenAI voice...');
+                
+                fetch('api.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'test_openai_voice',
+                        api_key: apiKey,
+                        voice: voiceName,
+                        ajax: '1'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showTestResult('test-openai-result', `Success! Voice tested: ${data.message || 'OK'}`);
+                        
+                        // Try to play a sample if audio data is provided
+                        if (data.audio_data) {
+                            playAudioSample(data.audio_data);
+                        }
+                    } else {
+                        showTestResult('test-openai-result', `Failed: ${data.error || 'Unknown error'}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showTestResult('test-openai-result', 'Network error occurred');
+                });
+            }
+            
+            function testChromeVoice() {
+                const voiceName = document.getElementById('admin-chrome-voice').value;
+                
+                if (!voiceName) {
+                    showTestResult('test-chrome-result', 'Please select a voice');
+                    return;
+                }
+                
+                showTestResult('test-chrome-result', 'Testing Chrome voice...');
+                
+                // Use Web Speech API to test the voice
+                if ('speechSynthesis' in window) {
+                    // Cancel any ongoing speech
+                    window.speechSynthesis.cancel();
+                    
+                    const utterance = new SpeechSynthesisUtterance('Hello, this is a test of the text to speech system.');
+                    utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName) || 
+                                     window.speechSynthesis.getVoices()[0];
+                    utterance.rate = 1;
+                    utterance.pitch = 1;
+                    utterance.volume = 1;
+                    
+                    utterance.onend = () => {
+                        showTestResult('test-chrome-result', 'Voice test completed successfully!');
+                    };
+                    
+                    utterance.onerror = (event) => {
+                        showTestResult('test-chrome-result', `Voice test failed: ${event.error}`);
+                    };
+                    
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    showTestResult('test-chrome-result', 'Speech synthesis not supported in this browser');
+                }
+            }
+            
+            function showTestResult(elementId, message) {
+                const resultDiv = document.getElementById(elementId);
+                if (resultDiv) {
+                    resultDiv.textContent = message;
+                    resultDiv.className = 'mt-2 text-[10px] p-2 bg-gray-900 rounded border border-gray-700';
+                    resultDiv.classList.remove('hidden');
+                }
+            }
+            
+            function playAudioSample(base64Audio) {
+                try {
+                    const audioData = atob(base64Audio);
+                    const arrayBuffer = new ArrayBuffer(audioData.length);
+                    const uintArray = new Uint8Array(arrayBuffer);
+                    
+                    for (let i = 0; i < audioData.length; i++) {
+                        uintArray[i] = audioData.charCodeAt(i);
+                    }
+                    
+                    const blob = new Blob([uintArray], { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    const audio = new Audio(url);
+                    audio.play();
+                } catch (e) {
+                    console.error('Error playing audio sample:', e);
+                }
+            }
+            
+            // Initialize voice controls when page loads
+            document.addEventListener('DOMContentLoaded', function() {
+                populateChromeVoices();
+                selectTTSEngine('<?php echo $globalConfig['tts_provider'] ?? 'browser'; ?>');
+            });
         </script>
 
     <?php endif; ?>

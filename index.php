@@ -320,63 +320,41 @@ foreach ($userActiveRooms as $activeRoom) {
 
 <body class="flex flex-col min-h-screen bg-gradient-to-b from-[#1a1b1e] to-[#111214]">
 
-    <!-- BRANDING BANNER (Line 1) -->
-    <div class="bg-[#141517] border-b border-gray-800 py-2 flex-none">
-        <div class="max-w-4xl mx-auto px-4 flex items-center justify-center gap-2">
-            <i class="fas fa-tshirt text-orange-500 text-xl sm:text-2xl"></i>
-            <h1 class="text-lg sm:text-xl font-black uppercase tracking-[0.15em] text-gray-200">
-                <?php echo htmlspecialchars($gameTitle); ?>
-            </h1>
+    <!-- THEME BANNER -->
+    <div id="theme-banner" class="hidden bg-[#18191c] border-b border-gray-800 flex-none py-2">
+        <div class="max-w-4xl mx-auto px-4 space-y-2">
+            <div id="theme-media" class="overflow-hidden rounded-lg shadow-inner"></div>
+            <div id="theme-audio-wrap" class="hidden flex items-center justify-between bg-gray-900/50 p-2 rounded border border-gray-700">
+                <span class="text-xs font-bold text-gray-300"><i class="fas fa-music mr-2 text-orange-500"></i>Theme Music</span>
+                <audio id="theme-audio" controls class="h-8 max-w-xs"></audio>
+            </div>
         </div>
     </div>
 
-    <!-- LOBBY HEADER (Line 2) - Status & Menu -->
+    <!-- LOBBY HEADER - Menu on Left & Create Game on Right -->
     <div class="bg-[#141517] border-b border-gray-800 sticky top-0 z-50 shadow-md flex-none">
         <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
 
-            <!-- LEFT: Lobby Status / Theme -->
-            <div class="text-xs sm:text-sm text-gray-200 font-bold uppercase tracking-wider">
-                <i class="fas fa-palette mr-2 text-orange-500"></i>Theme: <span class="text-orange-400"><?php echo htmlspecialchars($currentTheme['label'] ?? ucfirst($currentThemeKey)); ?></span>
-            </div>
-
-            <!-- RIGHT: Menu Actions -->
-            <div class="flex items-center gap-2 sm:gap-3 text-gray-200 text-base sm:text-lg flex-shrink-0">
-                <!-- Refresh Lobby -->
-                <button type="button" onclick="location.reload();" class="hover:text-white transition-colors p-1" title="Refresh Lobby">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-
-                <!-- Gallery -->
-                <a href="gallery.php" class="hover:text-white transition-colors p-1" title="Game Gallery">
-                    <i class="fas fa-images"></i>
+            <!-- LEFT: Menu Actions shifted to far left -->
+            <div class="flex items-center gap-3 text-gray-300 text-sm sm:text-base">
+                <!-- Home -->
+                <a href="index.php" class="hover:text-white transition-colors p-1" title="Lobby">
+                    <i class="fas fa-home"></i>
                 </a>
-
+                <!-- Mute -->
+                <button type="button" onclick="toggleMute()" class="hover:text-yellow-400 transition-colors p-1" title="Toggle Mute">
+                    <i class="fas fa-volume-up"></i>
+                </button>
                 <!-- Settings -->
-                <a href="settings.php" class="hover:text-white transition-colors p-1" title="Settings">
+                <a href="settings.php" class="hover:text-white transition-colors p-1 text-xs font-bold" title="Settings">
                     <i class="fas fa-cog"></i>
                 </a>
+            </div>
 
-                <!-- User Profile -->
-                <button type="button" onclick="promptForUsername()" class="flex items-center gap-2 bg-gray-800/50 py-1 pl-2 pr-1 rounded-full border border-gray-700 hover:border-orange-500 hover:bg-gray-800 transition-colors">
-                    <span class="text-xs font-bold text-gray-300 hidden sm:inline"><?php echo htmlspecialchars(substr($_SESSION['user_name'] ?? 'No Name', 0, 10)); ?></span>
-                    <div class="w-6 h-6 rounded-full bg-gray-600 overflow-hidden border-2 border-orange-500 shadow-sm flex items-center justify-center">
-                        <?php
-                        $profileSet = $_SESSION['profile_set'] ?? false;
-                        $aType = $profileSet ? ($_SESSION['user_avatar_type'] ?? 'dicebear') : 'dicebear';
-                        $aVal = $profileSet ? ($_SESSION['user_avatar_val'] ?? $_SESSION['user_name']) : 'new_user';
-                        if ($aType === 'dicebear') {
-                            echo '<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($aVal) . '" alt="Avatar">';
-                        } elseif ($aType === 'gen_m') {
-                            echo '<i class="fas fa-user text-blue-400"></i>';
-                        } elseif ($aType === 'gen_f') {
-                            echo '<i class="fas fa-user text-pink-400"></i>';
-                        } elseif ($aType === 'upload') {
-                            echo '<img src="' . $aVal . '" alt="Avatar" class="w-full h-full object-cover">';
-                        } else {
-                            echo '<img src="https://api.dicebear.com/7.x/avataaars/svg?seed=' . urlencode($aVal) . '" alt="Avatar">';
-                        }
-                        ?>
-                    </div>
+            <!-- RIGHT: Create a Game Button -->
+            <div>
+                <button onclick="handleGameAction('create')" class="btn-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg shadow-md hover:shadow-orange-500/20 flex items-center gap-1.5">
+                    <i class="fas fa-plus"></i> Create a game
                 </button>
             </div>
         </div>
@@ -543,19 +521,18 @@ foreach ($userActiveRooms as $activeRoom) {
 
             try {
                 const res = await fetch('index.php', { method: 'POST', body: formData });
-                // The PHP script saves the session and issues a redirect back to this page.
-                // The fetch response will have `res.redirected: true`.
-                // We just need to reload the page to continue the original action with the new profile.
-                if (res.redirected) {
-                    window.location.reload();
-                } else {
-                    // Fallback in case redirect doesn't happen as expected
-                    const nextAction = document.getElementById('next_action').value;
-                    if (nextAction) {
-                         window.location.reload();
-                    }
-                }
 
+                // Navigate to the intended destination after profile is saved
+                const nextAction = document.getElementById('next_action').value;
+                const nextRoomId = document.getElementById('next_room_id').value;
+
+                if (nextAction === 'create') {
+                    window.location.href = 'setup.php';
+                } else if (nextAction === 'join' && nextRoomId) {
+                    window.location.href = `game.php?room_id=${nextRoomId}`;
+                } else {
+                    window.location.reload();
+                }
             } catch (e) {
                 alert('Error setting username.');
             }
@@ -581,9 +558,9 @@ foreach ($userActiveRooms as $activeRoom) {
             <div class="relative w-full rounded-xl overflow-hidden border border-gray-800 shadow-lg">
                 <div style="padding-top:56.25%"></div>
                 <?php if ($introType === 'video'): ?>
-                    <video src="<?php echo htmlspecialchars($introUrl); ?>" autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+                    <video src="<?php echo htmlspecialchars($introUrl); ?>?v=<?php echo file_exists($introUrl) ? filemtime($introUrl) : time(); ?>" autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>
                 <?php else: ?>
-                    <img src="<?php echo htmlspecialchars($introUrl); ?>" alt="<?php echo htmlspecialchars($gameTitle); ?>" class="absolute inset-0 w-full h-full object-cover" onerror="this.style.display='none'">
+                    <img src="<?php echo htmlspecialchars($introUrl); ?>?v=<?php echo file_exists($introUrl) ? filemtime($introUrl) : time(); ?>" alt="<?php echo htmlspecialchars($gameTitle); ?>" class="absolute inset-0 w-full h-full object-cover" onerror="this.style.display='none'">
                 <?php endif; ?>
             </div>
         </div>
@@ -618,15 +595,28 @@ foreach ($userActiveRooms as $activeRoom) {
                                 <?php
                                 $cfg = $room['config'] ?? [];
                                 $allowMid = $cfg['allow_join_mid_game'] ?? true;
-                                $voiceChat = !empty($cfg['voice_chat']);
-                                $voiceHost = !empty($cfg['enable_tts']) || !empty($cfg['audio_host']);
+                                $playerCount = count($room['players']);
+                                $voiceHost = !empty($cfg['enable_tts']);
+                                $aiHost = !empty($cfg['use_ai_host']);
                                 $fullNow = ($room['state'] === 'playing' && !$allowMid);
                                 ?>
-                                <span class="bg-gray-800 px-2 py-1 rounded border border-gray-700"><i class="fas fa-users mr-1 text-gray-300"></i> <?php echo count($room['players']); ?> Players</span>
-                                <span class="<?php echo ($room['state'] === 'playing') ? 'text-green-400 border-green-900 bg-green-900/20' : 'text-yellow-400 border-yellow-900 bg-yellow-900/20'; ?> font-bold uppercase text-[10px] tracking-wider border px-2 py-1 rounded">
-                                    <i class="fas fa-circle text-[6px] mr-1 align-middle"></i> <?php echo $room['state']; ?>
-                                </span>
-                                <?php if ($voiceHost): ?>
+                                <span class="bg-gray-800 px-2 py-1 rounded border border-gray-700"><i class="fas fa-users mr-1 text-gray-300"></i> <?php echo $playerCount; ?> Players</span>
+                                
+                                <?php if ($playerCount < 3): ?>
+                                    <span class="text-yellow-400 border-yellow-900 bg-yellow-900/20 font-bold uppercase text-[10px] tracking-wider border px-2 py-1 rounded">
+                                        <i class="fas fa-clock text-[8px] mr-1 align-middle"></i> Waiting on Players
+                                    </span>
+                                <?php else: ?>
+                                    <span class="<?php echo ($room['state'] === 'playing') ? 'text-green-400 border-green-900 bg-green-900/20' : 'text-yellow-400 border-yellow-900 bg-yellow-900/20'; ?> font-bold uppercase text-[10px] tracking-wider border px-2 py-1 rounded">
+                                        <i class="fas fa-circle text-[6px] mr-1 align-middle"></i> <?php echo $room['state']; ?>
+                                    </span>
+                                <?php endif; ?>
+
+                                <?php if ($aiHost && $voiceHost): ?>
+                                    <span class="text-purple-300 border-purple-900 bg-purple-900/20 font-bold uppercase text-[10px] tracking-wider border px-2 py-1 rounded">
+                                        <i class="fas fa-robot mr-1"></i> AI Voice Hosted
+                                    </span>
+                                <?php elseif ($voiceHost): ?>
                                     <span class="text-orange-300 border-orange-900 bg-orange-900/20 font-bold uppercase text-[10px] tracking-wider border px-2 py-1 rounded">
                                         <i class="fas fa-bullhorn mr-1"></i> Voice Hosted
                                     </span>

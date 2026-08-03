@@ -1,9 +1,11 @@
 <?php
 
 /**
- * Version: 4.9 - Disallow Google TTS key fallback for Gemini AI calls
+ * Version: 4.9.1 - Fix tie-breaker announcement loop
  * Changes:
- *   - Upgraded version number to 4.9.
+ *   - Fixed a bug where a tie within a tie-breaker would not be announced, making the game appear stuck.
+ *   - Refactored TTS tie announcement logic to use round_start_time, ensuring announcements on consecutive ties.
+ * Previously (4.9): Disallow Google TTS key fallback for Gemini AI calls
  * Previously (4.8): Add auto-deduplication tool for decks.md
  * Previous (3.08): Fix header collapse layout bounce
  *   - Added min-h-[12px] to #waiting-for element to prevent layout shifting and bouncing when waiting status text updates.
@@ -65,14 +67,27 @@ if ($gameTTSProvider === 'google' && !empty($gameGoogleAPIKey)) {
     $ttsVoiceID = $gameElevenLabsVoiceID;
 } else {
     // Fallback to global settings
-    $ttsProvider = $globalConfig['tts_provider'] ?? 'browser';
-    if ($ttsProvider === 'google') {
-        $ttsAPIKey = $globalConfig['google_tts_api_key'] ?? '';
-        $ttsVoiceID = $globalConfig['tts_voice'] ?? 'female';
-    } elseif ($ttsProvider === 'elevenlabs') {
-        $ttsAPIKey = $globalConfig['elevenlabs_api_key'] ?? '';
+    $globalTTSProvider = $globalConfig['tts_provider'] ?? 'browser';
+    if ($globalTTSProvider === 'google' && !empty($globalConfig['google_tts_api_key'])) {
+        $ttsProvider = 'google';
+        $ttsAPIKey = $globalConfig['google_tts_api_key'];
+        $ttsVoiceID = $globalConfig['google_tts_voice'] ?? 'en-US-Neural2-F';
+    } elseif ($globalTTSProvider === 'elevenlabs' && !empty($globalConfig['elevenlabs_api_key'])) {
+        $ttsProvider = 'elevenlabs';
+        $ttsAPIKey = $globalConfig['elevenlabs_api_key'];
         $ttsVoiceID = $globalConfig['elevenlabs_voice_id'] ?? '21m00Tcm4TlvDq8ikWAM';
     }
+    // If Google TTS key present and no explicit provider set, auto-enable Google TTS
+    if ($ttsProvider === 'browser' && !empty($globalConfig['google_tts_api_key'])) {
+        $ttsProvider = 'google';
+        $ttsVoiceID = $globalConfig['google_tts_voice'] ?? 'en-US-Neural2-F';
+    }
+}
+
+// When OpenAI hosts the room, use its generated voice instead of browser speech.
+if (($roomConfig['ai_provider'] ?? ($globalConfig['ai_provider'] ?? '')) === 'openai'
+    && !empty($globalConfig['openai_api_key'])) {
+    $ttsProvider = 'openai';
 }
 
 $voiceGender = $globalConfig['tts_voice'] ?? ($globalConfig['voice_gender'] ?? 'female');
@@ -129,39 +144,31 @@ if (file_exists($voiceScriptsFile)) {
             z-index: 1;
         }
 
-        /* Fan Layout - positioned up with room for selected cards to rise (mobile & tablet) */
+        /* Wrapped Layout for Mobile/Tablet - replacing the fan layout */
         .fan-container {
             display: flex;
+            flex-wrap: wrap;
             justify-content: center;
-            align-items: flex-end;
-            height: 100%;
-            padding-bottom: 65px;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            padding-bottom: 24px;
             width: 100%;
-            overflow-x: auto;
-            overflow-y: visible;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         .fan-card-wrapper {
-            margin-left: -10vw;
-            position: relative;
+            margin-left: 0 !important;
             flex-shrink: 0;
-        }
-
-        .fan-card-wrapper:first-child {
-            margin-left: 0;
+            width: auto;
+            transform: none !important;
         }
 
         @media (min-width: 640px) {
             .game-card {
                 width: 100px;
-            }
-
-            .fan-card-wrapper {
-                margin-left: -55px;
-            }
-
-            .fan-container {
-                padding-bottom: 65px;
             }
         }
 
@@ -222,13 +229,13 @@ if (file_exists($voiceScriptsFile)) {
             }
         }
 
-        /* Selected Card - Raise dramatically above others */
+        /* Selected Card - Highlight and pop up slightly */
         .game-card.selected {
             position: relative !important;
-            transform: scale(1.08) rotate(0deg) translateY(-45px) !important;
-            z-index: 9999 !important;
-            border: 2px solid #f97316;
-            box-shadow: 0 15px 30px rgba(249, 115, 22, 0.5), 0 5px 15px rgba(0, 0, 0, 0.3);
+            transform: scale(1.05) !important;
+            z-index: 10 !important;
+            border: 2.5px solid #f97316 !important;
+            box-shadow: 0 0 12px rgba(249, 115, 22, 0.6), 0 4px 6px rgba(0, 0, 0, 0.2);
         }
 
         /* Computer Player Icon */
@@ -248,6 +255,33 @@ if (file_exists($voiceScriptsFile)) {
 
         #vote-modal, #round-end, #game-over, #profile-modal, #settings-modal {
             z-index: 100000 !important;
+        }
+
+        /* Lobby/Waiting room layout styles to allow full page scrolling instead of scroll in window */
+        body.lobby-layout {
+            height: auto !important;
+            min-height: 100vh;
+            overflow-y: auto !important;
+        }
+        body.lobby-layout main {
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+        }
+        body.lobby-layout #lobby-wrapper {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            flex: none !important;
+        }
+        body.lobby-layout #lobby-container {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            flex: none !important;
+            padding-bottom: 24px !important;
         }
     </style>
 </head>
@@ -275,55 +309,43 @@ if (file_exists($voiceScriptsFile)) {
         </div>
     </div>
 
-    <!-- TOP CONTROL BAR (Home & commands on left; Round & Players on right) -->
+    <!-- TOP CONTROL BAR (5 Main Actions + Round/Players/AI Assist) -->
     <div class="bg-[#141517] border-b border-gray-800 sticky top-0 z-[60] shadow-md flex-none min-h-14">
         <div class="max-w-4xl mx-auto px-4 py-2 flex justify-between items-center">
             <div class="flex items-center gap-3 text-gray-200 text-base sm:text-lg">
-                <!-- Lobby Home (first) -->
-                <a href="index.php" class="hover:text-white transition-colors p-1" title="Lobby">
+                <!-- 1. Home (goes to lobby) -->
+                <a href="index.php" class="hover:text-white transition-colors p-1" title="Lobby (Home)">
                     <i class="fas fa-home"></i>
                 </a>
 
-                <!-- Exit to Root -->
-                <a href="/" class="hover:text-red-500 transition-colors p-1" title="Exit to Website">
-                    <i class="fas fa-door-open"></i>
-                </a>
-
-                <!-- Leave -->
-                <button id="btn-leave" onclick="leaveGame()" class="hover:text-red-500 transition-colors p-1" title="Leave Game">
-                    <i class="fas fa-sign-out-alt"></i>
-                </button>
-
-                <!-- Profile -->
-                <button id="btn-profile" onclick="toggleProfile(true)" class="hover:text-white transition-colors p-1" title="Edit Profile">
-                    <i class="fas fa-user"></i>
-                </button>
-
-                <!-- AFK -->
-                <button id="btn-afk" onclick="toggleAFK()" class="hover:text-orange-400 transition-colors p-1 text-xs font-bold uppercase" title="Mark AFK">
-                    <i class="fas fa-coffee"></i>
-                </button>
-
-                <!-- Mute -->
-                <button id="btn-mute" onclick="toggleMute()" class="hover:text-yellow-400 transition-colors p-1" title="Toggle Mute">
-                    <i class="fas fa-volume-up"></i>
-                </button>
-
-
-                <!-- Pause (Host Only) -->
-                <button id="btn-pause" onclick="togglePause()" class="hidden hover:text-white transition-colors p-1" title="Pause / Resume">
+                <!-- 2. Pause -->
+                <button id="btn-pause" onclick="togglePause()" class="hover:text-white transition-colors p-1" title="Pause / Resume Game">
                     <i class="fas fa-pause"></i>
                 </button>
 
-                <!-- Settings (Host Only) -->
-                <button id="btn-settings" onclick="toggleSettings(true)" class="hidden hover:text-white transition-colors p-1" title="Host Settings">
-                    <i class="fas fa-cog"></i>
+                <!-- 3. AFK -->
+                <button id="btn-afk" onclick="toggleAFK()" class="hover:text-orange-400 transition-colors p-1" title="Mark AFK">
+                    <i class="fas fa-coffee"></i>
+                </button>
+
+                <!-- 4. Reset / Re-speak Last Phrase -->
+                <button id="btn-respeak" onclick="respeakLastPhrase()" class="hover:text-emerald-400 transition-colors p-1 text-xs font-bold" title="Re-speak Last Phrase">
+                    <i class="fas fa-redo"></i>
+                </button>
+
+                <!-- 5. Mute -->
+                <button id="btn-mute" onclick="toggleMute()" class="hover:text-yellow-400 transition-colors p-1" title="Toggle Mute">
+                    <i class="fas fa-volume-up"></i>
                 </button>
             </div>
 
-            <div class="text-[10px] sm:text-xs text-gray-300 font-bold uppercase tracking-wider">
+            <!-- Right: Round info, Players count & AI Assist Badge -->
+            <div class="flex items-center gap-3 text-[10px] sm:text-xs text-gray-300 font-bold uppercase tracking-wider">
+                <span id="ai-assist-badge" class="hidden text-purple-300 bg-purple-900/40 border border-purple-700/60 px-2 py-0.5 rounded flex items-center gap-1">
+                    <i class="fas fa-brain text-[10px]"></i> AI Assist
+                </span>
                 <span id="round-indicator">Round 1</span>
-                <span class="text-gray-200">•</span>
+                <span class="text-gray-600">•</span>
                 <span id="player-count">0 players</span>
             </div>
         </div>
@@ -344,15 +366,6 @@ if (file_exists($voiceScriptsFile)) {
         <div id="cards-container" class="fan-container"></div>
     </div>
 
-    <!-- ACTION BUTTON BAR -->
-    <div class="w-full max-w-4xl mx-auto px-4">
-        <div class="flex justify-end items-center py-1 gap-2">
-            <button id="action-btn" onclick="performAction()" disabled
-                class="bg-orange-500 text-white font-bold py-2 px-4 rounded-lg shadow-lg opacity-50 transition-all duration-300 uppercase tracking-wider text-xs border border-white/20 disabled:opacity-30 disabled:cursor-not-allowed">
-                Play Card
-            </button>
-        </div>
-    </div>
     <div class="w-full max-w-4xl mx-auto">
         <div class="px-4 py-2 flex-none z-10 w-full flex items-start min-h-[190px] sm:min-h-[230px] h-auto relative safe-bottom-offset pb-4">
             <div class="flex-none justify-start pr-2">
@@ -363,7 +376,7 @@ if (file_exists($voiceScriptsFile)) {
             </div>
 
             <!-- IN-GAME CHAT (beside black card, same height) -->
-            <div id="chat-wrapper" class="flex-1 min-w-0 flex justify-end pl-2">
+            <div id="chat-wrapper" class="flex-1 min-w-0 flex flex-col justify-end pl-2">
                 <div id="game-chat" class="hidden flex flex-col w-full bg-gray-900/80 rounded-lg border border-gray-700 p-2 shadow-lg fixed-height">
                     <div id="auto-alert" class="hidden bg-blue-600 text-white text-center text-xs font-bold uppercase tracking-wider py-1 z-30 -mx-2 -mt-2 mb-1"></div>
                     <div class="text-[9px] text-gray-300 font-bold uppercase tracking-wider min-h-[12px] mb-1" id="waiting-for"></div>
@@ -381,6 +394,12 @@ if (file_exists($voiceScriptsFile)) {
                             <button id="chat-save-html-play" class="text-[10px] sm:text-xs bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded px-2 py-1 text-white" onclick="saveHTMLLog(false)" title="Download HTML log (gameplay only)"><i class="fas fa-file-code"></i></button>
                         </div>
                     </div>
+                </div>
+                <div class="w-full flex justify-end items-center pt-2">
+                    <button id="action-btn" onclick="performAction()" disabled
+                        class="bg-orange-500 hover:bg-orange-400 text-white font-bold py-2 px-5 rounded-lg shadow-lg opacity-50 transition-all duration-300 uppercase tracking-wider text-xs border border-white/20 disabled:opacity-30 disabled:cursor-not-allowed">
+                        Play Card
+                    </button>
                 </div>
             </div>
         </div>
@@ -419,22 +438,16 @@ if (file_exists($voiceScriptsFile)) {
                     <div id="go-unanimous" class="space-y-2 text-left text-[11px]"></div>
                 </div>
 
-                <!-- BLOG POST PUBLISHING & PREVIEW -->
+                <!-- BLOG POST PUBLISHING -->
                 <div class="mt-4 bg-gray-800/40 rounded-lg p-3 border border-gray-700 text-left mb-4">
                     <div class="text-xs text-gray-200 uppercase tracking-wider mb-2 font-bold flex justify-between items-center">
                         <span><i class="fas fa-blog mr-1 text-orange-400"></i> Blog Post Integration</span>
-                        <button onclick="toggleBlogPreview()" class="text-orange-400 hover:underline text-[10px] uppercase font-bold">Toggle Preview</button>
-                    </div>
-                    <div id="blog-preview-container" class="hidden mb-3">
-                        <textarea id="blog-html-code" readonly class="w-full h-24 bg-black/50 border border-gray-700 text-gray-300 rounded p-1.5 text-[10px] font-mono mb-2" onclick="this.select()"></textarea>
-                        <div class="flex gap-2">
-                            <button onclick="copyHTMLPost()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1 px-3 rounded flex items-center gap-1">
-                                <i class="far fa-copy"></i> Copy HTML
-                            </button>
-                            <span id="copy-status" class="text-[10px] text-green-400 mt-1 hidden font-bold">Copied!</span>
-                        </div>
                     </div>
                     <div class="flex gap-2 items-center flex-wrap">
+                        <button onclick="copyHTMLPost()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1">
+                            <i class="far fa-copy"></i> Copy HTML Summary
+                        </button>
+                        <span id="copy-status" class="text-[10px] text-green-400 font-bold hidden">Copied!</span>
                         <button id="wp-publish-btn" onclick="publishToWP()" class="bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold py-1.5 px-3 rounded flex items-center gap-1 hidden">
                             <i class="fab fa-wordpress"></i> Publish as Post to Netbound
                         </button>
@@ -445,14 +458,17 @@ if (file_exists($voiceScriptsFile)) {
                 <audio id="win-audio"></audio>
                 <audio id="beep-audio" src="beep.mp3"></audio>
                 <div class="flex gap-2 justify-center flex-wrap">
-                    <button onclick="downloadBlogPost()" class="bg-green-700 hover:bg-green-600 text-white font-bold px-4 py-2 rounded text-sm">
-                        <i class="fas fa-file-download mr-1"></i>Download Blog Post
-                    </button>
-                    <button id="play-again-btn" onclick="playAgain()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded hidden">
+                    <button id="play-again-btn" onclick="playAgain()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded text-sm">
                         <i class="fas fa-redo mr-1"></i>Play Again
                     </button>
-                    <a href="index.php" class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-4 py-2 rounded">Lobby</a>
-                    <a href="setup.php" class="bg-orange-600 hover:bg-orange-500 text-white font-bold px-4 py-2 rounded">New Game</a>
+                    <button onclick="returnToWaitingRoom()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded text-sm">
+                        <i class="fas fa-users mr-1"></i>Waiting Room
+                    </button>
+                    <button onclick="downloadBlogPost()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold px-4 py-2 rounded text-sm">
+                        <i class="fas fa-file-download mr-1"></i>Download Recap
+                    </button>
+                    <a href="setup.php" class="bg-orange-600 hover:bg-orange-500 text-white font-bold px-4 py-2 rounded text-sm">Setup New Game</a>
+                    <a href="index.php" class="bg-gray-800 hover:bg-gray-700 text-white font-bold px-4 py-2 rounded text-sm">Main Lobby</a>
                 </div>
             </div>
         </div>
@@ -484,56 +500,6 @@ if (file_exists($voiceScriptsFile)) {
                 <div id="vote-black-card-container" class="bg-black text-white p-3 rounded-lg border border-gray-700 text-sm font-bold shadow-inner my-1"></div>
                 <div id="vote-grid" class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto pr-1"></div>
                 <button id="vote-submit" onclick="performAction(); this.setAttribute('data-voted', 'true'); updateVoteSubmit();" class="bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg uppercase tracking-wider disabled:opacity-40 disabled:cursor-not-allowed">Submit Vote</button>
-            </div>
-        </div>
-
-        <!-- PROFILE MODAL -->
-        <div id="profile-modal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-            <div class="bg-[#25262b] border border-gray-700 rounded-xl w-full max-w-md p-5 shadow-2xl">
-                <div class="text-lg font-bold text-white mb-3">Your Profile</div>
-                <form onsubmit="return saveProfile(event)">
-                    <label class="text-xs text-gray-200 uppercase font-bold">Name</label>
-                    <div class="flex gap-2 mb-3">
-                        <input id="pf-name" class="flex-1 bg-gray-800 border border-gray-700 rounded p-2 text-white" value="<?php echo htmlspecialchars($_SESSION['user_name'] ?? ''); ?>">
-                        <button type="button" onclick="randomName()" class="bg-gray-700 hover:bg-gray-600 text-white px-3 rounded border border-gray-600" title="Random Name">
-                            <i class="fas fa-dice"></i>
-                        </button>
-                    </div>
-
-                    <input type="hidden" id="pf-avatar-type" value="<?php echo htmlspecialchars($_SESSION['user_avatar_type'] ?? 'dicebear'); ?>">
-                    <input type="hidden" id="pf-avatar-val" value="<?php echo htmlspecialchars($_SESSION['user_avatar_val'] ?? ''); ?>">
-
-                    <label class="text-xs text-gray-200 uppercase font-bold mb-1 block">Avatar</label>
-                    <div class="grid grid-cols-4 gap-2 mb-3">
-                        <button type="button" class="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white hover:bg-gray-700" onclick="setAvatar('dicebear')">DiceBear</button>
-                        <button type="button" class="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white hover:bg-gray-700" onclick="setAvatar('gen_m')">Gen M</button>
-                        <button type="button" class="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white hover:bg-gray-700" onclick="setAvatar('gen_f')">Gen F</button>
-                        <button type="button" class="bg-gray-800 border border-gray-700 rounded p-2 text-xs text-white hover:bg-gray-700" onclick="randomAvatar()" title="Random Image">
-                            <i class="fas fa-random"></i>
-                        </button>
-                    </div>
-
-                    <label class="flex items-center text-xs text-gray-200 uppercase font-bold mb-4 cursor-pointer">
-                        <input type="checkbox" id="pf-tts-voice" class="w-4 h-4 accent-orange-500 rounded mr-2">
-                        Enable Game Voice (TTS)
-                    </label>
-
-                    <div class="flex justify-end gap-2 mt-4">
-                        <button type="button" onclick="toggleProfile(false)" class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded text-white">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded text-white font-bold">Save</button>
-                    </div>
-                </form>
-
-                <!-- Profile Preview -->
-                <div class="mt-4 border-t border-gray-700 pt-4">
-                    <p class="text-xs text-gray-200 uppercase font-bold mb-2">Preview</p>
-                    <div class="flex items-center justify-center">
-                        <div class="w-20 h-20 rounded-full bg-gray-700 overflow-hidden flex items-center justify-center border-2 border-orange-500">
-                            <img id="pf-avatar-preview" src="" class="w-full h-full object-cover">
-                        </div>
-                    </div>
-                    <p class="text-center text-sm font-bold text-white mt-2" id="pf-name-preview">Your Name</p>
-                </div>
             </div>
         </div>
 
@@ -893,8 +859,7 @@ if (file_exists($voiceScriptsFile)) {
         let ttsLastState = null;
         let ttsLastRound = 0;
         let ttsVotedRead = false;
-        let ttsTieAnnounced = false;
-        let ttsWasInTieBreaker = false;
+		let ttsLastTieAnnounceTime = 0;
         let ttsLastTimerWarning = 0; // Round number when last timer warning was given
         let ttsLastAfkWarning = null; // Name of player last warned about
         let ttsLastBotMockRound = 0; // Round number when last bot mocking occurred
@@ -924,6 +889,7 @@ if (file_exists($voiceScriptsFile)) {
         if (window.speechSynthesis) {
             window.speechSynthesis.onvoiceschanged = () => {
                 ttsVoices = window.speechSynthesis.getVoices();
+                populateVoicesDropdown();
             };
         }
 
@@ -943,16 +909,6 @@ if (file_exists($voiceScriptsFile)) {
                 // Switch back to fan mode
                 container.classList.remove('grid-mode');
                 isGridMode = false;
-                // Re-apply fan transforms to cards
-                const wrappers = container.querySelectorAll('.fan-card-wrapper');
-                const total = wrappers.length;
-                const center = (total - 1) / 2;
-                wrappers.forEach((wrap, i) => {
-                    const rot = (i - center) * 5;
-                    const y = Math.abs(i - center) * 3;
-                    const card = wrap.querySelector('.game-card');
-                    if (card) card.style.transform = `rotate(${rot}deg) translateY(${y}px)`;
-                });
             }
         }
 
@@ -1104,7 +1060,16 @@ if (file_exists($voiceScriptsFile)) {
             return [trimmed];
         }
 
+        let lastSpokenText = null;
+
+        function respeakLastPhrase() {
+            if (lastSpokenText) {
+                speak(lastSpokenText);
+            }
+        }
+
         async function speak(text) {
+            if (text) lastSpokenText = text;
             if (!ENABLE_TTS || isMuted) return;
             if (GAME_STATE && GAME_STATE.config && GAME_STATE.config.enable_tts === false) return;
 
@@ -1159,6 +1124,30 @@ if (file_exists($voiceScriptsFile)) {
             console.log("TTS Decomposed pieces to play:", pieces);
 
             if (pieces.length === 0) return;
+
+            if (TTS_PROVIDER === 'openai') {
+                const spokenText = pieces.map(piece => cleanForTTS(String(piece))).filter(Boolean).join('. ');
+                if (spokenText) await playOpenAITTS(spokenText, myRequestId);
+                return;
+            }
+
+            if (TTS_PROVIDER === 'elevenlabs') {
+                const spokenText = pieces.map(piece => cleanForTTS(String(piece))).filter(Boolean).join('. ');
+                if (spokenText) {
+                    const ok = await playElevenLabsTTS(spokenText, myRequestId);
+                    if (ok) return;
+                    // fallthrough to browser if ElevenLabs TTS fails
+                }
+            }
+
+            if (TTS_PROVIDER === 'google') {
+                const spokenText = pieces.map(piece => cleanForTTS(String(piece))).filter(Boolean).join('. ');
+                if (spokenText) {
+                    const ok = await playGoogleTTS(spokenText, myRequestId);
+                    if (ok) return;
+                    // fallthrough to browser if Google TTS fails
+                }
+            }
 
             await playSpeechSequence(pieces, gender, myRequestId);
         }
@@ -1241,6 +1230,59 @@ if (file_exists($voiceScriptsFile)) {
             return fetch('api.php', { method: 'POST', body: fd }).then(r => r.json());
         }
 
+        async function playOpenAITTS(text, requestId) {
+            try {
+                const data = await fetchTTSFromAPI(text);
+                if (requestId !== ttsRequestId || !data.success || !data.audio) return false;
+                const source = `data:${data.mime || 'audio/mpeg'};base64,${data.audio}`;
+                await playAudioSourceSync(source, requestId);
+                return true;
+            } catch (error) {
+                console.warn('OpenAI voice failed.', error);
+                return false;
+            }
+        }
+
+        async function playGoogleTTS(text, requestId) {
+            try {
+                const fd = new FormData();
+                fd.append('action', 'get_tts_google');
+                fd.append('text', text);
+                const data = await fetch('api.php', { method: 'POST', body: fd }).then(r => r.json());
+                if (requestId !== ttsRequestId) return false;
+                if (!data.success || !data.audio) {
+                    console.warn('Google TTS failed:', data.error);
+                    return false;
+                }
+                const source = `data:${data.mime || 'audio/mpeg'};base64,${data.audio}`;
+                await playAudioSourceSync(source, requestId);
+                return true;
+            } catch (error) {
+                console.warn('Google Neural2 TTS failed.', error);
+                return false;
+            }
+        }
+
+        async function playElevenLabsTTS(text, requestId) {
+            try {
+                const fd = new FormData();
+                fd.append('action', 'get_tts_elevenlabs');
+                fd.append('text', text);
+                const data = await fetch('api.php', { method: 'POST', body: fd }).then(r => r.json());
+                if (requestId !== ttsRequestId) return false;
+                if (!data.success || !data.audio) {
+                    console.warn('ElevenLabs TTS failed:', data.error);
+                    return false;
+                }
+                const source = `data:${data.mime || 'audio/mpeg'};base64,${data.audio}`;
+                await playAudioSourceSync(source, requestId);
+                return true;
+            } catch (error) {
+                console.warn('ElevenLabs TTS failed.', error);
+                return false;
+            }
+        }
+
         // Handled by speak() sequence logic
 
         function cleanForTTS(text) {
@@ -1270,19 +1312,28 @@ if (file_exists($voiceScriptsFile)) {
 
                 if (ttsVoices.length === 0) ttsVoices = window.speechSynthesis.getVoices();
 
-                // Choose a high-quality female English voice if available, or fallback
-                let chosen = ttsVoices.find(v => (v.name.includes('Google US English') || v.name.includes('Google UK English')) && v.name.toLowerCase().includes('female'))
-                             || ttsVoices.find(v => v.name.includes('Google US English') || v.name.includes('Google UK English'))
-                             || ttsVoices.find(v => v.lang && v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
-                             || ttsVoices.find(v => v.lang && v.lang.startsWith('en'))
-                             || ttsVoices[0] || null;
+                const savedVoiceName = (typeof roomConfig !== 'undefined' && roomConfig && roomConfig.game_chrome_voice)
+                    ? roomConfig.game_chrome_voice
+                    : localStorage.getItem('game_tts_voice_name');
+                let chosen = null;
+                if (savedVoiceName) {
+                    chosen = ttsVoices.find(v => v.name === savedVoiceName);
+                }
+
+                if (!chosen) {
+                    // Choose a high-quality female English voice if available, or fallback
+                    chosen = ttsVoices.find(v => (v.name.includes('Google US English') || v.name.includes('Google UK English')) && v.name.toLowerCase().includes('female'))
+                                 || ttsVoices.find(v => v.name.includes('Google US English') || v.name.includes('Google UK English'))
+                                 || ttsVoices.find(v => v.lang && v.lang.startsWith('en') && v.name.toLowerCase().includes('female'))
+                                 || ttsVoices.find(v => v.lang && v.lang.startsWith('en'))
+                                 || ttsVoices[0] || null;
+                }
 
                 const ut = new SpeechSynthesisUtterance(cleanForTTS(text));
                 if (chosen) ut.voice = chosen;
                 
-                const isRobot = (TTS_PROVIDER === 'browser');
-                ut.pitch = isRobot ? 0.5 : 0.9;
-                ut.rate = isRobot ? 1.1 : 1.0;
+                ut.pitch = 1.0;
+                ut.rate = 1.0;
 
                 ut.onend = () => {
                     resolve();
@@ -1523,9 +1574,9 @@ if (file_exists($voiceScriptsFile)) {
 
                         if (ENABLE_TTS && !isMuted) {
                             if (m.audio_url) {
-                                setTimeout(() => playAudioSourceSync(m.audio_url, ++ttsRequestId), 300);
+                                setTimeout(() => playAudioSourceSync(m.audio_url, ++ttsRequestId), 0);
                             } else {
-                                setTimeout(() => speak(m.msg), 300);
+                                setTimeout(() => speak(m.msg), 0);
                             }
                         }
                     } else if (isSystem) {
@@ -1688,20 +1739,11 @@ if (file_exists($voiceScriptsFile)) {
             }
 
             // 2b. Tie Breaker announcement
-            if (data.state === 'voting') {
-                if (data.is_tie_breaker && !ttsTieAnnounced) {
-                    // Check if this is another tie (we were already in tie-breaker)
+            if (data.state === 'voting' && data.is_tie_breaker) {
+                if ((ttsLastTieAnnounceTime || 0) < (data.round_start_time || 0)) {
                     speak(getPersonalityPhrase('tie'));
-                    ttsTieAnnounced = true;
-                    ttsWasInTieBreaker = true;
+                    ttsLastTieAnnounceTime = data.round_start_time;
                 }
-                if (!data.is_tie_breaker) {
-                    ttsTieAnnounced = false;
-                    ttsWasInTieBreaker = false;
-                }
-            } else {
-                ttsTieAnnounced = false;
-                ttsWasInTieBreaker = false;
             }
 
             // 3. Winner
@@ -2113,6 +2155,8 @@ if (file_exists($voiceScriptsFile)) {
             if (scoreboard) {
                 scoreboard.classList.toggle('hidden', data.state === 'lobby');
             }
+            // Toggle body class for lobby-specific page scrolling
+            document.body.classList.toggle('lobby-layout', data.state === 'lobby');
 
             updateChat(data.chat);
             handleTTS(data);
@@ -2497,6 +2541,16 @@ if (file_exists($voiceScriptsFile)) {
             const statusTextEl = document.getElementById('status-text');
             if (statusTextEl) statusTextEl.innerText = statusMsg;
 
+            // AI Assist Badge visibility
+            const aiBadge = document.getElementById('ai-assist-badge');
+            if (aiBadge) {
+                if (data.config && (data.config.use_ai_host || data.config.use_ai_bots)) {
+                    aiBadge.classList.remove('hidden');
+                } else {
+                    aiBadge.classList.add('hidden');
+                }
+            }
+
             // Show/Hide Start Button and Bot Button (only in lobby)
             const startBtn = document.getElementById('start-btn');
             const addBotBtn = document.getElementById('add-bot-btn');
@@ -2630,7 +2684,6 @@ if (file_exists($voiceScriptsFile)) {
                 // Add orange t-shirt icon if user-created card
                 const userIcon = hasUserCard ? '<i class="fas fa-tshirt text-orange-500 text-[8px] absolute bottom-1 right-1"></i>' : '';
                 div.innerHTML = `${positionBadge}<span class="font-bold text-[9px] sm:text-[10px] leading-tight pointer-events-none">${text}</span>${userIcon}`;
-                div.style.transform = `rotate(${rot}deg) translateY(${y}px)`;
 
                 if (!IS_SPECTATOR) {
                     // Use pointerup for instant response (no dblclick delay)
@@ -2736,10 +2789,11 @@ if (file_exists($voiceScriptsFile)) {
                 if (theme.banner_media) {
                     const url = theme.banner_media;
                     const isVideo = /\.(mp4|webm|ogg)$/i.test(url);
+                    const cacheBuster = '?t=' + (GAME_STATE.created || Date.now());
                     if (isVideo) {
-                        mediaEl.innerHTML = `<video src="${url}" class="w-full h-48 sm:h-64 bg-black" controls></video>`;
+                        mediaEl.innerHTML = `<video src="${url}${cacheBuster}" class="w-full h-48 sm:h-64 bg-black" controls></video>`;
                     } else {
-                        mediaEl.innerHTML = `<img src="${url}" alt="Theme Banner" class="w-full h-48 sm:h-64 object-cover" />`;
+                        mediaEl.innerHTML = `<img src="${url}${cacheBuster}" alt="Theme Banner" class="w-full h-48 sm:h-64 object-cover" />`;
                     }
                 } else {
                     mediaEl.innerHTML = '';
@@ -2794,14 +2848,22 @@ if (file_exists($voiceScriptsFile)) {
             }
 
             // Check if player submitted a card (if not, allow voting anyway)
+            const isTie = !!data.is_tie_breaker;
             const submittedCard = (data.table_cards || []).find(entry => entry.player_id === MY_ID);
             if (!submittedCard) {
-                // You missed playing a card but may still participate in voting.
                 const note = document.createElement('div');
                 note.className = 'col-span-full py-2 text-center text-gray-200 italic';
-                note.textContent = 'You missed selecting a card during the play phase — you may still vote for a winning answer.';
+                if (isTie) {
+                    note.textContent = 'Your card was eliminated. Please vote for one of the tied answers.';
+                } else {
+                    note.textContent = 'You missed selecting a card during the play phase — you may still vote for a winning answer.';
+                }
                 grid.appendChild(note);
-                // Do not return; allow player to select from available options and vote.
+            } else if (isTie) {
+                const note = document.createElement('div');
+                note.className = 'col-span-full py-2 text-center text-orange-400 font-semibold italic';
+                note.textContent = 'Your card is in the tie! Good luck!';
+                grid.appendChild(note);
             }
 
             const blackCard = data.current_black_card;
@@ -2811,7 +2873,6 @@ if (file_exists($voiceScriptsFile)) {
             }
 
             const allowSelfVote = !!(data.config && data.config.self_vote);
-            const isTie = !!data.is_tie_breaker;
 
             // Update header text to reflect tie breaker
             const headerWrap = modal.querySelector('.flex.items-center.justify-between');
@@ -3240,7 +3301,33 @@ if (file_exists($voiceScriptsFile)) {
             })
             .catch(err => {
                 console.error(err);
-                alert('Network error trying to restart game.');
+        function returnToWaitingRoom() {
+            const audio = document.getElementById('win-audio');
+            if (audio) {
+                audio.pause();
+                audio.currentTime = 0;
+            }
+
+            const form = new FormData();
+            form.append('action', 'return_to_lobby');
+            form.append('room_id', ROOM_ID);
+
+            fetch('api.php', {
+                method: 'POST',
+                body: form
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('game-over').classList.add('hidden');
+                    poll();
+                } else {
+                    alert(data.error || 'Failed to return to waiting room.');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('Network error trying to return to waiting room.');
             });
         }
 
@@ -3271,133 +3358,6 @@ if (file_exists($voiceScriptsFile)) {
                 o.stop(ctx.currentTime + 0.35);
                 await new Promise(r => setTimeout(r, 350));
             } catch (e) { console.warn('Beep fallback failed', e); }
-        }
-
-        function toggleProfile(show) {
-            document.getElementById('profile-modal').classList.toggle('hidden', !show);
-            if (show) {
-                const voiceCheckbox = document.getElementById('pf-tts-voice');
-                if (voiceCheckbox) {
-                    voiceCheckbox.checked = !isMuted;
-                }
-                updateProfilePreview();
-            }
-        }
-
-        function updateProfilePreview() {
-            const nameEl = document.getElementById('pf-name');
-            const avatarType = document.getElementById('pf-avatar-type')?.value || 'dicebear';
-            const avatarVal = document.getElementById('pf-avatar-val')?.value || 'default';
-            const previewImg = document.getElementById('pf-avatar-preview');
-            const previewName = document.getElementById('pf-name-preview');
-
-            if (previewName) previewName.textContent = nameEl?.value || 'Your Name';
-
-            if (avatarType === 'dicebear') {
-                if (previewImg) previewImg.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(avatarVal)}`;
-            } else if (avatarType === 'gen_m') {
-                if (previewImg) {
-                    previewImg.src = '';
-                    previewImg.parentElement.innerHTML = '<img id="pf-avatar-preview" src="" class="hidden w-full h-full object-cover"><i class="fas fa-user text-blue-400 text-4xl"></i>';
-                }
-            } else if (avatarType === 'gen_f') {
-                if (previewImg) {
-                    previewImg.src = '';
-                    previewImg.parentElement.innerHTML = '<img id="pf-avatar-preview" src="" class="hidden w-full h-full object-cover"><i class="fas fa-user text-pink-400 text-4xl"></i>';
-                }
-            } else if (avatarType === 'upload' && avatarVal) {
-                if (previewImg) previewImg.src = avatarVal;
-            }
-        }
-
-        // Track avatar choice for update_profile
-        let _pendingAvatarType = null;
-        let _pendingAvatarVal = null;
-
-        const RANDOM_NAMES = ['Captain Quirk', 'Sir Laughs-a-Lot', 'Meme Lord', 'Card Shark', 'Joker', 'The Ace', 'Wild Card', 'Giggle Monster', 'Pun Master', 'Sarcasm King', 'Sarcasm Queen', 'Dr. Fun', 'Professor Chaos', 'Lady Luck', 'Baron von Funny'];
-
-        function randomName() {
-            const name = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
-            document.getElementById('pf-name').value = name;
-            updateProfilePreview();
-        }
-
-        function randomAvatar() {
-            _pendingAvatarType = 'dicebear';
-            _pendingAvatarVal = Math.random().toString(36).substring(7);
-            document.getElementById('pf-avatar-type').value = _pendingAvatarType;
-            document.getElementById('pf-avatar-val').value = _pendingAvatarVal;
-            updateProfilePreview();
-        }
-
-        function setAvatar(type) {
-            const name = document.getElementById('pf-name').value.trim() || 'Player';
-            if (type === 'dicebear') {
-                _pendingAvatarType = 'dicebear';
-                // Use name as seed if not random
-                _pendingAvatarVal = name;
-            }
-            if (type === 'gen_m') {
-                _pendingAvatarType = 'gen_m';
-                _pendingAvatarVal = 'm';
-            }
-            if (type === 'gen_f') {
-                _pendingAvatarType = 'gen_f';
-                _pendingAvatarVal = 'f';
-            }
-            document.getElementById('pf-avatar-type').value = _pendingAvatarType;
-            document.getElementById('pf-avatar-val').value = _pendingAvatarVal;
-            updateProfilePreview();
-        }
-
-        async function saveProfile(e) {
-            e.preventDefault();
-            const form = new FormData();
-            form.append('action', 'update_profile');
-            form.append('room_id', ROOM_ID);
-            form.append('player_id', MY_ID);
-            const nm = document.getElementById('pf-name').value.trim();
-            if (nm) form.append('name', nm);
-            if (_pendingAvatarType) form.append('avatar_type', _pendingAvatarType);
-            if (_pendingAvatarVal) form.append('avatar_val', _pendingAvatarVal);
-
-            // Sync voice preference from checkbox
-            const voiceCheckbox = document.getElementById('pf-tts-voice');
-            if (voiceCheckbox) {
-                isMuted = !voiceCheckbox.checked;
-                localStorage.setItem('game_tts_muted', isMuted ? '1' : '0');
-
-                // Sync the header mute button styling and icon
-                const btn = document.getElementById('btn-mute');
-                if (btn) {
-                    if (isMuted) {
-                        btn.classList.remove('hover:text-yellow-400');
-                        btn.classList.add('text-yellow-400');
-                        btn.querySelector('i').className = 'fas fa-volume-mute';
-                    } else {
-                        btn.classList.add('hover:text-yellow-400');
-                        btn.classList.remove('text-yellow-400');
-                        btn.querySelector('i').className = 'fas fa-volume-up';
-                    }
-                }
-            }
-
-            try {
-                const res = await fetch('api.php', {
-                    method: 'POST',
-                    body: form
-                });
-                const data = await res.json();
-                if (data.success) {
-                    toggleProfile(false);
-                    poll();
-                } else {
-                    console.error('Profile save error:', data.error);
-                }
-            } catch (err) {
-                console.error('Profile save failed:', err);
-            }
-            return false;
         }
 
         function toggleSettings(show) {
