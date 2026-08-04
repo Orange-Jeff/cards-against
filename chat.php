@@ -5,6 +5,37 @@
  * Version: 1.0 - Placeholder for future chat and voice setup configuration
  */
 session_start();
+
+$configFile = __DIR__ . '/data/global_config.json';
+$globalConfig = file_exists($configFile) ? (json_decode(file_get_contents($configFile), true) ?: []) : [];
+$themesFile = __DIR__ . '/data/themes.json';
+$themes = file_exists($themesFile) ? (json_decode(file_get_contents($themesFile), true) ?: []) : [];
+$currentThemeKey = $globalConfig['default_theme'] ?? 'default';
+$currentTheme = $themes[$currentThemeKey] ?? ($themes['default'] ?? []);
+$themeKeyword = trim((string)($currentTheme['game_name_suffix'] ?? 'Everyone'));
+if ($themeKeyword === '') {
+    $themeKeyword = 'Everyone';
+}
+$themeLabel = trim((string)($currentTheme['label'] ?? ucfirst($currentThemeKey)));
+if ($themeLabel === '') {
+    $themeLabel = ucfirst($currentThemeKey);
+}
+$appVersion = '4.9';
+$displayUserName = trim((string)($_SESSION['user_name'] ?? 'Guest'));
+if ($displayUserName === '') {
+    $displayUserName = 'Guest';
+}
+$nameParts = preg_split('/\s+/', $displayUserName) ?: [];
+$userInitials = '';
+foreach ($nameParts as $part) {
+    if ($part !== '') {
+        $userInitials .= strtoupper(substr($part, 0, 1));
+        if (strlen($userInitials) >= 2) break;
+    }
+}
+if ($userInitials === '') {
+    $userInitials = strtoupper(substr($displayUserName, 0, 2));
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -21,10 +52,15 @@ session_start();
 <body class="flex flex-col min-h-screen bg-gradient-to-b from-[#1a1b1e] to-[#141517]">
 
     <!-- BRANDING HEADER -->
-    <div class="bg-[#141517] border-b border-gray-800 py-2 text-center">
-        <h1 class="text-xl sm:text-2xl font-black uppercase tracking-[0.2em] text-gray-200">
-            Cards Against <span class="text-orange-500">Everyone</span>
-        </h1>
+    <div class="bg-[#141517] border-b border-gray-800 py-2">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <h1 class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
+                <span class="text-orange-500">CARDS AGAINST</span>
+                <span class="text-gray-200"><?php echo htmlspecialchars($themeKeyword); ?></span>
+                <span class="ml-2 align-middle text-[10px] font-bold tracking-wide text-gray-400">v<?php echo htmlspecialchars($appVersion); ?></span>
+            </h1>
+            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.18em] mt-1">Theme: <?php echo htmlspecialchars($themeLabel); ?></div>
+        </div>
     </div>
 
     <!-- NAV -->
@@ -38,6 +74,10 @@ session_start();
                 <a href="chat.php" class="px-3 py-2 text-sm font-bold text-orange-500 border-b-2 border-orange-500 uppercase tracking-wide">Chat Setup</a>
             </div>
         </div>
+        <a href="index.php?edit_name=1" class="flex items-center gap-2 bg-gray-800/90 border border-gray-700 rounded-lg px-2 py-1.5 hover:border-orange-500/70 transition-colors" title="Change name">
+            <span class="w-6 h-6 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center tracking-wide"><?php echo htmlspecialchars($userInitials); ?></span>
+            <span class="max-w-[96px] truncate text-[11px] sm:text-xs font-bold text-gray-200"><?php echo htmlspecialchars($displayUserName); ?></span>
+        </a>
     </nav>
 
     <!-- MAIN CONTENT -->

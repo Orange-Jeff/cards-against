@@ -28,6 +28,26 @@ $themesFile = __DIR__ . '/data/themes.json';
 $themes = file_exists($themesFile) ? (json_decode(file_get_contents($themesFile), true) ?: []) : [];
 $currentThemeKey = $_SESSION['selected_theme_key'] ?? $globalConfig['default_theme'] ?? 'default';
 $currentTheme = $themes[$currentThemeKey] ?? ($themes['default'] ?? []);
+$currentThemeLabel = trim((string)($currentTheme['label'] ?? ucfirst($currentThemeKey)));
+if ($currentThemeLabel === '') {
+    $currentThemeLabel = ucfirst($currentThemeKey);
+}
+$appVersion = '4.9';
+$displayUserName = trim((string)($_SESSION['user_name'] ?? 'Guest'));
+if ($displayUserName === '') {
+    $displayUserName = 'Guest';
+}
+$nameParts = preg_split('/\s+/', $displayUserName) ?: [];
+$userInitials = '';
+foreach ($nameParts as $part) {
+    if ($part !== '') {
+        $userInitials .= strtoupper(substr($part, 0, 1));
+        if (strlen($userInitials) >= 2) break;
+    }
+}
+if ($userInitials === '') {
+    $userInitials = strtoupper(substr($displayUserName, 0, 2));
+}
 $themeRoomNames = $currentTheme['room_names'] ?? [];
 $themeCharacterNames = $currentTheme['character_names'] ?? [];
 
@@ -108,17 +128,25 @@ if ($availableDecks !== null) {
             <h1 id="game-title" class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
                 <span class="text-gray-200"><?php echo htmlspecialchars($currentTheme['game_name_suffix'] ?? 'Everyone'); ?></span>
+                <span class="ml-2 align-middle text-[10px] font-bold tracking-wide text-gray-400">v<?php echo htmlspecialchars($appVersion); ?></span>
             </h1>
+            <div id="theme-name" class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.18em] mt-1">Theme: <?php echo htmlspecialchars($currentThemeLabel); ?></div>
         </div>
     </div>
 
     <!-- SETUP HEADER (Line 3) - Menu -->
     <nav class="bg-[#141517] border-b border-gray-800 shadow-lg sticky top-0 z-50 flex-none">
         <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
-            <a href="index.php" class="text-sm font-bold text-gray-200 uppercase hover:text-white transition-colors p-1"><i class="fas fa-times mr-1"></i>Cancel</a>
-            <button type="submit" form="setup-form" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg uppercase tracking-widest hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-[1.01] active:scale-[0.99]">
-                <i class="fas fa-save mr-2"></i> Save & Exit
-            </button>
+            <a href="index.php" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg uppercase tracking-widest hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-[1.01] active:scale-[0.99]"><i class="fas fa-sign-out-alt mr-2"></i>Exit</a>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="index.php?edit_name=1" class="flex items-center gap-2 bg-gray-800/90 border border-gray-700 rounded-lg px-2 py-1.5 hover:border-orange-500/70 transition-colors" title="Change name">
+                    <span class="w-6 h-6 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center tracking-wide"><?php echo htmlspecialchars($userInitials); ?></span>
+                    <span class="max-w-[96px] truncate text-[11px] sm:text-xs font-bold text-gray-200"><?php echo htmlspecialchars($displayUserName); ?></span>
+                </a>
+                <button type="submit" form="setup-form" class="bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow-lg uppercase tracking-widest hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-[1.01] active:scale-[0.99]">
+                    <i class="fas fa-play mr-2"></i>PLAY
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -135,9 +163,11 @@ if ($availableDecks !== null) {
             <!-- Theme Selector -->
             <div class="bg-[#25262b] p-6 rounded-xl shadow-xl border border-gray-800">
                 <label class="font-bold text-sm text-gray-200 uppercase mb-2 block"><i class="fas fa-palette mr-1"></i> Theme</label>
-                <select id="theme_selector" onchange="changeTheme()" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all shadow-inner">
-                    <?php foreach ($themes as $key => $t): ?>
+                <div class="relative">
+                    <select id="theme_selector" onchange="changeTheme()" class="w-full bg-gray-800 border border-gray-600 rounded-lg p-3 pr-10 text-white focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-all shadow-inner">
+                        <?php foreach ($themes as $key => $t): ?>
                     <option value="<?php echo htmlspecialchars($key); ?>"
+                        data-label="<?php echo htmlspecialchars($t['label'] ?? ucfirst($key)); ?>"
                         data-suffix="<?php echo htmlspecialchars($t['game_name_suffix'] ?? 'Everyone'); ?>"
                         data-rooms='<?php echo htmlspecialchars(json_encode($t['room_names'] ?? [])); ?>'
                         data-deck="<?php echo htmlspecialchars($t['mandatory_deck'] ?? ''); ?>"
@@ -145,8 +175,10 @@ if ($availableDecks !== null) {
                         <?php echo ($key === $currentThemeKey) ? 'selected' : ''; ?>>
                         <?php echo htmlspecialchars($t['label'] ?? ucfirst($key)); ?>
                     </option>
-                    <?php endforeach; ?>
-                </select>
+                        <?php endforeach; ?>
+                    </select>
+                    <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-300 pointer-events-none"></i>
+                </div>
             </div>
 
             <div class="bg-[#25262b] p-6 rounded-xl shadow-xl border border-gray-800">
@@ -456,7 +488,7 @@ if ($availableDecks !== null) {
                 } else {
                     alert("Error creating room: " + (result.error || 'Unknown error'));
                     btn.disabled = false;
-                    btn.innerHTML = 'Save & Exit';
+                    btn.innerHTML = '<i class="fas fa-play mr-2"></i>PLAY';
                 }
             } catch (err) {
                 console.error(err);
@@ -466,7 +498,7 @@ if ($availableDecks !== null) {
                     alert("Connection failed. Could not create the game.");
                 }
                 btn.disabled = false;
-                btn.innerHTML = 'Save & Exit';
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>PLAY';
             }
         }
 
@@ -476,6 +508,7 @@ if ($availableDecks !== null) {
             const opt = sel.options[sel.selectedIndex];
             const key = sel.value;
             const suffix = opt.dataset.suffix || 'Everyone';
+            const label = opt.dataset.label || key;
             const rooms = JSON.parse(opt.dataset.rooms || '[]');
             const mandatoryDeck = opt.dataset.deck || '';
             const defaultDecks = JSON.parse(opt.dataset.defaultDecks || '[]');
@@ -489,7 +522,8 @@ if ($availableDecks !== null) {
             } catch(e) {}
 
             // Update title
-            document.getElementById('game-title').textContent = 'Cards Against ' + suffix;
+            document.getElementById('game-title').innerHTML = '<span class="text-orange-500">CARDS AGAINST</span> <span class="text-gray-200">' + suffix + '</span>';
+            document.getElementById('theme-name').textContent = 'Theme: ' + label;
 
             // Update room names array for dice button
             window.CURRENT_THEME_ROOMS = rooms;

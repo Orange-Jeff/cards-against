@@ -152,9 +152,30 @@ $themeKeyword = trim((string)($currentTheme['game_name_suffix'] ?? 'Everyone'));
 if ($themeKeyword === '') {
     $themeKeyword = 'Everyone';
 }
+$themeLabel = trim((string)($currentTheme['label'] ?? ucfirst($currentThemeKey)));
+if ($themeLabel === '') {
+    $themeLabel = ucfirst($currentThemeKey);
+}
+$appVersion = '4.9';
+$editNameRequested = (($_GET['edit_name'] ?? '') === '1');
 $defaultCharacterName = '';
 if (!empty($themeCharacterNames)) {
     $defaultCharacterName = $themeCharacterNames[array_rand($themeCharacterNames)];
+}
+$displayUserName = trim((string)($_SESSION['user_name'] ?? $defaultCharacterName));
+if ($displayUserName === '') {
+    $displayUserName = 'Guest';
+}
+$nameParts = preg_split('/\s+/', $displayUserName) ?: [];
+$userInitials = '';
+foreach ($nameParts as $part) {
+    if ($part !== '') {
+        $userInitials .= strtoupper(substr($part, 0, 1));
+        if (strlen($userInitials) >= 2) break;
+    }
+}
+if ($userInitials === '') {
+    $userInitials = strtoupper(substr($displayUserName, 0, 2));
 }
 
 // Config defaults
@@ -330,7 +351,9 @@ foreach ($userActiveRooms as $activeRoom) {
             <h1 class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
                 <span class="text-gray-200"><?php echo htmlspecialchars($themeKeyword); ?></span>
+                <span class="ml-2 align-middle text-[10px] font-bold tracking-wide text-gray-400">v<?php echo htmlspecialchars($appVersion); ?></span>
             </h1>
+            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.18em] mt-1">Theme: <?php echo htmlspecialchars($themeLabel); ?></div>
         </div>
     </div>
 
@@ -366,7 +389,11 @@ foreach ($userActiveRooms as $activeRoom) {
             </div>
 
             <!-- RIGHT: Create a Game Button -->
-            <div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button type="button" onclick="promptForUsername()" class="flex items-center gap-2 bg-gray-800/90 border border-gray-700 rounded-lg px-2 py-1.5 hover:border-orange-500/70 transition-colors" title="Change name">
+                    <span class="w-6 h-6 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center tracking-wide"><?php echo htmlspecialchars($userInitials); ?></span>
+                    <span class="max-w-[110px] truncate text-[11px] sm:text-xs font-bold text-gray-200"><?php echo htmlspecialchars($displayUserName); ?></span>
+                </button>
                 <button onclick="handleGameAction('create')" class="btn-primary px-3 py-1.5 text-xs font-bold uppercase tracking-wider rounded-lg shadow-md hover:shadow-orange-500/20 flex items-center gap-1.5">
                     <i class="fas fa-plus"></i> Create a game
                 </button>
@@ -471,8 +498,13 @@ foreach ($userActiveRooms as $activeRoom) {
     <script>
         const allReservedNames = <?php echo json_encode(array_keys(getReservedNames())); ?>;
         const allPresetNames = <?php echo json_encode(!empty($themeCharacterNames) ? $themeCharacterNames : []); ?>;
+        let isAssigningRandomName = false;
 
         function handleNameInput(input) {
+            if (!isAssigningRandomName) {
+                document.getElementById('name_source').value = 'hand_entered';
+            }
+
             const name = input.value.trim().toLowerCase();
             const passwordField = document.getElementById('password-field-modal');
             const passwordInput = document.getElementById('password-input-modal');
@@ -499,15 +531,18 @@ foreach ($userActiveRooms as $activeRoom) {
             const fallbackNames = ["Captain Chaos", "Baron Von Snark", "Queen Sarcasm", "Duke Disaster", "Sir Puns-a-Lot"];
             const source = allPresetNames.length > 0 ? allPresetNames : fallbackNames;
             const randomName = source[Math.floor(Math.random() * source.length)];
+            isAssigningRandomName = true;
             nameInput.value = randomName;
             document.getElementById('name_source').value = 'random';
             handleNameInput(nameInput);
+            isAssigningRandomName = false;
         }
 
         function promptForUsername(action = '', roomId = '') {
             document.getElementById('username-modal').classList.remove('hidden');
             document.getElementById('next_action').value = action;
             document.getElementById('next_room_id').value = roomId;
+            document.getElementById('name_source').value = 'hand_entered';
             
             // If user has no name set yet, give them a random one to start
             const nameInput = document.getElementById('username-input-modal');
@@ -558,6 +593,10 @@ foreach ($userActiveRooms as $activeRoom) {
             document.getElementById('username-input-modal').addEventListener('input', function() {
                 handleNameInput(this);
             });
+
+            <?php if ($editNameRequested): ?>
+            promptForUsername();
+            <?php endif; ?>
         });
     </script>
 
@@ -583,7 +622,6 @@ foreach ($userActiveRooms as $activeRoom) {
                 <h2 class="text-xl font-bold uppercase text-gray-200 tracking-widest">
                     <i class="fas fa-gamepad mr-2 text-orange-500"></i> Active Games
                 </h2>
-                <p class="text-[10px] text-gray-200 mt-1">v4.9</p>
             </div>
         </div>
 

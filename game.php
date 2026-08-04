@@ -100,6 +100,27 @@ $themeKeyword = trim((string)($currentTheme['game_name_suffix'] ?? 'Everyone'));
 if ($themeKeyword === '') {
     $themeKeyword = 'Everyone';
 }
+$currentThemeLabel = trim((string)($currentTheme['label'] ?? ucfirst($activeTheme)));
+if ($currentThemeLabel === '') {
+    $currentThemeLabel = ucfirst($activeTheme);
+}
+$appVersion = '4.9';
+$displayUserName = trim((string)($_SESSION['user_name'] ?? 'Guest'));
+if ($displayUserName === '') {
+    $displayUserName = 'Guest';
+}
+$nameParts = preg_split('/\s+/', $displayUserName) ?: [];
+$userInitials = '';
+foreach ($nameParts as $part) {
+    if ($part !== '') {
+        $userInitials .= strtoupper(substr($part, 0, 1));
+        if (strlen($userInitials) >= 2) break;
+    }
+}
+if ($userInitials === '') {
+    $userInitials = strtoupper(substr($displayUserName, 0, 2));
+}
+$gameTitle = 'Cards Against ' . $themeKeyword;
 
 // Load customizable voice scripts from JSON
 $voiceScriptsFile = __DIR__ . '/data/voice_scripts.json';
@@ -222,16 +243,13 @@ if (file_exists($voiceScriptsFile)) {
         #game-chat.fixed-height {
             overflow-y: auto !important;
             overflow-x: hidden !important;
-            height: calc(18.4vh * 3.5 / 2.5); /* Match black card aspect ratio height */
-            min-height: 207px;
-            max-height: 322px;
+            height: 100%;
+            min-height: 0;
+            max-height: none;
         }
         @media (min-width: 640px) {
-            /* On wider screens, allow a slightly taller chat */
             #game-chat.fixed-height {
-                height: calc(18.4vh * 3.5 / 2.5);
-                min-height: 230px;
-                max-height: 368px;
+                height: 100%;
             }
         }
 
@@ -300,7 +318,9 @@ if (file_exists($voiceScriptsFile)) {
             <h1 class="text-lg sm:text-2xl font-black uppercase tracking-[0.22em]">
                 <span class="text-orange-500">CARDS AGAINST</span>
                 <span class="text-gray-200"><?php echo htmlspecialchars($themeKeyword); ?></span>
+                <span class="ml-2 align-middle text-[10px] font-bold tracking-wide text-gray-400">v<?php echo htmlspecialchars($appVersion); ?></span>
             </h1>
+            <div class="text-[10px] text-gray-400 font-bold uppercase tracking-[0.18em] mt-1">Theme: <?php echo htmlspecialchars($currentThemeLabel); ?></div>
         </div>
     </div>
 
@@ -346,13 +366,19 @@ if (file_exists($voiceScriptsFile)) {
             </div>
 
             <!-- Right: Round info, Players count & AI Assist Badge -->
-            <div class="flex items-center gap-3 text-[10px] sm:text-xs text-gray-300 font-bold uppercase tracking-wider">
-                <span id="ai-assist-badge" class="hidden text-purple-300 bg-purple-900/40 border border-purple-700/60 px-2 py-0.5 rounded flex items-center gap-1">
-                    <i class="fas fa-brain text-[10px]"></i> AI Assist
-                </span>
-                <span id="round-indicator">Round 1</span>
-                <span class="text-gray-600">•</span>
-                <span id="player-count">0 players</span>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <a href="index.php?edit_name=1" class="flex items-center gap-2 bg-gray-800/90 border border-gray-700 rounded-lg px-2 py-1 hover:border-orange-500/70 transition-colors" title="Change name">
+                    <span class="w-5 h-5 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center tracking-wide"><?php echo htmlspecialchars($userInitials); ?></span>
+                    <span class="max-w-[84px] truncate text-[10px] sm:text-xs font-bold text-gray-200"><?php echo htmlspecialchars($displayUserName); ?></span>
+                </a>
+                <div class="flex items-center gap-3 text-[10px] sm:text-xs text-gray-300 font-bold uppercase tracking-wider">
+                    <span id="ai-assist-badge" class="hidden text-purple-300 bg-purple-900/40 border border-purple-700/60 px-2 py-0.5 rounded flex items-center gap-1">
+                        <i class="fas fa-brain text-[10px]"></i> AI Assist
+                    </span>
+                    <span id="round-indicator">Round 1</span>
+                    <span class="text-gray-600">•</span>
+                    <span id="player-count">0 players</span>
+                </div>
             </div>
         </div>
 
@@ -382,8 +408,8 @@ if (file_exists($voiceScriptsFile)) {
             </div>
 
             <!-- IN-GAME CHAT (beside black card, same height) -->
-            <div id="chat-wrapper" class="flex-1 min-w-0 max-w-[38vh] flex flex-col justify-end pl-2">
-                <div id="game-chat" class="hidden flex flex-col w-full bg-gray-900/80 rounded-lg border border-gray-700 p-2 shadow-lg fixed-height">
+            <div id="chat-wrapper" class="flex-1 min-w-0 self-stretch flex flex-col justify-end pl-2">
+                <div id="game-chat" class="hidden flex flex-col flex-1 min-h-0 w-full bg-gray-900/80 rounded-lg border border-gray-700 p-2 shadow-lg fixed-height">
                     <div id="auto-alert" class="hidden bg-blue-600 text-white text-center text-xs font-bold uppercase tracking-wider py-1 z-30 -mx-2 -mt-2 mb-1"></div>
                     <div class="text-[9px] text-gray-300 font-bold uppercase tracking-wider min-h-[12px] mb-1" id="waiting-for"></div>
                     <div id="chat-messages" class="flex-1 overflow-y-auto text-xs space-y-1 mb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 text-gray-300 font-mono rounded bg-black/50 p-2">
@@ -824,6 +850,8 @@ if (file_exists($voiceScriptsFile)) {
         // VDO functions removed - will be redesigned
 
         const ACTIVE_THEME = "<?php echo addslashes($activeTheme); ?>";
+        const THEME_LABEL = "<?php echo addslashes($currentThemeLabel); ?>";
+        const THEME_KEYWORD = "<?php echo addslashes($themeKeyword); ?>";
         const PLAYER_NICKNAMES = {}; // Cache assigned nicknames
         const VOCAL_NAMES = ["Orange Jeff"];
         const NICKNAMES_TREK = ["Ugly bag of mostly water", "Expendable Redshirt", "Cadet", "Tribble", "Borg drone", "Ferengi"];
@@ -881,6 +909,13 @@ if (file_exists($voiceScriptsFile)) {
         let ttsVoices = [];
         let currentRemoteAudio = null;
         let ttsRequestId = 0;
+        let speechQueue = [];
+        let isProcessingSpeechQueue = false;
+        let ANNOUNCING = false;
+        let pendingGameData = null;
+        let ttsLastRoastRound = 0;
+        let lastWinnerId = null;
+        let winnerStreak = 0;
         let isGridMode = false; // Track current layout mode
         let resizeTimer = null; // Debounce resize events
 
@@ -946,12 +981,93 @@ if (file_exists($voiceScriptsFile)) {
         }
 
         function stopSpeaking() {
+            speechQueue = [];
             if (currentRemoteAudio) {
                 currentRemoteAudio.pause();
                 currentRemoteAudio = null;
             }
             window.speechSynthesis.cancel();
             ttsRequestId++; // Invalidate pending fetches
+            isProcessingSpeechQueue = false;
+        }
+
+        function queueAudioSource(source) {
+            if (!ENABLE_TTS || isMuted || !source) return;
+            if (GAME_STATE && GAME_STATE.config && GAME_STATE.config.enable_tts === false) return;
+            speechQueue.push({ type: 'audio_source', source });
+            processSpeechQueue();
+        }
+
+        async function processSpeechQueue() {
+            if (isProcessingSpeechQueue) return;
+            isProcessingSpeechQueue = true;
+            // Announcing: block UI advancement while host is speaking
+            ANNOUNCING = true;
+            setAnnouncementBlocking(true);
+            const requestId = ttsRequestId;
+
+            while (speechQueue.length > 0) {
+                if (requestId !== ttsRequestId) break;
+                const nextItem = speechQueue.shift();
+                await playSpeechNow(nextItem, requestId);
+            }
+
+            isProcessingSpeechQueue = false;
+            ANNOUNCING = false;
+            setAnnouncementBlocking(false);
+        }
+
+        function setAnnouncementBlocking(state) {
+            // Disable primary action buttons while the host is speaking
+            const continueBtn = document.getElementById('round-continue');
+            const actionBtn = document.getElementById('action-btn');
+            const voteSubmit = document.getElementById('vote-submit');
+            if (continueBtn) {
+                continueBtn.disabled = !!state;
+                continueBtn.classList.toggle('opacity-50', !!state);
+                continueBtn.innerText = state ? 'Host speaking...' : 'Continue';
+            }
+            if (actionBtn) {
+                actionBtn.disabled = !!state || actionBtn.getAttribute('data-voted') === 'true';
+                actionBtn.classList.toggle('opacity-50', !!state);
+            }
+            if (voteSubmit) {
+                voteSubmit.disabled = !!state;
+                voteSubmit.classList.toggle('opacity-50', !!state);
+                voteSubmit.innerText = state ? 'Host speaking...' : 'Submit Vote';
+            }
+
+            // Show a subtle overlay near the host area if desired
+            try {
+                let overlay = document.getElementById('host-speaking-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'host-speaking-overlay';
+                    overlay.style.position = 'fixed';
+                    overlay.style.bottom = '14%';
+                    overlay.style.right = '8px';
+                    overlay.style.background = 'rgba(0,0,0,0.6)';
+                    overlay.style.color = 'white';
+                    overlay.style.padding = '6px 10px';
+                    overlay.style.borderRadius = '8px';
+                    overlay.style.fontSize = '12px';
+                    overlay.style.zIndex = 99999;
+                    overlay.style.display = 'none';
+                    overlay.innerText = 'Host is commenting...';
+                    document.body.appendChild(overlay);
+                }
+                overlay.style.display = state ? 'block' : 'none';
+            } catch (e) {
+                // ignore DOM errors
+            }
+
+            // If we just finished announcing and there is pending game data, apply it now
+            if (!state && pendingGameData) {
+                const pd = pendingGameData;
+                pendingGameData = null;
+                // Slight defer so DOM updates don't collide
+                setTimeout(() => updateUI(pd), 60);
+            }
         }
 
         function decomposeString(str) {
@@ -1087,8 +1203,19 @@ if (file_exists($voiceScriptsFile)) {
             if (!ENABLE_TTS || isMuted) return;
             if (GAME_STATE && GAME_STATE.config && GAME_STATE.config.enable_tts === false) return;
 
-            stopSpeaking();
-            const myRequestId = ++ttsRequestId;
+            speechQueue.push(text);
+            processSpeechQueue();
+        }
+
+        async function playSpeechNow(text, requestId) {
+            if (requestId !== ttsRequestId) return;
+            if (!text) return;
+
+            if (typeof text === 'object' && text.type === 'audio_source' && text.source) {
+                await playAudioSourceSync(text.source, requestId);
+                return;
+            }
+
             const gender = GAME_STATE?.config?.voice_gender || VOICE_GENDER || 'female';
 
             let pieces = [];
@@ -1122,6 +1249,19 @@ if (file_exists($voiceScriptsFile)) {
                             }
                         }
                     }
+
+                        // Optionally roast Orange Jeff (co-creator) once per voting round
+                        (async () => {
+                            try {
+                                const players = data.players || [];
+                                const hasOJ = players.some(p => (p.name || '').toLowerCase().includes('orange') && (p.name || '').toLowerCase().includes('jeff'));
+                                if (hasOJ && (ttsLastRoastRound || 0) < (data.round || 0)) {
+                                    ttsLastRoastRound = data.round || 0;
+                                    await new Promise(r => setTimeout(r, 1200));
+                                    speak(getPersonalityPhrase('roast', { name: 'Orange Jeff' }));
+                                }
+                            } catch (e) {}
+                        })();
                 } else {
                     const decomposed = decomposeString(String(item));
                     decomposed.forEach(p => {
@@ -1141,14 +1281,14 @@ if (file_exists($voiceScriptsFile)) {
 
             if (TTS_PROVIDER === 'openai') {
                 const spokenText = pieces.map(piece => cleanForTTS(String(piece))).filter(Boolean).join('. ');
-                if (spokenText) await playOpenAITTS(spokenText, myRequestId);
+                if (spokenText) await playOpenAITTS(spokenText, requestId);
                 return;
             }
 
             if (TTS_PROVIDER === 'elevenlabs') {
                 const spokenText = pieces.map(piece => cleanForTTS(String(piece))).filter(Boolean).join('. ');
                 if (spokenText) {
-                    const ok = await playElevenLabsTTS(spokenText, myRequestId);
+                    const ok = await playElevenLabsTTS(spokenText, requestId);
                     if (ok) return;
                     // fallthrough to browser if ElevenLabs TTS fails
                 }
@@ -1157,13 +1297,13 @@ if (file_exists($voiceScriptsFile)) {
             if (TTS_PROVIDER === 'google') {
                 const spokenText = pieces.map(piece => cleanForTTS(String(piece))).filter(Boolean).join('. ');
                 if (spokenText) {
-                    const ok = await playGoogleTTS(spokenText, myRequestId);
+                    const ok = await playGoogleTTS(spokenText, requestId);
                     if (ok) return;
                     // fallthrough to browser if Google TTS fails
                 }
             }
 
-            await playSpeechSequence(pieces, gender, myRequestId);
+            await playSpeechSequence(pieces, gender, requestId);
         }
 
         async function playSpeechSequence(pieces, gender, requestId) {
@@ -1204,26 +1344,36 @@ if (file_exists($voiceScriptsFile)) {
                 const audio = new Audio(source);
                 audio.volume = 1.0;
                 currentRemoteAudio = audio;
+                let settled = false;
 
-                audio.onended = () => {
+                const done = () => {
+                    if (settled) return;
+                    settled = true;
                     if (currentRemoteAudio === audio) currentRemoteAudio = null;
                     resolve();
                 };
 
+                audio.onended = () => {
+                    done();
+                };
+
                 audio.onerror = () => {
-                    if (currentRemoteAudio === audio) currentRemoteAudio = null;
-                    resolve(); // Continue anyway
+                    done(); // Continue anyway
+                };
+
+                audio.onpause = () => {
+                    if (requestId !== ttsRequestId) done();
                 };
 
                 audio.play().catch(e => {
                     console.warn('Audio playback failed', e);
-                    resolve();
+                    done();
                 });
 
                 // Safety: check if we were interrupted
                 if (requestId !== ttsRequestId) {
                     audio.pause();
-                    resolve();
+                    done();
                 }
             });
         }
@@ -1318,10 +1468,24 @@ if (file_exists($voiceScriptsFile)) {
                     return;
                 }
 
-                // Stop remote audio if playing
+                // If a remote audio clip is currently playing, wait for it to finish
                 if (currentRemoteAudio) {
-                    currentRemoteAudio.pause();
-                    currentRemoteAudio = null;
+                    try {
+                        const audio = currentRemoteAudio;
+                        // If already ended, continue
+                        if (audio.ended) {
+                            // proceed
+                        } else {
+                            const waiter = () => {
+                                resolve();
+                            };
+                            audio.addEventListener('ended', waiter, { once: true });
+                            audio.addEventListener('error', waiter, { once: true });
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Error waiting for remote audio to finish', e);
+                    }
                 }
 
                 if (ttsVoices.length === 0) ttsVoices = window.speechSynthesis.getVoices();
@@ -1442,12 +1606,14 @@ if (file_exists($voiceScriptsFile)) {
                 new_round: [
                     `New round. ${data.text}.`,
                     `Round ${data.round}. ${data.text}.`,
-                    `${data.text}.`
+                    `${data.text}.`,
+                    `New round in [theme_label]. ${data.text}.`
                 ],
                 voting: [
                     "It's time to vote. Pick the most horrible answer you can find.",
                     "Voting time! Which one of these is the most offensive? Choose that one.",
-                    "The results are in. Pick the absolute worst combination. You know the one."
+                    "The results are in. Pick the absolute worst combination. You know the one.",
+                    "Theme: [theme_label]. Which answer fits this vibe best?"
                 ],
                 tie: [
                     "Great minds think alike. Another tie. Or maybe you're all just equally uninspired.",
@@ -1458,6 +1624,11 @@ if (file_exists($voiceScriptsFile)) {
                     `The winner of this round is ${data.winner}! The winning combo was: ${data.sentence}.`,
                     `Congratulations to ${data.winner}. They won with: ${data.sentence}.`,
                     `${data.winner} takes it! The winning combination was: ${data.sentence}.`
+                ],
+                winner_streak: [
+                    `That's [count] wins in a row for [champ]. Incredible.`,
+                    `[champ] is on a roll — [count] consecutive wins!`,
+                    `Wow. [champ] just won [count] times in a row. Someone stop them.`
                 ],
                 game_over: [
                     `The game has ended with ${data.champ} taking the win. I'm not sure if that is a good thing, or we should all be worried.`,
@@ -1494,6 +1665,11 @@ if (file_exists($voiceScriptsFile)) {
                     "The bots are winning. I thought you humans were supposed to have imaginations. I was wrong.",
                     "If a character wins this, I'm never letting you live it down. You're being beaten by code."
                 ],
+                roast: [
+                    `Hey [name], that play was questionable. Try harder next time.`,
+                    `[name], did you pick that card with your eyes closed? Rookie move.`,
+                    `Ouch, [name]. That was a bold choice — and by bold I mean tragic.`
+                ],
                 paused: [
                     `${data.pauser} has paused the game making us all wait while they go find their dignity.`,
                     `${data.pauser} has paused the game making us all wait while they contemplate their life choices.`,
@@ -1526,9 +1702,12 @@ if (file_exists($voiceScriptsFile)) {
             phrase = phrase.replace(/\[winner\]/gi, data.winner || '');
             phrase = phrase.replace(/\[sentence\]/gi, data.sentence || '');
             phrase = phrase.replace(/\[champ\]/gi, data.champ || '');
+            phrase = phrase.replace(/\[count\]/gi, data.count || '');
             phrase = phrase.replace(/\[name\]/gi, data.name || '');
             phrase = phrase.replace(/\[subbingFor\]/gi, data.subbingFor || '');
             phrase = phrase.replace(/\[pauser\]/gi, data.pauser || '');
+            phrase = phrase.replace(/\[theme_label\]/gi, (typeof THEME_LABEL !== 'undefined' ? THEME_LABEL : ''));
+            phrase = phrase.replace(/\[theme_keyword\]/gi, (typeof THEME_KEYWORD !== 'undefined' ? THEME_KEYWORD : ''));
 
             return phrase;
         }
@@ -1608,7 +1787,7 @@ if (file_exists($voiceScriptsFile)) {
 
                         if (!muted && ENABLE_TTS && !isMuted) {
                             if (m.audio_url) {
-                                setTimeout(() => playAudioSourceSync(m.audio_url, ++ttsRequestId), 0);
+                                setTimeout(() => queueAudioSource(m.audio_url), 0);
                             } else {
                                 setTimeout(() => speak(m.msg), 0);
                             }
@@ -1628,13 +1807,12 @@ if (file_exists($voiceScriptsFile)) {
                                 const playerName = subMatch[2];
                                 setTimeout(() => speak(getPersonalityPhrase('afk_sub', { name: botName, subbingFor: playerName })), 300);
                             } else if (m.type === 'join') {
-                                // Extract name from "Name has joined"
-                                const name = m.msg.split(' has joined')[0];
-                                setTimeout(() => speak(getPersonalityPhrase('join', { name: name })), 300);
+                                // Try to robustly extract a joining name
+                                const nm = (m.msg.match(/^(.+?) (has joined|is here|has joined the game)/i) || [])[1] || m.name || '';
+                                setTimeout(() => speak(getPersonalityPhrase('join', { name: nm.trim() })), 300);
                             } else if (m.type === 'leave') {
-                                // Extract name from "Name has left"
-                                const name = m.msg.split(' has left')[0];
-                                setTimeout(() => speak(getPersonalityPhrase('leave', { name: name })), 300);
+                                const nm = (m.msg.match(/^(.+?) (has left|is gone|has left the game)/i) || [])[1] || m.name || '';
+                                setTimeout(() => speak(getPersonalityPhrase('leave', { name: nm.trim() })), 300);
                             } else {
                                 setTimeout(() => speak(m.msg), 300);
                             }
@@ -1713,8 +1891,28 @@ if (file_exists($voiceScriptsFile)) {
                 selectedCards = []; // Reset selection for new black card
                 // Wait a moment for visual transition
                 const cleanText = data.current_black_card.text.replace(/_+/g, 'blank');
-                // Speak the new round announcement quickly
-                setTimeout(() => speak(getPersonalityPhrase('new_round', { text: cleanText, round: data.round })), 300);
+                // Speak the new round announcement, but wait until all players (including bots)
+                // have cleared the round-end (clicked Continue). Poll GAME_STATE so client
+                // waits for server-driven ready flags instead of interrupting existing audio.
+                (async () => {
+                    const phrase = getPersonalityPhrase('new_round', { text: cleanText, round: data.round });
+                    const start = Date.now();
+                    const maxWait = 15000; // max 15s wait for players to continue
+                    while (true) {
+                        try {
+                            const players = (GAME_STATE && GAME_STATE.players) ? GAME_STATE.players : (data.players || []);
+                            const anyWaiting = players.some(p => !!p.is_waiting || p.status === 'waiting' || p.is_waiting === true);
+                            if (!anyWaiting) break;
+                        } catch (e) {
+                            // ignore and continue
+                        }
+                        if (Date.now() - start > maxWait) break;
+                        await new Promise(r => setTimeout(r, 500));
+                    }
+                    // Slight delay to allow UI settle
+                    await new Promise(r => setTimeout(r, 250));
+                    speak(phrase);
+                })();
 
                 // Bot Mocking if a bot is close to winning
                 const winLimit = parseInt(data.config?.win_limit || '0');
@@ -1762,6 +1960,40 @@ if (file_exists($voiceScriptsFile)) {
                                 await new Promise(r => setTimeout(r, 400)); // Minor bridge delay
                             }
                         }
+                    }
+                })();
+
+                // Analyze table cards for a common word across all entries
+                (async () => {
+                    try {
+                        await new Promise(r => setTimeout(r, 1200)); // Wait until reads complete
+                        const entries = data.table_cards || [];
+                        if (entries.length > 1) {
+                            const normalize = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean).map(w => w.trim());
+                            const allWordSets = entries.map(e => {
+                                const whites = (e.cards || []).map(c => (typeof c === 'object' && c !== null) ? (c.text || '') : String(c || ''));
+                                const words = new Set();
+                                whites.forEach(t => normalize(t).forEach(w => { if (w.length >= 3) words.add(w); }));
+                                return words;
+                            });
+                            // Intersection
+                            const common = [...allWordSets.reduce((acc, s) => {
+                                if (!acc) return new Set(s);
+                                return new Set([...acc].filter(x => s.has(x)));
+                            }, null)];
+                            if (common && common.length > 0) {
+                                // Prefer longer descriptive words
+                                common.sort((a,b) => b.length - a.length);
+                                const word = common[0];
+                                // Small guard: avoid announcing very generic words
+                                const stop = ['the','and','you','for','with','this','that','not','are','was','have'];
+                                if (!stop.includes(word)) {
+                                    speak(`Whoa. Looks like we all picked ${word} jokes.`);
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // ignore
                     }
                 })();
 
@@ -1816,7 +2048,21 @@ if (file_exists($voiceScriptsFile)) {
                             const black = diff.black || '';
                             const whites = diff.white || [];
                             if (!GAME_STATE.config.use_ai_host) {
-                                setTimeout(() => speak({ type: 'winner', winner: diff.winner, black: black, whites: whites }), 300);
+                                // Announce winner and track streaks
+                                const announceWinner = () => {
+                                    speak({ type: 'winner', winner: diff.winner, black: black, whites: whites });
+                                    const winnerId = diff.winner_id || diff.winner;
+                                    if (winnerId && lastWinnerId === winnerId) {
+                                        winnerStreak = (winnerStreak || 1) + 1;
+                                    } else {
+                                        winnerStreak = 1;
+                                        lastWinnerId = winnerId;
+                                    }
+                                    if (winnerStreak > 1) {
+                                        setTimeout(() => speak(getPersonalityPhrase('winner_streak', { champ: getVocalName(diff.winner), count: winnerStreak })), 900);
+                                    }
+                                };
+                                setTimeout(announceWinner, 300);
                             }
                         }
                     }
@@ -1824,7 +2070,20 @@ if (file_exists($voiceScriptsFile)) {
                     const black = diff.black || '';
                     const whites = diff.white || [];
                     if (!GAME_STATE.config.use_ai_host) {
-                        setTimeout(() => speak({ type: 'winner', winner: diff.winner, black: black, whites: whites }), 300);
+                        const announceWinner = () => {
+                            speak({ type: 'winner', winner: diff.winner, black: black, whites: whites });
+                            const winnerId = diff.winner_id || diff.winner;
+                            if (winnerId && lastWinnerId === winnerId) {
+                                winnerStreak = (winnerStreak || 1) + 1;
+                            } else {
+                                winnerStreak = 1;
+                                lastWinnerId = winnerId;
+                            }
+                            if (winnerStreak > 1) {
+                                setTimeout(() => speak(getPersonalityPhrase('winner_streak', { champ: getVocalName(diff.winner), count: winnerStreak })), 900);
+                            }
+                        };
+                        setTimeout(announceWinner, 300);
                     }
                 }
             }
@@ -2187,6 +2446,11 @@ if (file_exists($voiceScriptsFile)) {
         }
 
         function updateUI(data) {
+            // If host is in the middle of announcing, defer UI state transitions
+            if (ANNOUNCING && data && GAME_STATE && data.state !== GAME_STATE.state) {
+                pendingGameData = data;
+                return;
+            }
             // Sync TTS setting and Host visibility
             if (data.config) {
                 const ttsEnabled = !!data.config.enable_tts;
@@ -2227,6 +2491,21 @@ if (file_exists($voiceScriptsFile)) {
             }
 
             GAME_STATE = data;
+
+            // If server-side AI host is enabled but not present as a player, inject
+            // a visible client-side placeholder so the host appears in player lists.
+            try {
+                if (GAME_STATE.config && GAME_STATE.config.use_ai_host) {
+                    const players = GAME_STATE.players || [];
+                    const hasAiHost = players.some(p => p && (p.is_ai || p.id === 'ai_host' || (p.name && String(p.name).toLowerCase().includes('host'))));
+                    if (!hasAiHost) {
+                        players.push({ id: 'ai_host', name: GAME_STATE.config.ai_host_name || 'Host', score: 0, is_bot: true, is_ai: true });
+                        GAME_STATE.players = players;
+                    }
+                }
+            } catch (e) {
+                // Non-fatal
+            }
 
             // Reset selections when state changes
             if (lastUIState !== data.state) {
